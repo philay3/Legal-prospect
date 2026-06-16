@@ -1,0 +1,219 @@
+# Work Log
+
+This file tracks coding-agent work across the project.
+
+The purpose of this file is to make every task traceable.
+
+The coding agent must update this file during or after every task.
+
+The human user should be able to read this file and understand:
+
+- what changed
+- why it changed
+- which files were touched
+- which commands were suggested
+- which commands were actually run by the human
+- what still needs attention
+
+---
+
+## Work Log Rules
+
+1. Every coding-agent session must add a new entry.
+2. Each entry must be dated.
+3. Each entry must name the task.
+4. Each entry must list files created or changed.
+5. Each entry must explain the change in plain English.
+6. Each entry must list suggested commands.
+7. Each entry must record commands run by the human.
+8. Each entry must record test/build/dev results pasted by the human.
+9. Each entry must list known risks or uncertainties.
+10. Each entry must suggest the next safe task.
+
+The coding agent must not use vague summaries like:
+
+```text
+Updated project files.
+```
+
+Use specific summaries like:
+
+```text
+Created initial planning docs so future coding-agent tasks have clear scope, command rules, and documentation expectations.
+```
+
+---
+
+## Entry Template
+
+Copy this template for each new task.
+
+```md
+## YYYY-MM-DD — Task Name
+
+### Task Summary
+
+Briefly describe what this task was supposed to accomplish.
+
+### Files Created
+
+- `path/to/file.md` — why this file was created
+
+### Files Changed
+
+- `path/to/file.md` — what changed and why
+
+### What Changed
+
+Explain the actual changes in plain English.
+
+### Why It Changed
+
+Explain the reason for the change.
+
+### Commands Suggested
+
+List commands suggested to the human user here.
+
+If no commands were suggested, write:
+
+`No commands suggested.`
+
+### Commands Run by Human
+
+List commands the human actually ran here.
+
+If no commands were run, write:
+
+`No commands run.`
+
+### Results Pasted by Human
+
+Record any relevant command output, test results, build results, browser behavior, or error messages pasted by the human.
+
+If nothing was pasted, write:
+
+`No results pasted.`
+
+### Verification
+
+Explain how the human can verify the task.
+
+Examples:
+
+- Check that the file exists.
+- Check that the folder structure matches the expected structure.
+- Run a command only if the human chooses to.
+- Open a page in the browser and confirm visible behavior.
+
+### Known Risks
+
+List any risks, uncertainties, skipped items, or follow-up concerns.
+
+If there are no known risks, write:
+
+`No known risks for this task.`
+
+### Next Recommended Step
+
+State one recommended next task.
+
+Do not begin the next task until the human updates `task/current-task.md`.
+```
+
+---
+
+## 2026-06-16 — Initial Planning Structure Created
+
+### Task Summary
+
+Created the initial planning and control structure for the legal prospecting app rebuild.
+
+This task was focused on project control, not product features.
+
+### Files Created
+
+- `AGENTS.md` — defines coding-agent behavior, command rules, scope rules, database rules, data-fetching rules, auth rules, and stop conditions
+- `task/current-task.md` — defines the current allowed coding-agent task
+- `task/work.md` — tracks project work across coding-agent sessions
+- `task/decisions.md` — records important product and technical decisions
+- `docs/START-HERE.md` — entry point for project context
+- `docs/00-product-brief.md` — product concept and user/problem summary
+- `docs/01-product-scope.md` — MVP and out-of-scope boundaries
+- `docs/02-user-stories.md` — user stories and acceptance criteria
+- `docs/03-data-fetching-plan.md` — data-fetching and enrichment control plan
+- `docs/04-auth-account-plan.md` — auth and account plan
+- `docs/05-database-plan.md` — database planning document
+- `docs/06-api-contracts.md` — API route and response planning document
+- `docs/07-testing-guide.md` — testing philosophy and command guide
+- `docs/08-coding-agent-rules.md` — expanded coding-agent rules
+- `docs/09-roadmap.md` — rebuild sequence and future roadmap
+- `README.md` — basic project overview
+
+### Files Changed
+
+- `AGENTS.md` — filled with controlled rebuild rules
+- `task/current-task.md` — filled with initial setup task scope
+- `task/work.md` — initialized with this work log structure
+
+### What Changed
+
+The repo now has a planning/control layer before product features begin.
+
+The key control files are in place so future coding-agent work can be limited to one task at a time.
+
+### Why It Changed
+
+The rebuild is intended to avoid the old project problems:
+
+- too much coding-agent autonomy
+- unclear command boundaries
+- Prisma migration drift
+- confusing auth/account work
+- unclear data-fetching prompts and passes
+- feature work getting mixed together
+- long debugging loops
+
+The new process starts with rules and documentation before code.
+
+### Commands Suggested
+
+No commands suggested.
+
+### Commands Run by Human
+
+No commands run.
+
+### Results Pasted by Human
+
+No results pasted.
+
+### Verification
+
+The human should verify:
+
+- `AGENTS.md` exists
+- `task/current-task.md` exists
+- `task/work.md` exists
+- `task/decisions.md` exists
+- `docs/` exists
+- all planned documentation files exist
+- no product feature work has been started
+- no database work has been started
+- no auth work has been started
+
+### Known Risks
+
+The files exist, but most planning docs still need real content.
+
+The next risk is letting the coding agent begin product work before the docs explain the product boundaries.
+
+### Next Recommended Step
+
+Fill in:
+
+```text
+task/decisions.md
+```
+
+Do not begin product feature work yet.
