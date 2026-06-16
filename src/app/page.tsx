@@ -1,10 +1,12 @@
+import { SEED_PROSPECTS } from "@/data/prospects";
+
 export default function Home() {
   return (
     <div className="app-wrapper">
       <header className="header">
         <div className="badge">
           <span className="pulse-dot"></span>
-          <span>Phase 1 Shell</span>
+          <span>Phase 2: Seed Display</span>
         </div>
         <h1 className="title">Legal Prospector</h1>
         <p className="subtitle">
@@ -28,20 +30,80 @@ export default function Home() {
             Search
           </button>
         </div>
-        <div className="placeholder-desc" style={{ textAlign: "center", fontSize: "0.8rem", marginTop: "0.25rem" }}>
+        <div className="search-placeholder-desc">
           ZIP search input is currently a placeholder during early scaffolding.
         </div>
       </main>
 
-      <section className="placeholder-section">
-        <div className="placeholder-card">
-          <span className="placeholder-icon">📂</span>
-          <div className="placeholder-title">Welcome to Legal Prospector</div>
-          <p className="placeholder-desc">
-            This workspace will display search results from our manual seed data once the local database foundation is activated.
-          </p>
+      <section className="results-section">
+        <div className="results-header">
+          <h2 className="results-title">Demo Prospects for ZIP 19103</h2>
+          <p className="results-subtitle">Manual/demo seed data for testing purposes</p>
+        </div>
+
+        <div className="prospects-list">
+          {SEED_PROSPECTS.map((prospect) => (
+            <div key={prospect.id} className="prospect-card">
+              <div className="prospect-header">
+                <h3 className="prospect-name">{prospect.firmName}</h3>
+                <span className={`confidence-badge confidence-${prospect.confidence.split(" ")[0].toLowerCase()}`}>
+                  {prospect.confidence}
+                </span>
+              </div>
+
+              <div className="prospect-meta">
+                <span className="meta-item location">
+                  📍 {prospect.city}, {prospect.state} {prospect.zip}
+                </span>
+                <span className="meta-item size">
+                  👥 {prospect.attorneyCountRange} attorneys
+                </span>
+              </div>
+
+              <div className="prospect-practice-areas">
+                {prospect.practiceAreas.map((area, i) => (
+                  <span key={i} className="practice-tag">
+                    {area}
+                  </span>
+                ))}
+              </div>
+
+              <div className="prospect-contact">
+                {prospect.phone && (
+                  <div className="contact-item">
+                    <span className="contact-label">Phone:</span>{" "}
+                    <span className="contact-value">{prospect.phone}</span>
+                  </div>
+                )}
+                {prospect.website && (
+                  <div className="contact-item">
+                    <span className="contact-label">Website:</span>{" "}
+                    <a
+                      href={prospect.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="contact-link"
+                    >
+                      {prospect.website.replace("https://", "")}
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              {prospect.notes && (
+                <div className="prospect-notes">
+                  <span className="notes-label">Notes:</span> {prospect.notes}
+                </div>
+              )}
+
+              <div className="prospect-source">
+                Source: {prospect.sourceType}
+              </div>
+            </div>
+          ))}
         </div>
       </section>
     </div>
   );
 }
+

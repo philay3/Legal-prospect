@@ -454,3 +454,65 @@ The human can check that:
 ### Next Recommended Step
 
 Display manual seed prospects for the test ZIP code in a read-only results placeholder.
+
+---
+
+## 2026-06-16 — Display Manual Seed Prospects
+
+### Task Summary
+
+Connected the existing local manual seed data (`SEED_PROSPECTS` for ZIP `19103`) to the main home page, displaying them in a read-only results list styled to align with the current dark theme.
+
+### Files Created
+
+No files created.
+
+### Files Changed
+
+- `src/app/page.tsx` — Imported `SEED_PROSPECTS` and rendered them in a read-only results section, keeping the search bar disabled.
+- `src/app/globals.css` — Added simple, readable results list and card layouts, with custom badges for each confidence level matching the dark theme.
+- `tasks/work.md` — Documented this implementation session.
+
+### What Changed
+
+- Replaced the initial welcome placeholder card in `src/app/page.tsx` with a dynamic `results-section` mapping over `SEED_PROSPECTS`.
+- Rendered firm name, practice areas, attorney size count range, confidence level (with color-coded badges), city/state/ZIP, phone, website links, notes, and the source.
+- Left the ZIP search input and search button disabled, adjusting body layout CSS to align elements starting from the top with comfortable padding.
+- Replaced inline CSS in `src/app/page.tsx` with a proper CSS class.
+- Appended styling rules for results, cards, and badges in `src/app/globals.css`.
+
+### Why It Changed
+
+To display the manual seed data on the home page as a read-only starting point for testing, showing the structure and styling of prospects without yet implementing search functionality or database access.
+
+### Commands Suggested
+
+1. Build/TypeScript checking:
+   ```bash
+   npm run build
+   ```
+
+### Commands Run by Human
+
+No commands run.
+
+### Results Pasted by Human
+
+No results pasted.
+
+### Verification
+
+The human should verify:
+1. Start the application dev server if desired (`npm run dev`).
+2. Open `http://localhost:3000` in the browser.
+3. Confirm that the page loads cleanly and shows the four seed prospects under a header reading "Demo Prospects for ZIP 19103".
+4. Confirm that the ZIP input field and search button remain non-functional and disabled.
+5. Check that the card design is clean, readable, and aligned with the current dark theme.
+
+### Known Risks
+
+- Sourcing is purely local and manual. In future phases, these records will be fetched dynamically via database queries and API routes.
+
+### Next Recommended Step
+
+Make the ZIP input display matching local seed prospects for the test ZIP only.

@@ -355,3 +355,531 @@ Display manual seed prospects for the test ZIP code in a read-only results place
 ```
 
 Do not begin that task until the human updates `tasks/current-task.md`.
+
+# Current Task
+
+## Task Name
+
+Display manual seed prospects for the test ZIP code in a read-only results placeholder.
+
+## Task Status
+
+Ready for coding-agent work.
+
+## Purpose
+
+Connect the existing manual/demo seed data to the visible app shell in the smallest possible way.
+
+This task should show the seeded law firm prospect records on the page as a read-only placeholder.
+
+The goal is not to build real ZIP search yet.
+
+The goal is to prove that the app can display the local manual seed data in a simple, readable results area.
+
+---
+
+## Context
+
+Phase 1 created the basic app shell and non-functional home/search page placeholder.
+
+The previous task added local manual/demo prospect seed data.
+
+Current seed data is expected to live in files similar to:
+
+```text
+src/types/prospect.ts
+src/data/prospects.ts
+```
+
+The seed data uses one test ZIP code.
+
+The previous coding-agent report said the test ZIP is:
+
+```text
+19103
+```
+
+Use the actual seed data file as the source of truth.
+
+---
+
+## Allowed Scope
+
+The coding agent may:
+
+- import the local manual seed data into the home page
+- display the seeded prospects in a simple read-only results section
+- show the test ZIP code associated with the displayed results
+- show basic prospect details such as firm name, city/state, practice areas, website, phone, attorney count range, confidence, and notes
+- keep the existing ZIP input and search button non-functional
+- adjust simple vanilla CSS to make the results readable
+- update `tasks/work.md`
+
+Expected editable files:
+
+```text
+src/app/page.tsx
+src/app/globals.css
+tasks/work.md
+```
+
+The coding agent may edit `src/app/layout.tsx` only if there is a small metadata correction directly related to this task.
+
+---
+
+## Display Requirements
+
+The page should make it clear that the displayed records are:
+
+```text
+Manual demo seed data
+```
+
+The results area should be read-only.
+
+The displayed records should not require user interaction.
+
+The ZIP input should remain a placeholder.
+
+The search button should remain non-functional.
+
+The page can show the current test ZIP directly, for example:
+
+```text
+Showing demo prospects for ZIP 19103
+```
+
+Use the actual ZIP from the seed data.
+
+---
+
+## Explicitly Out of Scope
+
+Do not add real search behavior.
+
+Do not make the ZIP input filter records.
+
+Do not add form submission behavior.
+
+Do not add client-side state unless absolutely necessary for display.
+
+Do not add backend API routes.
+
+Do not add database work.
+
+Do not add Prisma.
+
+Do not add migrations.
+
+Do not add seed scripts.
+
+Do not add auth.
+
+Do not add Clerk.
+
+Do not add saved leads.
+
+Do not add recent ZIP searches.
+
+Do not add dashboards.
+
+Do not add scraping.
+
+Do not add enrichment.
+
+Do not add external APIs.
+
+Do not add AI research passes.
+
+Do not fetch data from the web.
+
+Do not install dependencies.
+
+Do not add Tailwind CSS.
+
+Do not add shadcn/ui.
+
+Do not add component libraries.
+
+Do not add Google fonts or external font loading.
+
+Do not add state management libraries.
+
+Do not add billing, teams, organizations, or permissions.
+
+Do not run terminal commands.
+
+Do not run npm commands.
+
+Do not run npx commands.
+
+Do not run git commands.
+
+Do not run dev, build, test, lint, install, cleanup, move, copy, or shell inspection commands.
+
+---
+
+## Command Rule
+
+The coding agent must not run terminal commands.
+
+This includes harmless-looking commands such as:
+
+```bash
+cd
+ls
+pwd
+git status
+npm run build
+```
+
+When a command is useful, list it under:
+
+```text
+Commands for human to run
+```
+
+Then stop and wait.
+
+The human controls all commands.
+
+---
+
+## Expected Result
+
+At the end of this task:
+
+1. The home page displays the local manual/demo seed prospects.
+2. The displayed records are read-only.
+3. The page clearly labels the records as manual/demo seed data.
+4. The page shows the test ZIP associated with the records.
+5. The ZIP input remains non-functional.
+6. The search button remains non-functional.
+7. No database work has been done.
+8. No external fetching has been added.
+9. No dependencies have been installed.
+10. `tasks/work.md` has a new entry for this task.
+
+---
+
+## Human Verification Steps
+
+The human should run the app if they choose:
+
+```bash
+npm run dev
+```
+
+The human should then verify:
+
+1. The app loads.
+2. The home page is visible.
+3. The local demo prospect records are displayed.
+4. The displayed ZIP matches the seed data.
+5. The records are clearly labeled as manual/demo data.
+6. The ZIP input does not perform real search.
+7. The search button does not perform real search.
+8. No sign-in is required.
+9. No database, Prisma, auth, or external data fetching has been added.
+
+Optional human-run build check:
+
+```bash
+npm run build
+```
+
+The coding agent must not run either command.
+
+---
+
+## Required Final Report From Coding Agent
+
+At the end of the task, the coding agent must report:
+
+- files created
+- files changed
+- what changed
+- why it changed
+- commands suggested for the human
+- commands run by the agent, which should be none
+- manual verification steps
+- known risks
+- next recommended task
+
+The coding agent must not claim the app works unless the human verifies it or approved commands are run by the human.
+
+---
+
+## Next Recommended Task After This
+
+After this task is complete, the next likely task is:
+
+```text
+Make the ZIP input display matching local seed prospects for the test ZIP only.
+```
+
+Do not begin that task until the human updates `tasks/current-task.md`.
+
+# Current Task
+
+## Task Name
+
+Display manual seed prospects for the test ZIP code in a read-only results placeholder.
+
+## Task Status
+
+Ready for coding-agent work.
+
+## Purpose
+
+Connect the existing manual/demo seed data to the visible app shell in the smallest possible way.
+
+This task should show the seeded law firm prospect records on the page as a read-only placeholder.
+
+The goal is not to build real ZIP search yet.
+
+The goal is to prove that the app can display the local manual seed data in a simple, readable results area.
+
+---
+
+## Context
+
+Phase 1 created the basic app shell and non-functional home/search page placeholder.
+
+The previous task added local manual/demo prospect seed data.
+
+Current seed data is expected to live in files similar to:
+
+```text
+src/types/prospect.ts
+src/data/prospects.ts
+```
+
+The seed data uses one test ZIP code.
+
+The previous coding-agent report said the test ZIP is:
+
+```text
+19103
+```
+
+Use the actual seed data file as the source of truth.
+
+---
+
+## Allowed Scope
+
+The coding agent may:
+
+- import the local manual seed data into the home page
+- display the seeded prospects in a simple read-only results section
+- show the test ZIP code associated with the displayed results
+- show basic prospect details such as firm name, city/state, practice areas, website, phone, attorney count range, confidence, and notes
+- keep the existing ZIP input and search button non-functional
+- adjust simple vanilla CSS to make the results readable
+- update `tasks/work.md`
+
+Expected editable files:
+
+```text
+src/app/page.tsx
+src/app/globals.css
+tasks/work.md
+```
+
+The coding agent may edit `src/app/layout.tsx` only if there is a small metadata correction directly related to this task.
+
+---
+
+## Display Requirements
+
+The page should make it clear that the displayed records are:
+
+```text
+Manual demo seed data
+```
+
+The results area should be read-only.
+
+The displayed records should not require user interaction.
+
+The ZIP input should remain a placeholder.
+
+The search button should remain non-functional.
+
+The page can show the current test ZIP directly, for example:
+
+```text
+Showing demo prospects for ZIP 19103
+```
+
+Use the actual ZIP from the seed data.
+
+---
+
+## Explicitly Out of Scope
+
+Do not add real search behavior.
+
+Do not make the ZIP input filter records.
+
+Do not add form submission behavior.
+
+Do not add client-side state unless absolutely necessary for display.
+
+Do not add backend API routes.
+
+Do not add database work.
+
+Do not add Prisma.
+
+Do not add migrations.
+
+Do not add seed scripts.
+
+Do not add auth.
+
+Do not add Clerk.
+
+Do not add saved leads.
+
+Do not add recent ZIP searches.
+
+Do not add dashboards.
+
+Do not add scraping.
+
+Do not add enrichment.
+
+Do not add external APIs.
+
+Do not add AI research passes.
+
+Do not fetch data from the web.
+
+Do not install dependencies.
+
+Do not add Tailwind CSS.
+
+Do not add shadcn/ui.
+
+Do not add component libraries.
+
+Do not add Google fonts or external font loading.
+
+Do not add state management libraries.
+
+Do not add billing, teams, organizations, or permissions.
+
+Do not run terminal commands.
+
+Do not run npm commands.
+
+Do not run npx commands.
+
+Do not run git commands.
+
+Do not run dev, build, test, lint, install, cleanup, move, copy, or shell inspection commands.
+
+---
+
+## Command Rule
+
+The coding agent must not run terminal commands.
+
+This includes harmless-looking commands such as:
+
+```bash
+cd
+ls
+pwd
+git status
+npm run build
+```
+
+When a command is useful, list it under:
+
+```text
+Commands for human to run
+```
+
+Then stop and wait.
+
+The human controls all commands.
+
+---
+
+## Expected Result
+
+At the end of this task:
+
+1. The home page displays the local manual/demo seed prospects.
+2. The displayed records are read-only.
+3. The page clearly labels the records as manual/demo seed data.
+4. The page shows the test ZIP associated with the records.
+5. The ZIP input remains non-functional.
+6. The search button remains non-functional.
+7. No database work has been done.
+8. No external fetching has been added.
+9. No dependencies have been installed.
+10. `tasks/work.md` has a new entry for this task.
+
+---
+
+## Human Verification Steps
+
+The human should run the app if they choose:
+
+```bash
+npm run dev
+```
+
+The human should then verify:
+
+1. The app loads.
+2. The home page is visible.
+3. The local demo prospect records are displayed.
+4. The displayed ZIP matches the seed data.
+5. The records are clearly labeled as manual/demo data.
+6. The ZIP input does not perform real search.
+7. The search button does not perform real search.
+8. No sign-in is required.
+9. No database, Prisma, auth, or external data fetching has been added.
+
+Optional human-run build check:
+
+```bash
+npm run build
+```
+
+The coding agent must not run either command.
+
+---
+
+## Required Final Report From Coding Agent
+
+At the end of the task, the coding agent must report:
+
+- files created
+- files changed
+- what changed
+- why it changed
+- commands suggested for the human
+- commands run by the agent, which should be none
+- manual verification steps
+- known risks
+- next recommended task
+
+The coding agent must not claim the app works unless the human verifies it or approved commands are run by the human.
+
+---
+
+## Next Recommended Task After This
+
+After this task is complete, the next likely task is:
+
+```text
+Make the ZIP input display matching local seed prospects for the test ZIP only.
+```
+
+Do not begin that task until the human updates `tasks/current-task.md`.

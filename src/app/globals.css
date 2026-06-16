@@ -31,15 +31,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   min-height: 100vh;
+  padding: 4rem 1rem 6rem;
 }
 
 .app-wrapper {
   width: 100%;
   max-width: 600px;
-  padding: 2.5rem 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 2.5rem;
@@ -220,4 +220,187 @@ body {
   font-size: 0.85rem;
   color: var(--text-muted);
   line-height: 1.5;
+}
+
+.search-placeholder-desc {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+/* Results Section & List */
+.results-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.results-header {
+  border-bottom: 1px solid var(--card-border);
+  padding-bottom: 0.75rem;
+}
+
+.results-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.results-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.prospects-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Prospect Card */
+.prospect-card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.prospect-card:hover {
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.prospect-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.prospect-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+/* Confidence Badges - aligned with current dark theme colors */
+.confidence-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.confidence-high {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.confidence-medium {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.confidence-low {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* Prospect Meta Data */
+.prospect-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Practice Areas Tags */
+.prospect-practice-areas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.practice-tag {
+  background-color: #1f2937;
+  color: #cbd5e1;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.25rem;
+  border: 1px solid #374151;
+}
+
+/* Contact Details */
+.prospect-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  border-top: 1px solid #1f2937;
+  padding-top: 0.5rem;
+}
+
+.contact-item {
+  color: var(--text-muted);
+}
+
+.contact-label {
+  font-weight: 500;
+  color: #9ca3af;
+}
+
+.contact-value {
+  color: #e2e8f0;
+}
+
+.contact-link {
+  color: var(--accent);
+  text-decoration: none;
+  transition: text-decoration 0.2s ease;
+}
+
+.contact-link:hover {
+  text-decoration: underline;
+}
+
+/* Notes Block */
+.prospect-notes {
+  background-color: rgba(31, 41, 55, 0.4);
+  border-left: 3px solid var(--card-border);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0 0.375rem 0.375rem 0;
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+
+.notes-label {
+  font-weight: 600;
+  color: #9ca3af;
+}
+
+/* Source Type Info */
+.prospect-source {
+  font-size: 0.75rem;
+  color: #4b5563;
+  text-align: right;
+  margin-top: 0.25rem;
 }
