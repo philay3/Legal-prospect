@@ -2,7 +2,7 @@
 
 ## Task Name
 
-Create the initial project planning and control files.
+Create minimal app scaffold and basic home/search page placeholder.
 
 ## Task Status
 
@@ -10,138 +10,44 @@ Ready for coding-agent work.
 
 ## Purpose
 
-Set up the project-control structure before any product features are built.
+Create the minimal application structure and scaffold needed to render a simple starting page for the legal prospecting workflow.
 
-This task is about creating the files and folders that keep the rebuild controlled, understandable, and safe.
+The goal is not to build search, databases, or auth.
 
-This is not a feature-building task.
+The goal is to create a clean minimal scaffold where the future ZIP search flow will live.
 
 ---
 
 ## Allowed Scope
 
-The coding agent may create this folder and file structure:
+The coding agent may:
 
-```text
-/
-├── AGENTS.md
-├── README.md
-├── task/
-│   ├── current-task.md
-│   ├── work.md
-│   └── decisions.md
-├── docs/
-│   ├── START-HERE.md
-│   ├── 00-product-brief.md
-│   ├── 01-product-scope.md
-│   ├── 02-user-stories.md
-│   ├── 03-data-fetching-plan.md
-│   ├── 04-auth-account-plan.md
-│   ├── 05-database-plan.md
-│   ├── 06-api-contracts.md
-│   ├── 07-testing-guide.md
-│   ├── 08-coding-agent-rules.md
-│   └── 09-roadmap.md
-```
-
-The coding agent may add starter markdown content to these files.
-
-The starter content should be simple, clear, and focused on project control.
-
----
-
-## Files to Create or Update
-
-### Required
-
-- `AGENTS.md`
-- `README.md`
-- `task/current-task.md`
-- `task/work.md`
-- `task/decisions.md`
-- `docs/START-HERE.md`
-- `docs/00-product-brief.md`
-- `docs/01-product-scope.md`
-- `docs/02-user-stories.md`
-- `docs/03-data-fetching-plan.md`
-- `docs/04-auth-account-plan.md`
-- `docs/05-database-plan.md`
-- `docs/06-api-contracts.md`
-- `docs/07-testing-guide.md`
-- `docs/08-coding-agent-rules.md`
-- `docs/09-roadmap.md`
+- Create the minimal app structure and scaffold needed to display a page (e.g., initial Next.js/React layout or basic HTML/JS files as approved by project structure).
+- Create a simple home/search starting page placeholder.
+- Add product-purpose copy to explain the app's focus (finding small/boutique law firms).
+- Add a non-functional ZIP search placeholder/input field.
+- Keep layout plain, readable, and clean (Basic CSS, HSL colors, or Outfit/Inter typography, no Tailwind unless explicitly approved).
+- Update `tasks/work.md` in the current session.
 
 ---
 
 ## Explicitly Out of Scope
 
-Do not add product features.
-
-Do not add authentication.
-
-Do not add Clerk.
-
-Do not add Prisma.
-
-Do not add database models.
-
-Do not add migrations.
-
-Do not add seed data.
-
-Do not add scraping.
-
-Do not add enrichment.
-
-Do not add external API calls.
-
-Do not add saved leads.
-
-Do not add recent ZIP behavior.
-
-Do not add dashboard functionality.
-
-Do not add billing, teams, organizations, or permissions.
-
-Do not install dependencies unless the human explicitly asks.
-
----
-
-## Command Rules
-
-The coding agent should not run commands by default.
-
-The human user runs commands.
-
-The coding agent may suggest commands and explain them.
-
-Do not run:
-
-```bash
-npm run dev
-npm run build
-npm run test
-npm run test:run
-npx tsc --noEmit
-npx prisma migrate dev
-npx prisma migrate deploy
-npx prisma db push
-npx prisma db push --accept-data-loss
-npx prisma migrate reset
-git commit
-git push
-git reset
-git clean
-```
-
-Never run:
-
-```bash
-npx prisma db push --accept-data-loss
-npx prisma migrate reset
-git reset --hard
-git clean -fd
-```
+- Do not add authentication or Clerk.
+- Do not add Prisma or database work.
+- Do not create database models or migrations.
+- Do not add seed data or JSON prospects.
+- Do not add saved leads.
+- Do not add recent ZIP behavior.
+- Do not add scraping or enrichment.
+- Do not add external API calls.
+- Do not add dashboard complexity.
+- Do not add billing, teams, organizations, or permissions.
+- Do not install new dependencies unless explicitly approved.
+- Do not run `npm run dev` or the development server.
+- Do not run tests or build commands unless explicitly approved.
+- Do not run git commands (commit, push, clean, reset, etc.).
+- Do not run destructive cleanup commands.
 
 ---
 
@@ -149,27 +55,28 @@ git clean -fd
 
 At the end of this task:
 
-1. The repo has the required planning/control folder structure.
-2. The project has an `AGENTS.md` file with operating rules.
-3. The `task/` folder exists and includes the current task, work log, and decisions log.
-4. The `docs/` folder exists and includes the planned documentation files.
-5. No product features have been added.
-6. No database work has been done.
-7. No auth work has been done.
-8. No external data fetching has been added.
+1. The app has a minimal, cleanly scaffolded folder structure.
+2. A home/search page placeholder exists and displays basic product-purpose copy.
+3. A non-functional ZIP search input field/placeholder is visible.
+4. No search behavior, database, or auth is implemented.
+5. `tasks/work.md` has a new entry documenting the session.
 
 ---
 
 ## Human Verification Steps
 
-After the coding agent finishes, the human should verify:
+The human user runs commands and verifies the browser:
 
-1. The expected files exist.
-2. The files contain markdown content.
-3. The coding agent did not add product code.
-4. The coding agent did not install dependencies.
-5. The coding agent did not run restricted commands.
-6. `task/work.md` includes a work log entry for this task.
+1. Start the local dev server (if desired):
+   ```bash
+   npm run dev
+   ```
+2. Open the browser and confirm:
+   - The basic app shell/page loads without errors.
+   - The product-purpose text is readable and clean.
+   - The non-functional ZIP search placeholder/input is visible.
+   - No auth prompts or dashboard redirects occur.
+3. Verify that no Prisma, Clerk, or external dependencies have been added.
 
 ---
 
@@ -179,15 +86,13 @@ At the end of the task, the coding agent must report:
 
 - files created
 - files changed
-- what each file is for
+- what changed
+- why it changed
 - commands suggested
 - commands run by the human, if any
+- manual verification steps
 - known risks
 - next recommended task
-
-The coding agent must not claim the project is working as an app.
-
-This task only creates the control structure.
 
 ---
 
@@ -196,7 +101,7 @@ This task only creates the control structure.
 After this task is complete, the next recommended task is:
 
 ```text
-Fill in docs/START-HERE.md
+Add manual seed prospect data for one test ZIP code.
 ```
 
-Do not begin that task until the human updates `task/current-task.md`.
+Do not begin that task until the human updates `tasks/current-task.md`.

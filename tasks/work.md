@@ -217,3 +217,54 @@ task/decisions.md
 ```
 
 Do not begin product feature work yet.
+
+---
+
+## 2026-06-16 — Phase 1 Task Prepared
+
+### Task Summary
+
+Prepared tasks/current-task.md and tasks/work.md for the first app-implementation task (Phase 1: Basic App Shell Scaffold).
+
+### Files Created
+
+None.
+
+### Files Changed
+
+- `tasks/current-task.md` — updated with the exact name, allowed scope, and verification steps for the Next.js scaffold and basic home page placeholder.
+- `tasks/work.md` — logged the preparation task.
+
+### What Changed
+
+Switched target scope tracking from documentation generation to application scaffold creation. Prepared the specific boundaries for the coding-agent implementation.
+
+### Why It Changed
+
+The documentation phase is now set up inside the `legal-prospecting-planning-docs-starter` directory, enabling the project to advance to the app shell phase.
+
+### Commands Suggested
+
+No commands suggested.
+
+### Commands Run by Human
+
+No commands run.
+
+### Results Pasted by Human
+
+No results pasted.
+
+### Verification
+
+Check that:
+- `tasks/current-task.md` defines the next task "Create minimal app scaffold and basic home/search page placeholder".
+- Scope guards (auth, prisma, live fetching, etc. as out-of-scope) are in place.
+
+### Known Risks
+
+- The coding agent might try to set up database connections, Clerk client secrets, or live scraping during the scaffold build. This is prevented by explicit out-of-scope guards in `tasks/current-task.md`.
+
+### Next Recommended Step
+
+Hand off the updated task to the coding agent for Phase 1 execution.
