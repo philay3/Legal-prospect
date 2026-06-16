@@ -924,3 +924,70 @@ No known risks for this task.
 ### Next Recommended Step
 
 Prepare the Prisma configuration and database structure plan.
+
+---
+
+## 2026-06-16 — Extract Prospect Result Card Component
+
+### Task Summary
+
+Extracted the prospect result card markup from `src/app/page.tsx` into a reusable React component `ProspectCard` in `src/components/ProspectCard.tsx`.
+
+### Files Created
+
+- `src/components/ProspectCard.tsx` — holds the single prospect result card rendering logic, typing for props, expand/collapse toggling, and save/unsave actions.
+
+### Files Changed
+
+- `src/app/page.tsx` — imported the new `ProspectCard` component and replaced the inline loop markup.
+- `tasks/work.md` — logged this task's work details.
+
+### What Changed
+
+- Created the `src/components/` directory and created `src/components/ProspectCard.tsx`.
+- Defined a typescript interface `ProspectCardProps` mapping the required inputs and actions.
+- Transferred all elements, conditional rendering details, list items, dynamic class strings, and click action triggers from the parent page file into the new component.
+- Simplified `src/app/page.tsx` rendering logic by referencing the clean `<ProspectCard />` component in the prospects listing section.
+
+### Why It Changed
+
+To make the homepage component cleaner and more maintainable before introducing database logic, pagination, or other UI components, separating card UI presentation from search state orchestration.
+
+### Commands Suggested
+
+1. Run the test suite:
+   ```bash
+   npm run test
+   ```
+2. Build validation:
+   ```bash
+   npm run build
+   ```
+3. Run dev server:
+   ```bash
+   npm run dev
+   ```
+
+### Commands Run by Human
+
+No commands run.
+
+### Results Pasted by Human
+
+No results pasted.
+
+### Verification
+
+The human can check that:
+1. `src/components/ProspectCard.tsx` exists and compiles without errors.
+2. `src/app/page.tsx` imports and renders `<ProspectCard />`.
+3. The page loads correctly, displaying cards, toggles expand/collapse details, and toggles the saved in-memory status.
+4. The test suite (`npm run test`) runs and compiles successfully.
+
+### Known Risks
+
+No known risks for this refactoring task.
+
+### Next Recommended Step
+
+Prepare the Prisma configuration and database structure plan.

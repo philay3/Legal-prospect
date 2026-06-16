@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { SEED_PROSPECTS } from "@/data/prospects";
 import { matchProspectsByZip, normalizeZipCode } from "@/utils/prospectMatcher";
+import { ProspectCard } from "@/components/ProspectCard";
 
 export default function Home() {
   const [searchZip, setSearchZip] = useState("");
@@ -119,94 +120,16 @@ export default function Home() {
             </div>
 
             <div className="prospects-list">
-              {matchingProspects.map((prospect) => {
-                const isExpanded = !!expandedProspects[prospect.id];
-                const isSaved = savedProspectIds.includes(prospect.id);
-                return (
-                  <div key={prospect.id} className={`prospect-card ${isSaved ? "saved" : ""}`}>
-                    <div className="prospect-header">
-                      <h3 className="prospect-name">{prospect.firmName}</h3>
-                      <span
-                        className={`confidence-badge confidence-${prospect.confidence
-                          .split(" ")[0]
-                          .toLowerCase()}`}
-                      >
-                        {prospect.confidence}
-                      </span>
-                    </div>
-
-                    <div className="prospect-meta">
-                      <span className="meta-item location">
-                        📍 {prospect.city}, {prospect.state} {prospect.zip}
-                      </span>
-                      <span className="meta-item size">
-                        👥 {prospect.attorneyCountRange} attorneys
-                      </span>
-                    </div>
-
-                    <div className="prospect-practice-areas">
-                      {prospect.practiceAreas.map((area, i) => (
-                        <span key={i} className="practice-tag">
-                          {area}
-                        </span>
-                      ))}
-                    </div>
-
-                    {isExpanded && (
-                      <>
-                        <div className="prospect-contact">
-                          {prospect.phone && (
-                            <div className="contact-item">
-                              <span className="contact-label">Phone:</span>{" "}
-                              <span className="contact-value">{prospect.phone}</span>
-                            </div>
-                          )}
-                          {prospect.website && (
-                            <div className="contact-item">
-                              <span className="contact-label">Website:</span>{" "}
-                              <a
-                                href={prospect.website}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="contact-link"
-                              >
-                                {prospect.website.replace("https://", "")}
-                              </a>
-                            </div>
-                          )}
-                        </div>
-
-                        {prospect.notes && (
-                          <div className="prospect-notes">
-                            <span className="notes-label">Notes:</span> {prospect.notes}
-                          </div>
-                        )}
-
-                        <div className="prospect-source">
-                          Source: {prospect.sourceType}
-                        </div>
-                      </>
-                    )}
-
-                    <div className="prospect-actions">
-                      <button
-                        type="button"
-                        className="prospect-toggle-btn"
-                        onClick={() => toggleExpand(prospect.id)}
-                      >
-                        {isExpanded ? "Hide details ▲" : "Show details ▼"}
-                      </button>
-                      <button
-                        type="button"
-                        className={`prospect-save-btn ${isSaved ? "saved" : ""}`}
-                        onClick={() => toggleSave(prospect.id)}
-                      >
-                        {isSaved ? "★ Saved" : "☆ Save"}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+              {matchingProspects.map((prospect) => (
+                <ProspectCard
+                  key={prospect.id}
+                  prospect={prospect}
+                  isExpanded={!!expandedProspects[prospect.id]}
+                  isSaved={savedProspectIds.includes(prospect.id)}
+                  onToggleExpand={toggleExpand}
+                  onToggleSave={toggleSave}
+                />
+              ))}
             </div>
           </>
         ) : (
