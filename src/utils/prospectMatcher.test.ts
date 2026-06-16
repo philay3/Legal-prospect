@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { normalizeZipCode, matchProspectsByZip } from "./prospectMatcher";
-import { Prospect } from "@/types/prospect";
+import { Prospect } from "../types/prospect";
+import { SEED_PROSPECTS } from "../data/prospects";
 
 // Fictional prospects for testing
 const mockProspects: Prospect[] = [
@@ -92,6 +93,14 @@ describe("prospectMatcher utility tests", () => {
       expect(normalizeZipCode("19103-12345")).toBeNull(); // ZIP+5 (invalid)
       expect(normalizeZipCode("19103-abcd")).toBeNull(); // ZIP+letters (invalid)
     });
+
+    // Required by current-task.md explicitly
+    it("should cover the exact requested regression cases for normalization", () => {
+      expect(normalizeZipCode("19103-1234")).toBe("19103");
+      expect(normalizeZipCode(" 19103-1234 ")).toBe("19103");
+      expect(normalizeZipCode("19103-12")).toBeNull();
+      expect(normalizeZipCode("19103-12345")).toBeNull();
+    });
   });
 
   describe("matchProspectsByZip", () => {
@@ -130,6 +139,16 @@ describe("prospectMatcher utility tests", () => {
 
     it("should return an empty list if prospects array is empty", () => {
       expect(matchProspectsByZip([], "19103")).toHaveLength(0);
+    });
+
+    // Required by current-task.md explicitly
+    it("should match SEED_PROSPECTS correctly for ZIP+4", () => {
+      const matchesForZip5 = matchProspectsByZip(SEED_PROSPECTS, "19103");
+      const matchesForZip4 = matchProspectsByZip(SEED_PROSPECTS, "19103-1234");
+      
+      expect(matchesForZip5).toHaveLength(4);
+      expect(matchesForZip4).toHaveLength(4);
+      expect(matchesForZip4).toEqual(matchesForZip5);
     });
   });
 });

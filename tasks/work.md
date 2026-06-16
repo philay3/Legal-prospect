@@ -784,4 +784,143 @@ No results pasted.
 
 ### Next Recommended Step
 
-Add a simple local-only saved leads placeholder state for demo prospects.
+Add local-only save/unsave UI state for demo prospects.
+
+---
+
+## 2026-06-16 — Local-Only Save State for Demo Prospects
+
+### Task Summary
+
+Implemented a simple local-only, in-memory Save/Unsave toggle interaction for search result cards, showing a live counter badge of saved prospects and distinguishing saved cards with custom visual borders/background accents.
+
+### Files Created
+
+None.
+
+### Files Changed
+
+- `src/app/page.tsx` — added state Hook for saved prospect IDs, logic for toggling save states, visual conditional class wrapper, card actions panel, and count displays in the header.
+- `src/app/globals.css` — added premium visual styles for the saved card states, layout classes for the buttons actions row, custom `.prospect-save-btn` styling, and the saved counter badge.
+- `tasks/work.md` — logged this task's work details.
+
+### What Changed
+
+- Replaced simple toggling card structure with a split actions container containing expand/collapse and save/unsave buttons.
+- Styled saved cards to feature a distinct emerald-accented gradient glow border.
+- Placed a real-time counter badge at the top of the search results indicating the number of saved boutique firms.
+- Added helper information clarifying that saves are temporary for the active demo session only.
+
+### Why It Changed
+
+To construct the interactive client-side UX for managing saved leads, laying down the visual layout and user interactions before introducing a relational database (Prisma) or authentication (custom email/cookies).
+
+### Commands Suggested
+
+1. Run the test suite (ensuring no regressions):
+   ```bash
+   npm run test
+   ```
+2. Build validation:
+   ```bash
+   npm run build
+   ```
+3. Run dev server:
+   ```bash
+   npm run dev
+   ```
+
+### Commands Run by Human
+
+No commands run.
+
+### Results Pasted by Human
+
+No results pasted.
+
+### Verification
+
+1. Start the application dev server if desired (`npm run dev`).
+2. Open `http://localhost:3000` in the browser.
+3. Search for the test ZIP `19103`.
+4. Verify that:
+   - The 4 demo prospect cards appear.
+   - Each card displays a "☆ Save" button at the bottom-right actions panel.
+   - Clicking "Save" toggles the card's visual state to showing a green border, gradient background accent, and updating the label to "★ Saved".
+   - The results header dynamically displays "Saved this session: 1" and the helper label "Saved for this demo session only."
+   - Clicking "Saved" toggles it back to "☆ Save" and decrements the counter.
+   - Performing a new search or modifying inputs does not wipe the saved list, but refreshing the page clears the in-memory state.
+5. Verify that running `npm run test` passes successfully.
+
+### Known Risks
+
+- State is stored purely in client-side React memory. Persistent storage (DB) and User association (Auth) will be integrated in subsequent roadmap phases.
+
+### Next Recommended Step
+
+Prepare the Prisma configuration and database structure plan.
+
+---
+
+## 2026-06-16 — Add ZIP+4 Regression Tests for Local Prospect Matching
+
+### Task Summary
+
+Added explicit regression tests for ZIP+4 normalization and matching behavior, verifying that both valid and invalid ZIP+4 shapes handle correctly and match `SEED_PROSPECTS`. Fixed an issue where Vitest could not resolve the `@/` path alias at runtime for value imports by switching to standard relative paths.
+
+### Files Created
+
+None.
+
+### Files Changed
+
+- `src/utils/prospectMatcher.test.ts` — added unit test cases covering the exact requested regression inputs and matching behavior against `SEED_PROSPECTS`. Converted imports to relative paths to fix a runtime resolution failure in Vitest.
+- `tasks/work.md` — logged this session's work details.
+
+### What Changed
+
+- Added tests for `normalizeZipCode` to verify:
+  - `"19103-1234"` normalizes to `"19103"`
+  - `" 19103-1234 "` normalizes to `"19103"`
+  - `"19103-12"` returns `null`
+  - `"19103-12345"` returns `null`
+- Added tests for `matchProspectsByZip` to verify that searching `"19103-1234"` against `SEED_PROSPECTS` returns the same results as searching for `"19103"`.
+- Switched alias imports (e.g. `@/data/prospects` and `@/types/prospect`) to relative paths (e.g. `../data/prospects` and `../types/prospect`) in the test file.
+
+### Why It Changed
+
+- To prevent regression on ZIP+4 searches by locking down standard base normalization and matching logic against static seed datasets.
+- To resolve a runtime test failure where Vitest was unable to resolve path aliases because no custom `tsconfig-paths` mapper or custom config file is active for the test runner.
+
+### Commands Suggested
+
+1. Run the test suite:
+   ```bash
+   npm run test
+   ```
+2. Build validation:
+   ```bash
+   npm run build
+   ```
+
+### Commands Run by Human
+
+No commands run.
+
+### Results Pasted by Human
+
+No results pasted.
+
+### Verification
+
+The human can check that:
+1. `src/utils/prospectMatcher.test.ts` contains the new explicit tests and relative imports.
+2. Running the test suite (`npm run test`) passes all 12 tests successfully.
+
+### Known Risks
+
+No known risks for this task.
+
+### Next Recommended Step
+
+Prepare the Prisma configuration and database structure plan.

@@ -9,6 +9,7 @@ export default function Home() {
   const [searchedZip, setSearchedZip] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedProspects, setExpandedProspects] = useState<Record<string, boolean>>({});
+  const [savedProspectIds, setSavedProspectIds] = useState<string[]>([]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +40,12 @@ export default function Home() {
       ...prev,
       [id]: !prev[id],
     }));
+  };
+
+  const toggleSave = (id: string) => {
+    setSavedProspectIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
   };
 
   const matchingProspects = searchedZip
@@ -95,15 +102,28 @@ export default function Home() {
         ) : matchingProspects.length > 0 ? (
           <>
             <div className="results-header">
-              <h2 className="results-title">Demo Prospects for ZIP {searchedZip}</h2>
-              <p className="results-subtitle">Manual/demo seed data for testing purposes</p>
+              <div className="results-header-main">
+                <h2 className="results-title">Demo Prospects for ZIP {searchedZip}</h2>
+                {savedProspectIds.length > 0 && (
+                  <span className="saved-count-badge">
+                    Saved this session: {savedProspectIds.length}
+                  </span>
+                )}
+              </div>
+              <p className="results-subtitle">
+                Manual/demo seed data for testing purposes.{" "}
+                {savedProspectIds.length > 0 && (
+                  <span className="saved-helper-text">Saved for this demo session only.</span>
+                )}
+              </p>
             </div>
 
             <div className="prospects-list">
               {matchingProspects.map((prospect) => {
                 const isExpanded = !!expandedProspects[prospect.id];
+                const isSaved = savedProspectIds.includes(prospect.id);
                 return (
-                  <div key={prospect.id} className="prospect-card">
+                  <div key={prospect.id} className={`prospect-card ${isSaved ? "saved" : ""}`}>
                     <div className="prospect-header">
                       <h3 className="prospect-name">{prospect.firmName}</h3>
                       <span
@@ -168,13 +188,22 @@ export default function Home() {
                       </>
                     )}
 
-                    <button
-                      type="button"
-                      className="prospect-toggle-btn"
-                      onClick={() => toggleExpand(prospect.id)}
-                    >
-                      {isExpanded ? "Hide details ▲" : "Show details ▼"}
-                    </button>
+                    <div className="prospect-actions">
+                      <button
+                        type="button"
+                        className="prospect-toggle-btn"
+                        onClick={() => toggleExpand(prospect.id)}
+                      >
+                        {isExpanded ? "Hide details ▲" : "Show details ▼"}
+                      </button>
+                      <button
+                        type="button"
+                        className={`prospect-save-btn ${isSaved ? "saved" : ""}`}
+                        onClick={() => toggleSave(prospect.id)}
+                      >
+                        {isSaved ? "★ Saved" : "☆ Save"}
+                      </button>
+                    </div>
                   </div>
                 );
               })}
