@@ -1,4 +1,4 @@
-# Current Task: Extract prospect result card into a small component
+# Current Task: Improve ProspectCard button accessibility
 
 ## Status
 
@@ -6,9 +6,9 @@ Ready for coding agent.
 
 ## Goal
 
-Extract the demo prospect result card UI from `src/app/page.tsx` into a small reusable component.
+Improve the accessibility semantics of the `ProspectCard` action buttons without changing behavior or visual design.
 
-This is a cleanup/refactor task only. It should preserve the existing user-facing behavior exactly.
+This is a small hardening/refactor task only.
 
 ## Current project state
 
@@ -21,40 +21,34 @@ The app currently supports:
 - demo prospect result cards
 - expandable/collapsible prospect details
 - local-only in-memory save/unsave UI state
+- extracted `ProspectCard` component
 - ZIP utility tests including ZIP+4 regression coverage
 
-The previous ZIP+4 regression test task has passed with 12 tests.
+The previous task extracted the prospect result card into `src/components/ProspectCard.tsx`.
 
 ## Why this task matters
 
-`src/app/page.tsx` now owns several responsibilities:
+Now that the card UI is isolated, the expand/collapse and save/unsave buttons should expose their state clearly to assistive technologies.
 
-- search input state
-- validation state
-- matching logic
-- expanded prospect state
-- saved prospect state
-- rendering each prospect card
-
-Before adding more UI behavior, extract the prospect card markup into a focused component so the page remains easier to read and safer to modify.
+This improves quality without expanding product scope.
 
 ## Scope
 
 Allowed:
 
-- Create a small component for a single prospect result card.
-- Move existing prospect card markup from `src/app/page.tsx` into that component.
-- Pass required values and callbacks as props.
-- Preserve existing expand/collapse behavior.
-- Preserve existing save/unsave behavior.
-- Preserve existing CSS class names where practical.
-- Update `tasks/work.md` with a brief note about the completed refactor.
+- Add appropriate accessibility attributes to the expand/collapse button.
+- Add appropriate accessibility attributes to the save/unsave button.
+- Use firm-specific accessible labels if helpful.
+- Convert `Prospect` import in `ProspectCard.tsx` to a type-only import if appropriate.
+- Preserve the current UI and behavior exactly.
+- Update `tasks/work.md` with a brief note about the completed work.
 
 Explicitly forbidden:
 
 - No new user-facing feature.
-- No behavior changes.
 - No visual redesign.
+- No CSS changes unless absolutely necessary.
+- No behavior changes.
 - No database.
 - No Prisma.
 - No migrations.
@@ -71,44 +65,45 @@ Explicitly forbidden:
 - No new dependencies.
 - Do not run terminal commands.
 
-## Suggested component shape
+## Implementation guidance
 
-A reasonable file path would be:
+In `src/components/ProspectCard.tsx`, consider adding:
 
-```text
-src/components/ProspectCard.tsx
+```tsx
+aria-expanded={isExpanded}
+aria-label={isExpanded ? `Hide details for ${prospect.firmName}` : `Show details for ${prospect.firmName}`}
 
-Suggested props:
+to the expand/collapse button.
 
-type ProspectCardProps = {
-  prospect: Prospect;
-  isExpanded: boolean;
-  isSaved: boolean;
-  onToggleExpand: (id: string) => void;
-  onToggleSave: (id: string) => void;
-};
+For the save/unsave button, consider adding:
 
-Equivalent naming is fine if it is clearer.
+aria-pressed={isSaved}
+aria-label={isSaved ? `Unsave ${prospect.firmName}` : `Save ${prospect.firmName}`}
+
+Also consider changing:
+
+import { Prospect } from "@/types/prospect";
+
+to:
+
+import type { Prospect } from "@/types/prospect";
+
+if that fits the project TypeScript setup.
 
 Files likely involved
 
 Likely files:
 
-src/app/page.tsx
 src/components/ProspectCard.tsx
 tasks/work.md
 
-Possibly involved:
+Do not touch src/app/page.tsx unless there is a clear reason.
 
-src/types/prospect.ts
-
-Only touch type files if needed for clean prop typing.
-
-Do not touch ZIP utility files or tests unless there is a clear reason.
+Do not touch ZIP utility files or tests.
 
 Testing guidance
 
-No new tests are required for this refactor.
+No new tests are required for this task.
 
 Preserve all existing tests.
 
@@ -132,16 +127,16 @@ git status
 If everything is good, the human may commit with:
 
 git add .
-git commit -m "Extract prospect card component"
+git commit -m "Improve prospect card accessibility"
 Acceptance criteria
 
 This task is complete when:
 
-Prospect card markup is extracted out of src/app/page.tsx.
-Search behavior still works.
-Expand/collapse behavior still works.
-Save/unsave behavior still works.
-Saved session count still works.
+Expand/collapse button exposes its expanded/collapsed state.
+Save/unsave button exposes its pressed/saved state.
+Accessible labels clearly identify the prospect affected by each button.
+Existing UI behavior is unchanged.
+Existing visual design is unchanged.
 Existing tests still pass when the human runs them.
 No persistence, auth, database, API route, dependency, dashboard, or new feature work was added.
 tasks/work.md is updated with a brief note.
@@ -150,7 +145,8 @@ Final report required from coding agent
 When finished, report:
 
 Files changed.
-What was extracted.
-Confirmation that behavior was preserved.
+Accessibility attributes added.
+Whether any type-only import cleanup was made.
+Confirmation that behavior and visuals were preserved.
 Confirmation that no new feature/persistence/auth/database/API/dependency work was added.
 Human verification steps to run.

@@ -990,4 +990,73 @@ No known risks for this refactoring task.
 
 ### Next Recommended Step
 
+Improve ProspectCard button accessibility.
+
+---
+
+## 2026-06-16 — Improve ProspectCard Button Accessibility
+
+### Task Summary
+
+Improved the accessibility semantics of the `ProspectCard` action buttons (expand/collapse details and save/unsave leads) without changing visual design or behavior.
+
+### Files Created
+
+No files created.
+
+### Files Changed
+
+- `src/components/ProspectCard.tsx` — added accessibility attributes and converted to type-only import for `Prospect`.
+- `tasks/work.md` — logged this task's work details.
+
+### What Changed
+
+- Added `aria-expanded` and descriptive `aria-label` to the expand/collapse details button.
+- Added `aria-pressed` and descriptive `aria-label` to the save/unsave button.
+- Converted `import { Prospect }` to `import type { Prospect }` in `ProspectCard.tsx`.
+
+### Why It Changed
+
+To ensure that assistive technologies can read and understand the state and target of the prospect card action buttons, providing a better user experience for screen readers and keyboard navigation.
+
+### Commands Suggested
+
+1. Run the test suite:
+   ```bash
+   npm run test
+   ```
+2. Build validation:
+   ```bash
+   npm run build
+   ```
+3. Run dev server:
+   ```bash
+   npm run dev
+   ```
+4. Git status inspection:
+   ```bash
+   git status
+   ```
+
+### Commands Run by Human
+
+No commands run.
+
+### Results Pasted by Human
+
+No results pasted.
+
+### Verification
+
+The human can check that:
+1. `src/components/ProspectCard.tsx` has the new `aria-*` attributes on the buttons.
+2. Running the test suite (`npm run test`) and production build (`npm run build`) still compile and pass cleanly.
+3. Behavior and visuals of the prospect card components are entirely unchanged in the browser interface.
+
+### Known Risks
+
+No known risks for this task.
+
+### Next Recommended Step
+
 Prepare the Prisma configuration and database structure plan.

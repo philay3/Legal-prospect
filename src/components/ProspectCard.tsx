@@ -1,4 +1,4 @@
-import { Prospect } from "@/types/prospect";
+import type { Prospect } from "@/types/prospect";
 
 interface ProspectCardProps {
   prospect: Prospect;
@@ -86,6 +86,8 @@ export function ProspectCard({
           type="button"
           className="prospect-toggle-btn"
           onClick={() => onToggleExpand(prospect.id)}
+          aria-expanded={isExpanded}
+          aria-label={isExpanded ? `Hide details for ${prospect.firmName}` : `Show details for ${prospect.firmName}`}
         >
           {isExpanded ? "Hide details ▲" : "Show details ▼"}
         </button>
@@ -93,6 +95,8 @@ export function ProspectCard({
           type="button"
           className={`prospect-save-btn ${isSaved ? "saved" : ""}`}
           onClick={() => onToggleSave(prospect.id)}
+          aria-pressed={isSaved}
+          aria-label={isSaved ? `Unsave ${prospect.firmName}` : `Save ${prospect.firmName}`}
         >
           {isSaved ? "★ Saved" : "☆ Save"}
         </button>
