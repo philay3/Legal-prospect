@@ -268,3 +268,61 @@ Check that:
 ### Next Recommended Step
 
 Hand off the updated task to the coding agent for Phase 1 execution.
+
+---
+
+## 2026-06-16 — Minimal Scaffold Proposed
+
+### Task Summary
+
+Inspected the folder, confirmed no app scaffold exists, and proposed a minimal Next.js App Router scaffold plan with TypeScript and Vanilla CSS.
+
+### Files Created
+
+- `implementation_plan.md` — proposed implementation plan.
+
+### Files Changed
+
+- `tasks/work.md` — documented this proposal session.
+
+### What Changed
+
+Confirmed that `legal-prospecting-planning-docs-starter/` currently contains only planning/control documentation and no code or `package.json`. Proposed a minimal scaffold plan.
+
+### Why It Changed
+
+To follow the rebuild guidelines, ensuring the human project owner approves the scaffolding commands and dependencies before any project generation or package installations occur.
+
+### Commands Suggested
+
+1. Help command to inspect Next.js options (completed):
+   ```bash
+   npx -y create-next-app@latest --help
+   ```
+2. Scaffolding commands (pending approval):
+   ```bash
+   mv README.md README.md.bak
+   npx -y create-next-app@latest ./ --typescript --eslint --src-dir --no-tailwind --app --import-alias "@/*" --use-npm --yes
+   rm README.md && mv README.md.bak README.md
+   ```
+
+### Commands Run by Human
+
+No commands run by the human yet.
+
+### Results Pasted by Human
+
+No results pasted.
+
+### Verification
+
+The human can check that the implementation plan exists at [implementation_plan.md](file:///Users/phillipanthony/.gemini/antigravity-ide/brain/82b29b9b-9d15-4d28-b2c0-6719a7def593/implementation_plan.md) and review the proposed structure.
+
+### Known Risks
+
+- Scaffolding in a non-empty directory (`./`) might warn or fail if files conflict. However, the directory contains only documentation/git folders (`docs/`, `tasks/`, `.git/`, etc.), which shouldn't conflict with `create-next-app`'s defaults.
+- Any installation/scaffold command could add unwanted dependencies unless strictly configured; thus we explicitly request `--no-tailwind` and will manage future dependencies carefully.
+
+### Next Recommended Step
+
+Run the scaffolding command once approved, followed by implementing the page placeholder.

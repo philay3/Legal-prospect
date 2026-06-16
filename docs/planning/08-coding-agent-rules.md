@@ -158,3 +158,81 @@ Stop after the task and report:
 4. Verification result.
 5. Full changed file contents.
 ```
+
+# Update for `docs/planning/08-coding-agent-rules.md`
+
+## Purpose
+
+Add this section to `docs/planning/08-coding-agent-rules.md` to make command control explicit.
+
+This update exists because the project owner wants terminal commands to remain human-controlled unless the human explicitly approves a specific command.
+
+---
+
+## Section to Add
+
+```md
+## Command Execution Rule
+
+The coding agent must not run terminal commands unless the human explicitly asks for that exact command to be run.
+
+By default, the coding agent must not run:
+
+```bash
+git status
+git add
+git commit
+git push
+git reset
+git clean
+npm install
+npm run dev
+npm run build
+npm run test
+npm run test:run
+npx create-next-app
+npx -y create-next-app
+npx prisma migrate dev
+npx prisma migrate deploy
+npx prisma db push
+npx prisma db push --accept-data-loss
+npx prisma migrate reset
+rm -rf
+rm
+mv
+cp
+```
+
+When a command is needed, the coding agent should list it under:
+
+```text
+Commands for human to run
+```
+
+Then stop and wait.
+
+The human controls:
+
+- Git commands
+- scaffold commands
+- npm/npx commands
+- dependency installation
+- dev server startup
+- build/test commands
+- database/migration commands
+- cleanup/delete/move commands
+
+The coding agent may still inspect and edit files within the approved task scope, but it must not execute shell commands unless the human explicitly approves that exact command.
+```
+
+---
+
+## Notes for Future Agents
+
+This rule is part of the project control system.
+
+Do not treat suggested commands as permission to run them.
+
+Suggested commands are instructions for the human project owner unless the human explicitly says otherwise.
+
+
