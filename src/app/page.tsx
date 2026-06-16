@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { SEED_PROSPECTS } from "@/data/prospects";
+import { matchProspectsByZip, normalizeZipCode } from "@/utils/prospectMatcher";
 
 export default function Home() {
   const [searchZip, setSearchZip] = useState("");
@@ -18,18 +19,19 @@ export default function Home() {
       return;
     }
 
-    if (!/^\d{5}$/.test(trimmed)) {
-      setError("Please enter a valid 5-digit ZIP code.");
+    const normalized = normalizeZipCode(trimmed);
+    if (!normalized) {
+      setError("Please enter a valid ZIP code.");
       setSearchedZip(null);
       return;
     }
 
     setError(null);
-    setSearchedZip(trimmed);
+    setSearchedZip(normalized);
   };
 
   const matchingProspects = searchedZip
-    ? SEED_PROSPECTS.filter((p) => p.zip === searchedZip)
+    ? matchProspectsByZip(SEED_PROSPECTS, searchedZip)
     : [];
 
   return (

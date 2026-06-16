@@ -585,3 +585,131 @@ No results pasted.
 ### Next Recommended Step
 
 Add a simple selected-result detail view or expand/collapse details for local demo prospects.
+
+---
+
+## 2026-06-16 — Add local ZIP matching logic TDD/unit-test foundation
+
+### Task Summary
+
+Created a pure utility module `prospectMatcher` for local ZIP code matching and normalization, wrote comprehensive unit tests with Vitest, and configured Vitest scripts in `package.json`.
+
+### Files Created
+
+- `src/utils/prospectMatcher.ts` — contains matching and ZIP code normalization logic.
+- `src/utils/prospectMatcher.test.ts` — contains unit tests for the matcher and normalization functions.
+
+### Files Changed
+
+- `package.json` — added Vitest configuration (`test`, `test:watch` scripts) and added `"vitest": "^1.6.0"` to devDependencies.
+- `src/app/page.tsx` — updated homepage component search code to utilize the new `matchProspectsByZip` matching utility.
+- `tasks/work.md` — logged this task's work details.
+
+### What Changed
+
+- Abstracted matching logic out of page component filter iteration.
+- Defined robust normalization logic that cleans whitespace and validates 5-digit patterns.
+- Configured Vitest test scripts and dependency definition in `package.json`.
+- Added unit tests checking typical input cases, padding/whitespace, edge cases, and empty data handling.
+
+### Why It Changed
+
+To establish a solid test-driven foundation for prospect matching logic and ensure future enhancements can be safely verified without manual browser inspection.
+
+### Commands Suggested
+
+1. Clean install new devDependencies:
+   ```bash
+   npm install
+   ```
+2. Run unit tests once:
+   ```bash
+   npm run test
+   ```
+3. Run unit tests in watch mode:
+   ```bash
+   npm run test:watch
+   ```
+
+### Commands Run by Human
+
+No commands run.
+
+### Results Pasted by Human
+
+No results pasted.
+
+### Verification
+
+Check that:
+- [src/utils/prospectMatcher.ts](file:///Users/phillipanthony/Desktop/Phase02/legal-prospecting-planning-docs-starter/src/utils/prospectMatcher.ts) and [src/utils/prospectMatcher.test.ts](file:///Users/phillipanthony/Desktop/Phase02/legal-prospecting-planning-docs-starter/src/utils/prospectMatcher.test.ts) exist.
+- [package.json](file:///Users/phillipanthony/Desktop/Phase02/legal-prospecting-planning-docs-starter/package.json) contains `"test"` and `"test:watch"` scripts and `"vitest"` in `devDependencies`.
+- [src/app/page.tsx](file:///Users/phillipanthony/Desktop/Phase02/legal-prospecting-planning-docs-starter/src/app/page.tsx) uses `matchProspectsByZip`.
+
+### Known Risks
+
+- The new packages are not installed yet, so running tests requires running `npm install` first.
+- If dependencies cannot resolve, a compatible version of vitest should be installed.
+
+### Next Recommended Step
+
+Add a simple selected-result detail view or expand/collapse details for local demo prospects.
+
+---
+
+## 2026-06-16 — Support ZIP+4 Input Format for Local ZIP Matching
+
+### Task Summary
+
+Enhanced the `prospectMatcher` utility to support and normalize ZIP+4 code format inputs (e.g. `19103-1234`), added comprehensive tests to check valid/invalid ZIP+4 patterns, and integrated validation on the homepage using `normalizeZipCode`.
+
+### Files Created
+
+None.
+
+### Files Changed
+
+- `src/utils/prospectMatcher.ts` — updated `normalizeZipCode` to match ZIP+4 formats using regex and extract the 5-digit base.
+- `src/utils/prospectMatcher.test.ts` — added unit test assertions for valid ZIP+4 normalization, surrounding whitespace, invalid formats, and matching behavior.
+- `src/app/page.tsx` — updated input validation to leverage `normalizeZipCode` directly as the source of truth, and updated `searchedZip` to store normalized values.
+- `tasks/work.md` — logged this task's work details.
+
+### What Changed
+
+- Replaced manual 5-digit regex validation in `src/app/page.tsx` with `normalizeZipCode`.
+- Standardized the searched ZIP to always store the base 5-digit format, keeping query matching robust.
+- Added comprehensive unit tests for various valid and invalid ZIP+4 variations (e.g. `19103-12`, `19103-12345`).
+
+### Why It Changed
+
+To allow users to input more granular ZIP codes (ZIP+4 format) without breaking search, automatically falling back to matching the broader base 5-digit ZIP category supported by our seed dataset.
+
+### Commands Suggested
+
+1. Run the test suite:
+   ```bash
+   npm run test
+   ```
+
+### Commands Run by Human
+
+No commands run.
+
+### Results Pasted by Human
+
+No results pasted.
+
+### Verification
+
+Verify that:
+- [src/utils/prospectMatcher.ts](file:///Users/phillipanthony/Desktop/Phase02/legal-prospecting-planning-docs-starter/src/utils/prospectMatcher.ts) and [src/utils/prospectMatcher.test.ts](file:///Users/phillipanthony/Desktop/Phase02/legal-prospecting-planning-docs-starter/src/utils/prospectMatcher.test.ts) have the updated regex and tests.
+- Searching for `19103-1234` in the browser returns the same 4 prospects as searching for `19103`.
+- Searching for invalid formats like `19103-12` triggers the validation error.
+
+### Known Risks
+
+- None. UI matching and validation are completely synced to the utility.
+
+### Next Recommended Step
+
+Add a simple selected-result detail view or expand/collapse details for local demo prospects.
