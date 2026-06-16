@@ -1848,3 +1848,346 @@ Add a simple selected-result detail view or expand/collapse details for local de
 ```
 
 Stopping here and waiting for review.
+
+# Current Task
+
+## Task Name
+
+Add a simple selected-result detail view or expand/collapse details for local demo prospects.
+
+## Task Status
+
+Ready for coding-agent work.
+
+## Purpose
+
+Improve the local prospect-review workflow by letting the user focus on one prospect at a time.
+
+This task should add a small UI interaction for reviewing more details about the existing local/manual seed prospects.
+
+The goal is not to add saved leads, database records, routing, CRM workflow, or real enrichment.
+
+The goal is to make the current local demo results easier to review.
+
+---
+
+## Context
+
+Previous tasks completed:
+
+1. Basic Next.js app shell.
+2. Local manual/demo seed prospect data.
+3. Read-only display of seed prospects.
+4. Local ZIP search against the existing seed data.
+5. Basic unit test setup for local ZIP matching logic.
+6. ZIP+4 support for local ZIP matching.
+
+The app currently supports local ZIP matching for the seeded ZIP.
+
+The current seed data is expected to live in files similar to:
+
+```text
+src/data/prospects.ts
+src/types/prospect.ts
+```
+
+The current matching utility is expected to live in a file similar to:
+
+```text
+src/utils/prospectMatcher.ts
+```
+
+Use the actual project files as the source of truth.
+
+---
+
+## Allowed Scope
+
+The coding agent may:
+
+- add a simple expand/collapse interaction to each displayed prospect card
+- allow the user to open one prospect's details at a time, or toggle individual cards open/closed
+- use minimal local React state
+- display existing seed-data fields in the expanded detail area
+- improve small CSS details needed for the expanded/collapsed state
+- keep the existing ZIP search behavior working
+- keep all data local/manual/demo only
+- update `tasks/work.md`
+
+Expected editable files:
+
+```text
+src/app/page.tsx
+src/app/globals.css
+tasks/work.md
+```
+
+The coding agent may create one small local component file only if it keeps the page cleaner, for example:
+
+```text
+src/components/ProspectCard.tsx
+```
+
+Do not create a component folder structure unless clearly needed.
+
+Do not create multiple new components unless the current file has become genuinely hard to maintain.
+
+---
+
+## Behavior Requirements
+
+The user should be able to search for the local demo ZIP and see matching prospect cards.
+
+Each prospect card should have a small control such as:
+
+```text
+View details
+Hide details
+```
+
+or:
+
+```text
+Show more
+Show less
+```
+
+When expanded, the card may show existing fields such as:
+
+```text
+firmName
+city
+state
+zip
+website
+phone
+practiceAreas
+attorneyCountRange
+sourceType
+confidence
+notes
+```
+
+Use only existing local seed-data fields.
+
+Do not invent new data.
+
+Do not add new real-world claims.
+
+Do not fetch details from the web.
+
+Do not require sign-in.
+
+Do not persist selected state.
+
+If the user searches a different ZIP or clears/changes the search, the selected/expanded state may reset.
+
+Keep the interaction simple and predictable.
+
+---
+
+## Testing Guidance
+
+This task does not require adding new UI/component tests.
+
+However, the coding agent should preserve the existing unit tests for ZIP matching.
+
+If the agent changes the ZIP matching utility, it must also update tests.
+
+Prefer not to change the ZIP matching utility for this task.
+
+Expected human-run verification commands may include:
+
+```bash
+npm run test
+npm run build
+npm run dev
+```
+
+The coding agent must not run these commands.
+
+---
+
+## Explicitly Out of Scope
+
+Do not add saved leads.
+
+Do not add recent ZIP searches.
+
+Do not add notes editing.
+
+Do not add lead status tracking.
+
+Do not add favorites.
+
+Do not add CRM workflow.
+
+Do not add database work.
+
+Do not add Prisma.
+
+Do not add migrations.
+
+Do not add seed scripts.
+
+Do not add auth.
+
+Do not add Clerk.
+
+Do not add backend API routes.
+
+Do not add route navigation or dynamic detail pages.
+
+Do not add scraping.
+
+Do not add enrichment.
+
+Do not add external APIs.
+
+Do not add AI research passes.
+
+Do not fetch data from the web.
+
+Do not install dependencies.
+
+Do not add Tailwind CSS.
+
+Do not add shadcn/ui.
+
+Do not add component libraries.
+
+Do not add Google fonts or external font loading.
+
+Do not add state management libraries.
+
+Do not add billing, teams, organizations, or permissions.
+
+Do not add browser automation.
+
+Do not add end-to-end tests.
+
+Do not add visual snapshot tests.
+
+Do not refactor unrelated UI.
+
+Do not change the seed data format unless required for a small bug fix.
+
+Do not change the test setup unless required for a small bug fix.
+
+Do not run terminal commands.
+
+Do not run npm commands.
+
+Do not run npx commands.
+
+Do not run git commands.
+
+Do not run dev, build, test, lint, install, cleanup, move, copy, or shell inspection commands.
+
+---
+
+## Command Rule
+
+The coding agent must not run terminal commands.
+
+This includes harmless-looking commands such as:
+
+```bash
+cd
+ls
+pwd
+git status
+npm run test
+npm run build
+npm run dev
+npm install
+```
+
+When a command is useful, list it under:
+
+```text
+Commands for human to run
+```
+
+Then stop and wait.
+
+The human controls all commands.
+
+---
+
+## Expected Result
+
+At the end of this task:
+
+1. The existing local ZIP search still works.
+2. Searching for the known local demo ZIP still displays matching prospect cards.
+3. Each prospect card has a simple expand/collapse or selected-detail interaction.
+4. Expanded details use only existing local seed-data fields.
+5. Unsupported ZIP searches still show the existing empty state.
+6. Invalid ZIP input still behaves cleanly.
+7. Existing ZIP matching unit tests are preserved.
+8. No database work has been done.
+9. No external fetching has been added.
+10. No dependencies have been installed.
+11. `tasks/work.md` has a new entry for this task.
+
+---
+
+## Human Verification Steps
+
+The human should run commands if desired:
+
+```bash
+npm run test
+npm run build
+npm run dev
+```
+
+The human should then verify:
+
+1. Tests still pass.
+2. The build still passes.
+3. The app loads.
+4. Searching for `19103` displays the local demo prospects.
+5. Searching for a ZIP+4 value such as `19103-1234` still displays the same local demo prospects.
+6. Searching for an unsupported ZIP displays the empty state.
+7. Invalid input still displays a validation message.
+8. Prospect cards can expand/collapse or show/hide details.
+9. Expanded details use only existing seed-data fields.
+10. No sign-in is required.
+11. No database, Prisma, auth, saved leads, recent searches, external API, or external data fetching has been added.
+
+The coding agent must not run these commands.
+
+---
+
+## Required Final Report From Coding Agent
+
+At the end of the task, the coding agent must report:
+
+- files created
+- files changed
+- what changed
+- why it changed
+- whether tests were changed
+- commands suggested for the human
+- commands run by the agent, which should be none
+- manual verification steps
+- known risks
+- next recommended task
+
+The coding agent must not claim the tests pass, the build passes, or the app works unless the human verifies it or approved commands are run by the human and shared back.
+
+---
+
+## Next Recommended Task After This
+
+After this task is complete, the next likely task is:
+
+```text
+Add a simple local-only saved leads placeholder state for demo prospects.
+```
+
+Do not begin that task until the human updates `tasks/current-task.md`.
+
+Important: the next task should still be local-only and should not add database persistence yet.

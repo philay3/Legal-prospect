@@ -1,226 +1,365 @@
-# BGlad Continuation Handoff — Planning Docs Complete, Ready for First Build Task
+# BGlad Continuation Handoff — App Shell Built, Local ZIP Search Working, First TDD Layer Added
 
-**Date:** 2026-06-16  
-**Purpose:** Handoff for the next BGlad session so the project can move from planning/control docs into the first small implementation task without losing scope control.
+Date: 2026-06-16
+
+Purpose: Handoff for the next BGlad session so the project can continue from the current working rebuild state without losing scope control, command discipline, or the small-step development process.
 
 ---
 
 ## 1. Current Status
 
-The user has created the planned repo folders and files.
+The project has moved well past the original planning-only handoff.
 
-The initial planning/control documentation set has been filled in.
-
-This means the project is now ready to prepare the first coding-agent task, but it is **not** ready for a giant full-stack build.
-
-The correct next step is still small and controlled.
-
-Current phase:
+Earlier status was:
 
 ```text
 Phase 0 complete / nearly complete: Control and Planning
 Next phase: Phase 1: Basic App Shell
 ```
 
----
-
-## 2. Current File Structure
-
-The repo should now have this structure:
+Current status is now:
 
 ```text
-/
-├── AGENTS.md
+Phase 0: Control and Planning — complete
+Phase 1: Basic App Shell — complete
+Phase 2: Local Manual Seed Data + Local ZIP Search — in progress / mostly complete
+First TDD layer — added
+```
+
+The app is now visible and usable locally for a small demo flow.
+
+Current working product flow:
+
+```text
+User enters ZIP code → app checks local/manual seed data → app displays matching local demo law firm prospects → user can review prospect details
+```
+
+Important: this is still a controlled local/demo workflow. It is not connected to a database, external APIs, auth, scraping, enrichment, saved leads, or a dashboard.
+
+---
+
+## 2. Actual Current Repo Shape
+
+The original handoff expected paths like:
+
+```text
+AGENTS.md
+task/current-task.md
+docs/START-HERE.md
+```
+
+The actual working project appears to use paths closer to:
+
+```text
+legal-prospecting-planning-docs-starter/
+├── agents.md
 ├── README.md
-├── task/
+├── package.json
+├── src/
+│   ├── app/
+│   │   ├── page.tsx
+│   │   ├── globals.css
+│   │   └── layout.tsx
+│   ├── data/
+│   │   └── prospects.ts
+│   ├── types/
+│   │   └── prospect.ts
+│   └── utils/
+│       ├── prospectMatcher.ts
+│       └── prospectMatcher.test.ts
+├── tasks/
 │   ├── current-task.md
-│   ├── work.md
-│   └── decisions.md
-├── docs/
-│   ├── START-HERE.md
-│   ├── 00-product-brief.md
-│   ├── 01-product-scope.md
-│   ├── 02-user-stories.md
-│   ├── 03-data-fetching-plan.md
-│   ├── 04-auth-account-plan.md
-│   ├── 05-database-plan.md
-│   ├── 06-api-contracts.md
-│   ├── 07-testing-guide.md
-│   ├── 08-coding-agent-rules.md
-│   └── 09-roadmap.md
+│   └── work.md
+└── docs/
+    └── planning/
+        ├── -START-HERE.md
+        ├── 07-testing-guide.md
+        ├── 08-coding-agent-rules.md
+        ├── 09-roadmap.md
+        └── 10-spawned-agent.md
 ```
 
----
-
-## 3. What Has Been Completed
-
-The following files have been prepared:
-
-1. `AGENTS.md`
-2. `task/current-task.md`
-3. `task/work.md`
-4. `task/decisions.md`
-5. `docs/START-HERE.md`
-6. `docs/00-product-brief.md`
-7. `docs/01-product-scope.md`
-8. `docs/02-user-stories.md`
-9. `docs/03-data-fetching-plan.md`
-10. `docs/04-auth-account-plan.md`
-11. `docs/05-database-plan.md`
-12. `docs/06-api-contracts.md`
-13. `docs/07-testing-guide.md`
-14. `docs/08-coding-agent-rules.md`
-15. `docs/09-roadmap.md`
-16. `README.md`
-
-These docs establish:
-
-- coding-agent boundaries
-- human-controlled command rules
-- one-task-per-session process
-- work log process
-- decision log process
-- data-fetching controls
-- delayed auth direction
-- safe database direction
-- API route planning
-- testing philosophy
-- roadmap sequence
+Use the actual repo paths, not the old idealized ones, unless the user explicitly decides to rename/move files.
 
 ---
 
-## 4. Core Project Reminder
+## 3. What Has Been Completed Since the Earlier Handoff
 
-The app helps sales reps find small and boutique law firm prospects by ZIP code.
+### Planning and Process
 
-Core product flow:
+Completed:
+
+- planning/control docs established
+- command-control rules strengthened
+- one-task-per-agent-session process established
+- coding-agent spawn prompt created/saved
+- user clarified that the coding agent should not run terminal commands
+- human controls `npm`, `npx`, `git`, `build`, `dev`, `test`, install, cleanup, and database commands
+
+Important process improvement:
 
 ```text
-User searches ZIP code.
-App returns law firm prospects.
-User reviews useful prospect details.
-User later saves good leads.
-User later returns to a private dashboard.
+The coding agent edits inside scope.
+The human runs commands.
+BGlad reviews plans/reports and writes tight handoffs.
 ```
 
-Long-term idea:
+### App Setup
+
+Completed:
+
+- Next.js app scaffold added into the planning repo
+- `npm install` run by the human
+- scaffold committed by the human
+- app shell created
+- home/search page placeholder created
+- system fonts only
+- no Tailwind
+- no shadcn/ui
+- no Google fonts
+- no auth
+- no database
+
+### Manual Seed Data
+
+Completed:
+
+- local manual/demo seed prospect data added
+- seed ZIP appears to be `19103`
+- data is fictional/demo law firm data
+- files likely include:
+  - `src/types/prospect.ts`
+  - `src/data/prospects.ts`
+
+### Read-Only Prospect Display
+
+Completed:
+
+- home page displays local manual/demo seed prospects
+- records are labeled as demo/manual seed data
+- unsupported ZIP behavior added later
+- no external fetching
+- no database
+
+### Local ZIP Search
+
+Completed:
+
+- ZIP input enabled
+- Search button enabled
+- user can search for the local test ZIP
+- `19103` returns local demo prospects
+- unsupported valid ZIP values return an empty state
+- invalid ZIP values return validation behavior
+- behavior remains local only
+
+### TDD / Unit Test Setup
+
+Completed:
+
+- basic Vitest setup added
+- `package.json` updated with test scripts and dev dependency
+- pure utility created for ZIP normalization/matching
+- test file added
+- tests were run by the human and passed
+
+Known test result shared by user:
 
 ```text
-A legal prospecting database organized around ZIP code research.
+src/utils/prospectMatcher.test.ts (8)
+  normalizeZipCode (3)
+  matchProspectsByZip (5)
+
+Test Files  1 passed (1)
+Tests       8 passed (8)
 ```
 
-But the first build should stay smaller:
+### ZIP+4 Bugfix
+
+Completed after user noticed an edge case.
+
+The app should now accept both:
 
 ```text
-User enters ZIP code → app shows matching seeded law firm prospects → user reviews result details.
+19103
+19103-1234
+```
+
+Expected normalization rule:
+
+```text
+Accept standard 5-digit ZIPs and ZIP+4 format.
+Match prospects by the first 5 digits for now.
+```
+
+This means:
+
+```ts
+normalizeZipCode("19103")      // "19103"
+normalizeZipCode("19103-1234") // "19103"
+```
+
+Invalid ZIP+4 shapes such as these should not match:
+
+```text
+19103-12
+19103-12345
+```
+
+### Expand/Collapse Prospect Details
+
+Most recent task appears to be completed.
+
+The user says the result looks and feels much better than the first time.
+
+Expected scope of that task:
+
+- local UI-only expand/collapse or show/hide details
+- uses existing seed-data fields only
+- no saved leads
+- no persistence
+- no routing
+- no database
+- no API routes
+- no external enrichment
+- no auth
+
+If this task has not already been committed, BGlad should recommend the human checkpoint before moving on:
+
+```bash
+npm run test
+npm run build
+npm run dev
+git status
+git add .
+git commit -m "Add expandable prospect details"
+```
+
+Only the human should run those commands.
+
+---
+
+## 4. Current Product State in Plain English
+
+The app currently demonstrates the first meaningful local version of the core product idea:
+
+```text
+A sales rep can type a ZIP code and see demo small/boutique law firm prospects for that ZIP.
+```
+
+What exists now:
+
+- app shell
+- ZIP input
+- local ZIP matching
+- ZIP+4 support
+- demo prospect results
+- empty state
+- validation state
+- expandable prospect details
+- local business-logic tests
+
+What does not exist yet:
+
+- real data
+- database
+- authentication
+- saved leads
+- recent searches
+- private dashboard
+- scraping
+- enrichment
+- external APIs
+- production search architecture
+- user accounts
+- persistence
+
+---
+
+## 5. Current Testing State
+
+The project now has the first useful automated test layer.
+
+Current test focus:
+
+```text
+Pure local ZIP matching logic
+```
+
+Known utility functions:
+
+```text
+normalizeZipCode
+matchProspectsByZip
+```
+
+Known coverage:
+
+- clean 5-digit ZIPs
+- whitespace trimming
+- invalid ZIP rejection
+- matching prospects by ZIP
+- unsupported ZIP empty result
+- empty prospect array
+- ZIP+4 support was added after the first TDD pass
+
+Testing philosophy going forward:
+
+- keep testing business logic first
+- do not jump to UI/browser tests too early
+- avoid Playwright/Cypress for now
+- avoid React Testing Library until component complexity justifies it
+- human runs test commands
+
+Recommended human verification commands after feature tasks:
+
+```bash
+npm run test
+npm run build
+npm run dev
 ```
 
 ---
 
-## 5. Critical Rebuild Principle
-
-This is not a product reset.
-
-This is a controlled repo/process rebuild.
-
-Use this framing:
-
-```text
-Restart the repo.
-Do not restart the product thinking.
-Keep the lessons.
-Rebuild with tighter rules.
-```
-
-The previous app had value, but the process became too messy.
-
-The user is trying to regain control.
-
----
-
-## 6. BGlad Role Going Forward
-
-BGlad is not the coding agent.
-
-BGlad should continue acting as:
-
-- product/technical planning partner
-- scope-control reviewer
-- coding-agent handoff writer
-- risk checker
-- migration/data-loss guardrail
-- testing/process coach
-- plain-English explainer
-- product-owner support
-
-The user may bring BGlad:
-
-- coding-agent plans
-- coding-agent final reports
-- errors
-- app architecture questions
-- task/current-task updates
-- implementation proposals
-- testing results
-
-BGlad should help decide what to do next and produce clean markdown handoffs.
-
----
-
-## 7. User Working Style
-
-The user prefers:
-
-- direct practical recommendations
-- markdown handoffs
-- downloadable `.md` files when useful
-- one feature per coding-agent session
-- small safe increments
-- no overengineering
-- no vague abstractions
-- honest risk notes
-- bootcamp-friendly explanations
-- enough context to understand product-owner decisions
-
-Important process shift:
-
-```text
-Old way:
-AI runs, tests, fixes, runs again, and the user tries to catch up.
-
-New way:
-AI proposes and edits only inside scope.
-The user runs commands.
-The user reads results.
-AI helps interpret when asked.
-```
-
----
-
-## 8. Guardrails That Must Continue
+## 6. Guardrails That Must Continue
 
 ### Human-Controlled Commands
 
-The coding agent should not run these by default:
+Coding agents must not run terminal commands.
 
-```bash
+This includes:
+
+```text
+cd
+ls
+pwd
+git status
+git add
+git commit
+npm install
 npm run dev
 npm run build
 npm run test
-npm run test:run
-npx tsc --noEmit
-npx prisma migrate dev
-npx prisma migrate deploy
-npx prisma db push
-npx prisma db push --accept-data-loss
-npx prisma migrate reset
-git commit
-git push
-git reset
-git clean
+npm run lint
+npx
+rm
+mv
+cp
+cleanup commands
+database commands
 ```
 
-Absolutely forbidden:
+Agents may propose commands under:
+
+```text
+Commands for human to run
+```
+
+The human runs them.
+
+### Absolutely Forbidden / High-Risk Commands
+
+Continue treating these as forbidden unless the human makes an explicit, informed exception:
 
 ```bash
 npx prisma db push --accept-data-loss
@@ -229,25 +368,17 @@ git reset --hard
 git clean -fd
 ```
 
-Only the human starts the dev server:
+### Do Not Rush Into
 
-```bash
-npm run dev
-```
-
----
-
-## 9. Do Not Rush Into These
-
-Do not recommend starting with:
+Still do not rush into:
 
 - Clerk
-- auth
+- custom auth
 - Prisma
 - migrations
-- seed database
-- saved leads
-- recent ZIPs
+- real database seeding
+- saved leads with persistence
+- recent ZIP persistence
 - scraping
 - enrichment
 - external APIs
@@ -255,83 +386,99 @@ Do not recommend starting with:
 - billing
 - teams
 - organizations
+- permissions
 
 These are later phases.
 
 ---
 
-## 10. Current Data Direction
+## 7. MCP Note
 
-Current approved data approach:
+The TA suggested adding `.mcp.json` for Next.js DevTools MCP:
+
+```json
+{
+  "mcpServers": {
+    "next-devtools": {
+      "command": "npx",
+      "args": ["-y", "next-devtools-mcp@latest"]
+    }
+  }
+}
+```
+
+Decision for now:
 
 ```text
-Manual seed data only.
+Do not add .mcp.json yet.
+```
+
+Reason:
+
+- MCP clients may run the configured `npx` command automatically.
+- This conflicts with the current human-controlled command policy.
+- It can be revisited later as a deliberate tooling task.
+
+---
+
+## 8. Current Data Direction
+
+Approved current data approach:
+
+```text
+Manual/demo local seed data only.
 ```
 
 No external data fetching is approved yet.
 
-Before any fetching/enrichment/scraping/provider/prompt pass is implemented, it must be documented in:
+Before any fetching, scraping, enrichment, provider use, or prompt-driven research pass is implemented, it must be documented in:
 
 ```text
-docs/03-data-fetching-plan.md
+docs/planning/03-data-fetching-plan.md
 ```
 
-Every future fetching pass must define:
+Future fetching/enrichment plans must define:
 
-1. trigger
-2. input
-3. source
-4. exact prompt, query, or API request
-5. pass number
-6. output fields
-7. confidence/source quality
-8. save behavior
-9. overwrite behavior
-10. cost/rate-limit risk
+- trigger
+- input
+- source
+- exact prompt/query/API request
+- pass number
+- output fields
+- confidence/source quality
+- save behavior
+- overwrite behavior
+- cost/rate-limit risk
 
 ---
 
-## 11. Current Auth Direction
+## 9. Current Auth Direction
 
-Auth is delayed.
+Auth is still delayed.
 
-Do not use Clerk unless the user explicitly changes direction.
+Do not recommend Clerk unless the user explicitly changes direction.
 
-Preferred later auth model:
+Preferred later auth direction remains:
 
-```text
-custom email-code auth
-Resend
-verified custom domain
-HttpOnly session cookie
-email allowlist
-10-50 users
-```
-
-No passwords.
-
-No OAuth.
-
-No teams.
-
-No organizations.
-
-No billing.
-
-No enterprise auth.
+- custom email-code auth
+- Resend
+- verified custom domain
+- HttpOnly session cookie
+- email allowlist
+- small user base, roughly 10–50 users
+- no passwords
+- no OAuth
+- no teams
+- no organizations
+- no billing
 
 ---
 
-## 12. Data Ownership Rule
+## 10. Data Ownership Rule
 
-This remains central:
+This remains central.
 
-```text
-Global research data can be shared.
-User workflow data must be private.
-```
-
-Global/shared:
+Global/shared data:
 
 - ZIP code research
 - firm records
@@ -340,7 +487,7 @@ Global/shared:
 - data source records
 - cached ZIP results
 
-Private/user-specific:
+Private/user-specific data:
 
 - saved leads
 - recent ZIP searches
@@ -351,271 +498,243 @@ Private/user-specific:
 
 Do not let the coding agent blur this line.
 
+This matters especially for the next likely task if local-only saved leads are explored.
+
 ---
 
-## 13. Next Recommended Step
+## 11. Recommended Next Step
 
-The next practical step is to prepare the first coding-agent implementation task:
-
-```text
-Create a basic app shell with a home/search page placeholder.
-```
-
-This should be done by updating:
+If the latest expand/collapse details task has been verified and committed, the next likely controlled task is:
 
 ```text
-task/current-task.md
+Add a simple local-only saved leads placeholder state for demo prospects.
 ```
 
-The task should explicitly allow:
+But be careful: “saved leads” is normally a later/user-workflow feature.
 
-- basic app shell
-- home page or search page placeholder
-- simple readable layout
-- product purpose copy
-- ZIP search placeholder/input if safe
-- no unnecessary navigation
+The only safe version right now is:
 
-The task should explicitly forbid:
+```text
+Local-only, in-memory, demo placeholder state.
+No persistence.
+No database.
+No auth.
+No localStorage.
+No recent searches.
+No user account.
+No dashboard.
+```
 
-- auth
-- Clerk
+A safer task title would be:
+
+```text
+Add local-only save/unsave UI state for demo prospects.
+```
+
+This would let the user click “Save” on a demo prospect and see it visually marked as saved during the current page session only.
+
+It should not persist after refresh.
+
+---
+
+## 12. Suggested Next `tasks/current-task.md` Direction
+
+Use this only after the latest task is verified/committed.
+
+Task name:
+
+```text
+Add local-only save/unsave UI state for demo prospects.
+```
+
+Purpose:
+
+```text
+Let the user mark demo prospects as saved during the current browser session only, without adding database persistence, auth, dashboard, or saved-leads architecture.
+```
+
+Allowed:
+
+- add a local Save/Unsave button to each displayed prospect
+- use minimal React state
+- visually mark saved demo prospects
+- optionally show a simple count of saved prospects in the current session
+- keep state in memory only
+- update `tasks/work.md`
+
+Explicitly forbidden:
+
+- database
 - Prisma
-- database work
 - migrations
-- seed data unless explicitly included
-- saved leads
-- recent ZIPs
-- scraping
-- enrichment
-- external API calls
-- dashboard complexity
-- running dev server
-- running tests unless the human chooses
-
----
-
-## 14. Suggested BGlad Response If User Says “Let’s Start Building”
-
-BG should respond:
-
-```text
-Good. The planning/control docs are in place, so the next safe move is the first app-shell task.
-
-We should update task/current-task.md to allow only:
-
-- create a basic app shell
-- add a home/search page placeholder
-- add simple product copy
-- keep layout plain and readable
-
-And explicitly forbid:
-
 - auth
-- Prisma/database
-- seed data
-- saved leads
-- recent ZIPs
+- dashboard
+- saved leads table
+- localStorage/sessionStorage
+- backend API routes
 - external fetching
-- dashboard complexity
+- lead notes
+- lead status workflow
+- recent searches
+- user accounts
+- dependencies
+- commands run by agent
 
-After that, you can hand the task to the coding agent.
-```
+Testing guidance:
 
-Then BG should generate a clean downloadable `current-task.md` for the app-shell task.
+- no new UI tests required yet
+- preserve existing ZIP utility tests
+- do not alter `prospectMatcher` unless necessary
+- human runs `npm run test`, `npm run build`, `npm run dev`
 
----
-
-## 15. Suggested Next `task/current-task.md` Content
-
-Use this as the next task file when the user is ready to start coding.
-
-```md
-# Current Task
-
-## Task Name
-
-Create basic app shell with home/search page placeholder.
-
-## Task Status
-
-Ready for coding-agent work.
-
-## Purpose
-
-Create the first visible app structure without adding product complexity.
-
-This task should give the project a simple starting page for the legal prospecting workflow.
-
-The goal is not to build search yet.
-
-The goal is to create a clean shell where the future ZIP search flow will live.
-
----
-
-## Allowed Scope
-
-The coding agent may:
-
-- create or update the basic app shell
-- create a home page or search page placeholder
-- add simple product-purpose copy
-- add a ZIP search placeholder or non-functional input if appropriate
-- add simple readable layout
-- add basic empty/placeholder state
-- keep the UI plain and understandable
-- update `task/work.md`
-
----
-
-## Explicitly Out of Scope
-
-Do not add auth.
-
-Do not add Clerk.
-
-Do not add Prisma.
-
-Do not add database models.
-
-Do not add migrations.
-
-Do not add seed data.
-
-Do not add saved leads.
-
-Do not add recent ZIPs.
-
-Do not add scraping.
-
-Do not add enrichment.
-
-Do not add external API calls.
-
-Do not add AI research passes.
-
-Do not add dashboard complexity.
-
-Do not add billing, teams, organizations, or permissions.
-
-Do not install dependencies unless the human explicitly approves.
-
-Do not run the dev server.
-
-Do not run tests or build commands unless the human explicitly asks.
-
----
-
-## Expected Result
-
-At the end of this task:
-
-1. The app has a visible home/search starting page.
-2. The page explains the product purpose.
-3. The page has a clear placeholder for ZIP search.
-4. No real search behavior is required yet.
-5. No auth has been added.
-6. No database work has been done.
-7. No external data fetching has been added.
-8. `task/work.md` has a new entry for this task.
-
----
-
-## Human Verification Steps
-
-The human should run the dev server if they choose:
-
-```bash
-npm run dev
-```
-
-The human should then verify:
-
-1. The app loads.
-2. The home/search page is visible.
-3. The page is readable.
-4. The page clearly points toward ZIP-based law firm prospecting.
-5. No sign-in is required.
-6. No real data/search behavior is expected yet.
-
----
-
-## Required Final Report From Coding Agent
-
-At the end of the task, the coding agent must report:
-
-- files created
-- files changed
-- what changed
-- why it changed
-- commands suggested
-- commands run by the human, if any
-- manual verification steps
-- known risks
-- next recommended task
-
-The coding agent must not claim the app works unless the human verifies it or approved commands are run.
-
----
-
-## Next Recommended Task After This
-
-After this task is complete, the next likely task is:
+Risk note:
 
 ```text
-Add manual seed prospect data for one test ZIP code.
-```
-
-Do not begin that task until the human updates `task/current-task.md`.
+This task introduces a user-workflow concept, so keep it explicitly local-only and non-persistent.
 ```
 
 ---
 
-## 16. Risk Note for BGlad
+## 13. Alternative Next Step If BGlad Wants More Testing First
 
-The next risk is accidentally turning “app shell” into a bigger first build.
+If the user wants stronger TDD before more UI, recommend:
 
-Watch for coding-agent plans that sneak in:
+```text
+Add unit tests for ZIP+4 normalization and matching behavior.
+```
 
-- database setup
-- Prisma
-- auth
-- seed data
-- search logic
-- saved leads
-- recent ZIPs
-- dashboard components
-- external providers
-- dependency installs
+Only do this if the ZIP+4 bugfix was not already covered by tests.
 
-Push back and narrow the task.
+Expected tests:
 
-The next session should be boring on purpose.
+- `normalizeZipCode("19103-1234")` returns `"19103"`
+- `normalizeZipCode(" 19103-1234 ")` returns `"19103"`
+- `matchProspectsByZip(SEED_PROSPECTS, "19103-1234")` returns same matches as `"19103"`
+- invalid ZIP+4 values return no match
 
 ---
 
-## 17. Best Summary
+## 14. User Working Style Reminder
+
+The user prefers:
+
+- direct practical recommendations
+- clean markdown handoffs
+- downloadable `.md` files when useful
+- one feature per coding-agent session
+- small safe increments
+- no overengineering
+- no vague abstractions
+- honest risk notes
+- bootcamp-friendly explanations
+- enough context to make product-owner decisions
+
+The user likes to discuss “why” in plain English, especially around:
+
+- TDD
+- what should be tested
+- what should be manual
+- what is scope creep
+- when to spawn a new agent
+- whether to approve an agent plan
+- whether an agent’s report is trustworthy
+
+---
+
+## 15. BGlad Role Going Forward
+
+BGlad should continue acting as:
+
+- product/technical planning partner
+- scope-control reviewer
+- coding-agent handoff writer
+- coding-agent final-report reviewer
+- risk checker
+- migration/data-loss guardrail
+- testing/process coach
+- plain-English explainer
+- product-owner support
+
+BGlad is not the coding agent.
+
+BGlad should not try to directly build the app unless the user specifically asks for markdown handoffs or review materials.
+
+---
+
+## 16. Watchouts for Future Sessions
+
+### Watch for command-control drift
+
+If an agent says it ran commands, clarify whether those were:
+
+- actual terminal commands, or
+- file-browser/view/edit actions inside the coding tool
+
+Terminal commands remain human-only.
+
+### Watch for unreported changed files
+
+If the agent activity log says it edited files that are not in the final report, ask for clarification before commit.
+
+### Watch for design scope creep
+
+Phrases like:
+
+```text
+premium
+beautiful
+advanced
+dashboard
+production-ready
+```
+
+should be narrowed to:
+
+```text
+simple
+readable
+local-only
+demo
+controlled
+```
+
+### Watch for early persistence
+
+Saved leads, recent ZIPs, notes, and statuses are private user-workflow data.
+
+They should not be persisted until auth/data ownership/database plans are ready.
+
+### Watch for database creep
+
+Do not add Prisma/database until the user explicitly begins that phase and the current task file allows it.
+
+---
+
+## 17. Current Best Summary
 
 The project has moved from:
 
 ```text
-Prepare control docs.
+planning docs only
 ```
 
 to:
 
 ```text
-Prepare the first small coding-agent task.
+a working local demo of ZIP-based legal prospect search with tests
 ```
 
-The next coding-agent task should be:
+The current safe path is:
 
 ```text
-Basic app shell only.
+Keep improving the local demo workflow one small task at a time.
+Add persistence/auth/database only after the local workflow is clear and controlled.
 ```
 
-Not:
+Most likely next safe feature:
 
 ```text
-Build the MVP.
+Local-only in-memory save/unsave UI for demo prospects.
 ```
+
+But only after the latest expand/collapse details task is verified and committed.

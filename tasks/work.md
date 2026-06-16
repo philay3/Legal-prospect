@@ -713,3 +713,75 @@ Verify that:
 ### Next Recommended Step
 
 Add a simple selected-result detail view or expand/collapse details for local demo prospects.
+
+---
+
+## 2026-06-16 — Add Expand/Collapse Detail Interaction for Demo Prospects
+
+### Task Summary
+
+Implemented a simple client-side toggle to expand/collapse detailed sections (contact details, notes, source info) for individual prospect cards. Also ensured this state resets whenever a new ZIP search is conducted.
+
+### Files Created
+
+None.
+
+### Files Changed
+
+- `src/app/page.tsx` — Added React state `expandedProspects`, added `toggleExpand` function, conditionally rendered contact/notes/source elements, and added a custom styled toggle button at the bottom of each card.
+- `src/app/globals.css` — Added premium hover styles for the new `.prospect-toggle-btn` class.
+- `tasks/work.md` — Logged this session's progress.
+
+### What Changed
+
+- Replaced the fully-expanded list view with a client-controlled stateful list.
+- Toggling "Show details" on a prospect card exposes its telephone, website, specific notes, and source data in a read-only section.
+- Toggling "Hide details" collapses it back to summary fields.
+- Submitting the search form automatically resets all expanded card states.
+
+### Why It Changed
+
+To improve usability by letting the user focus on reviewing details of one prospect at a time, keeping the homepage layout cleaner while preserving the local seed data.
+
+### Commands Suggested
+
+1. Build & check compilation:
+   ```bash
+   npm run build
+   ```
+2. Run vitest test suite (verifying no regressions in prospect matcher):
+   ```bash
+   npm run test
+   ```
+3. Run dev server:
+   ```bash
+   npm run dev
+   ```
+
+### Commands Run by Human
+
+No commands run.
+
+### Results Pasted by Human
+
+No results pasted.
+
+### Verification
+
+1. Start the application dev server if desired (`npm run dev`).
+2. Open `http://localhost:3000` in the browser.
+3. Search for the test ZIP `19103`.
+4. Verify that:
+   - The 4 cards load in a collapsed view showing only the firm name, location/size metadata, confidence, and practice areas.
+   - Clicking "Show details ▼" on any card expands it to show the phone number, website link, notes block, and source.
+   - Clicking "Hide details ▲" collapses the card back to its summary state.
+   - Performing a new search resets any expanded cards.
+5. Verify that running `npm run test` passes successfully.
+
+### Known Risks
+
+- None. State tracking is completely local and does not use any persistent storage or backend queries.
+
+### Next Recommended Step
+
+Add a simple local-only saved leads placeholder state for demo prospects.
