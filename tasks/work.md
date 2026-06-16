@@ -516,3 +516,72 @@ The human should verify:
 ### Next Recommended Step
 
 Make the ZIP input display matching local seed prospects for the test ZIP only.
+
+---
+
+## 2026-06-16 — Make ZIP Input Display Matching Seed Prospects
+
+### Task Summary
+
+Enabled the ZIP search input and button on the homepage, allowing users to search local fictional seed data for the test ZIP code `19103`. Added input validation and styled empty/welcome/error states.
+
+### Files Created
+
+No files created.
+
+### Files Changed
+
+- `src/app/page.tsx` — Converted to a Client Component using `"use client"`, implemented search states (`searchZip`, `searchedZip`, `error`), added form submission handling, input validation, and conditional rendering for welcome, matching, and empty states.
+- `src/app/globals.css` — Updated the search button cursor to pointer (and disabled styling), and styled validation error messages.
+- `tasks/work.md` — Documented this session's progress.
+
+### What Changed
+
+- Replaced the hardcoded page rendering of all prospects with state-driven search logic.
+- The homepage starts in a welcome state asking for a 5-digit ZIP.
+- Form validation checks for empty submissions or non-5-digit numbers, displaying helpful red inline error messages.
+- When searching `19103`, the 4 seeded law firm cards are displayed.
+- When searching any other ZIP, an explicit empty state message is shown.
+
+### Why It Changed
+
+To transition the app shell from a static placeholder to an interactive search experience using local-only seed data, establishing the interactive UX layout before any database or external APIs are added.
+
+### Commands Suggested
+
+1. Build & check compilation:
+   ```bash
+   npm run build
+   ```
+2. Start local dev server (if not already running):
+   ```bash
+   npm run dev
+   ```
+
+### Commands Run by Human
+
+No commands run.
+
+### Results Pasted by Human
+
+No results pasted.
+
+### Verification
+
+1. Start the application dev server if desired (`npm run dev`).
+2. Open `http://localhost:3000` in the browser.
+3. Verify the home page displays "Ready for Search" with a welcome placeholder card.
+4. Test typing in the input:
+   - Click "Search" with an empty input: verify error "Please enter a ZIP code." appears.
+   - Enter text or incomplete digits (e.g. `123`): verify error "Please enter a valid 5-digit ZIP code." appears.
+   - Enter the test ZIP `19103` and click Search: verify that the 4 demo prospects load.
+   - Enter a non-existent ZIP (e.g. `90210`): verify that an empty state card appears: "No demo prospects are available for this ZIP yet."
+5. Confirm no authentication is triggered, and no databases or network APIs are hit.
+
+### Known Risks
+
+- The search functionality is entirely client-side and only matches the static seed data array. This is intentional for this phase.
+
+### Next Recommended Step
+
+Add a simple selected-result detail view or expand/collapse details for local demo prospects.

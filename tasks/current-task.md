@@ -883,3 +883,280 @@ Make the ZIP input display matching local seed prospects for the test ZIP only.
 ```
 
 Do not begin that task until the human updates `tasks/current-task.md`.
+
+# Current Task
+
+## Task Name
+
+Make the ZIP input display matching local seed prospects for the test ZIP only.
+
+## Task Status
+
+Ready for coding-agent work.
+
+## Purpose
+
+Add the first small piece of local-only behavior to the app shell.
+
+This task should let the user type a ZIP code and display matching prospects from the existing local manual/demo seed data.
+
+The goal is not to build real search.
+
+The goal is to prove the basic ZIP-to-local-results interaction using the one existing test ZIP.
+
+---
+
+## Context
+
+Previous tasks completed:
+
+1. Basic Next.js app shell.
+2. Local manual/demo seed prospect data.
+3. Read-only display of the seed prospects on the homepage.
+
+The current seed data is expected to live in files similar to:
+
+```text
+src/types/prospect.ts
+src/data/prospects.ts
+```
+
+The previous task displayed demo prospects for:
+
+```text
+19103
+```
+
+Use the actual seed data file as the source of truth.
+
+---
+
+## Allowed Scope
+
+The coding agent may:
+
+- enable the ZIP input field
+- enable the Search button
+- add simple local-only ZIP matching against the existing seed data
+- use minimal client-side state if needed
+- show matching seed prospects when the user enters the test ZIP
+- show a simple empty state when the entered ZIP has no local demo data
+- keep the data clearly labeled as manual/demo seed data
+- keep all behavior on the client side or in the existing page structure
+- adjust simple vanilla CSS for the search/result states
+- update `tasks/work.md`
+
+Expected editable files:
+
+```text
+src/app/page.tsx
+src/app/globals.css
+tasks/work.md
+```
+
+The coding agent may create a small local component file only if it keeps the implementation cleaner, for example:
+
+```text
+src/components/ProspectSearch.tsx
+```
+
+Do not create multiple components unless clearly necessary.
+
+---
+
+## Behavior Requirements
+
+The page should allow the human to type a ZIP code.
+
+When the ZIP matches the existing local seed data ZIP, display the matching prospects.
+
+When the ZIP does not match existing local seed data, show a simple message such as:
+
+```text
+No demo prospects are available for this ZIP yet.
+```
+
+The page should still explain that the results are:
+
+```text
+Manual/demo seed data
+```
+
+The behavior should be local only.
+
+The search should not call an API.
+
+The search should not query a database.
+
+The search should not fetch from the web.
+
+The search should not persist anything.
+
+The search should not save recent ZIP searches.
+
+---
+
+## Explicitly Out of Scope
+
+Do not add backend API routes.
+
+Do not add database work.
+
+Do not add Prisma.
+
+Do not add migrations.
+
+Do not add seed scripts.
+
+Do not add auth.
+
+Do not add Clerk.
+
+Do not add saved leads.
+
+Do not add recent ZIP searches.
+
+Do not add dashboards.
+
+Do not add scraping.
+
+Do not add enrichment.
+
+Do not add external APIs.
+
+Do not add AI research passes.
+
+Do not fetch data from the web.
+
+Do not install dependencies.
+
+Do not add Tailwind CSS.
+
+Do not add shadcn/ui.
+
+Do not add component libraries.
+
+Do not add Google fonts or external font loading.
+
+Do not add state management libraries.
+
+Do not add billing, teams, organizations, or permissions.
+
+Do not create a real production search architecture.
+
+Do not over-model the data.
+
+Do not change the seed data format unless required for a small bug fix.
+
+Do not run terminal commands.
+
+Do not run npm commands.
+
+Do not run npx commands.
+
+Do not run git commands.
+
+Do not run dev, build, test, lint, install, cleanup, move, copy, or shell inspection commands.
+
+---
+
+## Command Rule
+
+The coding agent must not run terminal commands.
+
+This includes harmless-looking commands such as:
+
+```bash
+cd
+ls
+pwd
+git status
+npm run build
+npm run dev
+```
+
+When a command is useful, list it under:
+
+```text
+Commands for human to run
+```
+
+Then stop and wait.
+
+The human controls all commands.
+
+---
+
+## Expected Result
+
+At the end of this task:
+
+1. The ZIP input is enabled.
+2. The Search button is enabled.
+3. Entering the known test ZIP displays matching local demo prospects.
+4. Entering an unsupported ZIP displays a simple empty state.
+5. Results are still clearly labeled as manual/demo seed data.
+6. No database work has been done.
+7. No external fetching has been added.
+8. No dependencies have been installed.
+9. No recent searches or saved leads have been added.
+10. `tasks/work.md` has a new entry for this task.
+
+---
+
+## Human Verification Steps
+
+The human should run the app if they choose:
+
+```bash
+npm run dev
+```
+
+The human should then verify:
+
+1. The app loads.
+2. The ZIP input is typeable.
+3. The Search button is clickable.
+4. Searching for the known test ZIP displays the seed prospects.
+5. Searching for another ZIP displays the empty state.
+6. Results remain labeled as manual/demo seed data.
+7. No sign-in is required.
+8. No database, Prisma, auth, or external data fetching has been added.
+
+Optional human-run build check:
+
+```bash
+npm run build
+```
+
+The coding agent must not run either command.
+
+---
+
+## Required Final Report From Coding Agent
+
+At the end of the task, the coding agent must report:
+
+- files created
+- files changed
+- what changed
+- why it changed
+- commands suggested for the human
+- commands run by the agent, which should be none
+- manual verification steps
+- known risks
+- next recommended task
+
+The coding agent must not claim the app works unless the human verifies it or approved commands are run by the human.
+
+---
+
+## Next Recommended Task After This
+
+After this task is complete, the next likely task is:
+
+```text
+Add a simple selected-result detail view or expand/collapse details for local demo prospects.
+```
+
+Do not begin that task until the human updates `tasks/current-task.md`.
