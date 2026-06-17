@@ -1190,3 +1190,62 @@ No known risks for this task. The deployment has been confirmed working on Verce
 ### Next Recommended Step
 
 Prepare the Prisma configuration and database structure plan.
+
+---
+
+## 2026-06-16 — Real Data Acquisition Plan Documented
+
+### Task Summary
+
+Created a practical and detailed Real Data Acquisition Plan governing how the app discovers, normalizes, handles duplicates, manages freshness, and scores confidence for real small and boutique law firm prospects.
+
+### Files Created
+
+None.
+
+### Files Changed
+
+- `docs/planning/03-data-fetching-plan.md` — Replaced the generic data fetching plan with the concrete 14-section real data acquisition plan.
+- `tasks/work.md` — Logged this planning task session and revisions.
+
+### What Changed
+
+- Restructured `docs/planning/03-data-fetching-plan.md` to cover the 14 mandatory sections.
+- Defined fields for a real prospect database record, introducing `verificationStatus` (CANDIDATE, PENDING_REVIEW, VERIFIED, REJECTED) separate from `confidenceLevel` (HIGH, MEDIUM, LOW, UNKNOWN).
+- Classified source types into trust tiers (Bar Directory/Websites, Google Places, directories).
+- Documented explicit rules for confidence scoring and verification statuses, geographic matching/radius, duplicate handling (canonical domains), and freshness windows (90 days).
+- Outlined a proposed first manual research experiment targeting 5–10 boutique firms for ZIP `19103`, listing 4 example candidate records marked as `verificationStatus: PENDING_REVIEW` and `confidenceLevel: UNKNOWN` until human verification is complete.
+- Replaced hardcoded API costs with standard warning disclaimer text indicating pricing varies by SKU and field selection.
+- Listed future automation options (Google Places API, web crawlers, AI parsers), legal and cost risks, database persistence pre-requisites, and non-goals.
+
+### Why It Changed
+
+To establish a solid, structured planning foundation for future data acquisition tasks without adding databases, APIs, or scraping code prematurely, aligning with owner feedback on manual verification, field consistency, and cost framing.
+
+### Commands Suggested
+
+No commands suggested.
+
+### Commands Run by Human
+
+No commands run.
+
+### Results Pasted by Human
+
+No results pasted.
+
+### Verification
+
+The human can verify:
+1. `docs/planning/03-data-fetching-plan.md` exists and contains the 14 detailed sections.
+2. Section 10 labels candidate records as `verificationStatus: PENDING_REVIEW` and `confidenceLevel: UNKNOWN`.
+3. Pricing disclaimer text is applied under Google Places API cost risks.
+4. No application code files, databases, or API routes were modified or created.
+
+### Known Risks
+
+No known risks. This is a documentation-only planning task.
+
+### Next Recommended Step
+
+Human review of the proposed real data acquisition plan in `docs/planning/03-data-fetching-plan.md`.

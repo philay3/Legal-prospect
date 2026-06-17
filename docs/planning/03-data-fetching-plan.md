@@ -1,1066 +1,285 @@
-# Data Fetching Plan
+# Data Fetching and Real Data Acquisition Plan
 
-## Purpose
+## 1. Purpose
 
-This document controls all external data fetching, enrichment, scraping, search passes, browser automation, and prompt-based research behavior for the legal prospecting app.
+This document governs the strategies, architectures, constraints, and rules for transitioning the Legal Prospector app from static fictional sample data to real law firm data. It defines how we discover, verify, structure, and store real small and boutique law firm prospect records by postal ZIP code.
 
-No data-fetching logic should be added until it is documented here.
-
-The goal is to prevent unclear enrichment behavior, uncontrolled overwrites, hidden prompts, source confusion, and cost/rate-limit surprises.
-
----
-
-## Core Rule
-
-Do not add any of the following until documented in this file:
-
-- scraping
-- enrichment
-- external search APIs
-- external data providers
-- browser automation
-- prompt-based research passes
-- AI extraction passes
-- background fetching jobs
-- automated refresh jobs
-- overwrite behavior
-- source ranking
-- confidence scoring
-
-Initial rebuild preference:
-
-```text
-Start with manual seed data before any external fetching.
-```
+The primary objective of these rules is to:
+- Establish clear guidelines for data acquisition, preventing uncontrolled API usage, scraping legal liabilities, and data corruption.
+- Ensure strict separation between shared global research data and private user workflow data.
+- Document and manage all data enrichment logic, prompts, and scraping passes before implementation.
 
 ---
 
-## Current Data Fetching Status
+## 2. Current State
 
-Current status:
-
-```text
-External data fetching is not approved yet.
-```
-
-The project should begin with manual seed data.
-
-Allowed now:
-
-- manually created sample law firm records
-- clearly marked test/seed data
-- ZIP search against controlled seed data
-- static source/confidence placeholders if useful
-
-Not allowed yet:
-
-- live search
-- scraping
-- enrichment
-- automated firm discovery
-- automated website discovery
-- automated attorney discovery
-- automated email/phone discovery
-- browser automation
-- AI research passes
-- paid data providers
-- background refresh jobs
+Currently, the application operates in a completely isolated client-side environment with zero database or API integrations:
+- **Seed Data:** Fictional sample records representing four law firms in the test ZIP code `19103` are statically defined in `src/data/prospects.ts`.
+- **Search UI:** The home search page handles input validation (including ZIP+4 normalization) and client-side filtering via `src/utils/prospectMatcher.ts`.
+- **Save State:** Users can toggle "Save" on cards, updating an in-memory React state list that is cleared on page refresh.
+- **Deployment:** The MVP is deployed publicly at [https://legal-prospect.vercel.app](https://legal-prospect.vercel.app).
 
 ---
 
-## Why This Plan Exists
+## 3. Real-Data Objective
 
-The previous version of the app made meaningful progress with ZIP search and enrichment, but the data-fetching process became hard to understand.
+The product goal is to provide software sales reps with real, accurate, and actionable sales leads for small/boutique law firms (1-15 attorneys) in a given ZIP code. 
 
-Known problems to avoid:
-
-- unclear prompt passes
-- unclear source priority
-- unclear save behavior
-- unclear overwrite behavior
-- uncertainty about which data was fresh vs. stale
-- difficulty knowing why a field changed
-- difficulty knowing whether a missing field was searched for
-- mixing data fetching with unrelated feature work
-- debugging loops where enrichment and UI behavior got mixed together
-
-This rebuild should make every data-fetching pass explicit before implementation.
+To achieve this, the system must eventually query, filter, and surface real law firms, including their:
+- Exact contact details (phone, website, street address).
+- Firm characteristics (size, primary practice areas).
+- Verifiable trust signals (source URL, confidence level, and verification timestamp).
 
 ---
 
-## Manual Seed Data First
+## 4. Prospect Record Fields
 
-The first useful product flow should use manual seed data:
+A canonical real prospect record within our global database should be structured as follows:
 
-```text
-User enters ZIP code → app shows matching seeded law firm prospects → user reviews result details.
-```
-
-This proves:
-
-- app structure
-- ZIP search flow
-- prospect display
-- basic data shape
-- empty states
-- detail views
-
-It does not require external fetching.
-
-### Seed Data Rules
-
-Manual seed data should be:
-
-- small
-- understandable
-- easy to inspect
-- safe to change
-- clearly marked as test or seed data
-
-Seed data should not pretend to be live, complete, or verified unless it truly is.
-
-### Suggested Seed Fields
-
-Seed records may include:
-
-- firm name
-- website
-- phone
-- email
-- street address
-- city
-- state
-- ZIP code
-- practice areas
-- attorney names
-- source label
-- source URL
-- confidence level
-- notes
-
-The database plan decides the final schema.
+| Field | Type | Description | Example |
+| :--- | :--- | :--- | :--- |
+| `id` | `String (UUID)` | Unique global record identifier. | `"f81d4fae-7dec-11d0-a765-00a0c91e6bf6"` |
+| `firmName` | `String` | Legal or trade name of the law firm. | `"Langer, Grogan & Diver, P.C."` |
+| `website` | `String` | Fully qualified official website URL. | `"https://langergrogan.com"` |
+| `phone` | `String` | E.164 normalized office phone number. | `"+12153205660"` |
+| `email` | `String \| null` | General office or intake email, if public. | `"info@langergrogan.com"` |
+| `streetAddress` | `String` | Physical street address including suite/floor. | `"1717 Arch Street, Suite 4020"` |
+| `city` | `String` | City name. | `"Philadelphia"` |
+| `state` | `String` | Two-letter state abbreviation. | `"PA"` |
+| `zip` | `String` | 5-digit base postal ZIP code. | `"19103"` |
+| `zipExt` | `String \| null` | 4-digit ZIP code extension. | `"2768"` |
+| `practiceAreas` | `String[]` | Normalized array of primary practice areas. | `["Commercial Litigation", "Antitrust"]` |
+| `attorneyCountRange`| `Enum` | Size estimate range: `1-2`, `3-5`, `6-10`, `11-20`, `21+` | `"6-10"` |
+| `attorneys` | `String[]` | List of verified attorney names at this office. | `["John Langer", "Howard Langer"]` |
+| `sourceUrl` | `String` | The specific web URL where discovery occurred. | `"https://www.langergrogan.com/contact"` |
+| `sourceType` | `Enum` | Source origin: `BAR_DIRECTORY`, `GOOGLE_MAPS`, `WEB_SCRAPE`, `MANUAL` | `"MANUAL"` |
+| `confidenceLevel` | `Enum` | Data confidence level: `HIGH`, `MEDIUM`, `LOW`, `UNKNOWN` | `"UNKNOWN"` |
+| `verificationStatus`| `Enum` | Lifecycle review status: `CANDIDATE`, `PENDING_REVIEW`, `VERIFIED`, `REJECTED` | `"PENDING_REVIEW"` |
+| `lastCheckedDate` | `String (ISO)`| Timestamp when the record was last verified. | `"2026-06-17T02:13:00Z"` |
 
 ---
 
-## Required Documentation for Every Future Fetching Pass
+## 5. Source Types and Source-Quality Levels
 
-Every future data-fetching pass must be documented before implementation.
+Data sources are categorized by credibility and structure. The system prioritizes primary sources over secondary aggregators:
 
-Each pass must include:
+### Tier 1: Authoritative / Primary Sources (Highest Trust)
+- **Law Firm Official Websites:** The canonical source for office addresses, direct-dial numbers, attorney names, and specialized practice areas.
+- **State Bar / Disciplinary Board Registries:** Authoritative for active license status, registration status, and legal name. However, formatting is state-specific and contact info may be outdated or personal.
 
-1. trigger
-2. input
-3. source
-4. exact prompt, query, or API request
-5. pass number
-6. output fields
-7. confidence and source quality
-8. save behavior
-9. overwrite behavior
-10. cost and rate-limit risk
+### Tier 2: Structured Secondary Sources (Medium Trust)
+- **Google Maps / Places API:** Highly accurate for physical location (latitude/longitude), standard business hours, phone number, and website URL. Weak for practice specialty breakdown and attorney details.
+- **Reputable Legal Directories (e.g., Avvo, Martindale-Hubbell):** Highly structured listings of firms and lawyers, though entries are frequently stale or commercially biased.
 
-If any of these are unknown, the pass is not ready.
+### Tier 3: Unstructured Secondary Sources (Lowest Trust)
+- **Search Engine Snippets & Web Directories:** Messy, unverified, and high rate of duplicate entries. Used primarily for initial discovery index bootstrapping.
 
 ---
 
-## Fetching Pass Template
+## 6. Confidence Scoring and Verification Status
 
-Copy this template before adding a future data-fetching pass.
+We separate how we grade the data quality from how we track its administrative lifecycle.
 
-```md
-## Fetching Pass X: Pass Name
+### Confidence Scoring
+Confidence levels describe the system's trust in the source and accuracy of the field data:
+- **HIGH Confidence:** The website, phone number, and address have been successfully verified directly against the firm's live website contact page, or verified via a manual human audit.
+- **MEDIUM Confidence:** Sourced from Google Places API, has a valid matching website domain, and has no conflicting phone numbers across secondary directories.
+- **LOW Confidence:** Inferred solely from search engine snippets or secondary directories without direct website verification.
+- **UNKNOWN Confidence:** Newly imported, unassessed, or seed placeholder data.
 
-### Status
-
-Draft / Approved / Implemented / Paused / Removed
-
-### Purpose
-
-Explain what this pass is trying to discover or improve.
-
-### Trigger
-
-What causes this pass to run?
-
-Examples:
-
-- human clicks a button
-- admin runs a script
-- user searches a ZIP
-- scheduled job runs
-- coding agent runs a one-time import
-
-### Input
-
-What information does this pass receive?
-
-Examples:
-
-- ZIP code
-- firm name
-- firm website
-- city/state
-- existing firm ID
-- source URL
-
-### Source
-
-Where does the data come from?
-
-Examples:
-
-- manually entered data
-- Google search
-- firm website
-- state bar website
-- directory
-- paid API
-- public API
-- AI model response
-
-### Exact Prompt / Query / API Request
-
-Write the exact query, prompt, URL pattern, or API request.
-
-Do not summarize it vaguely.
-
-### Output Fields
-
-List the fields this pass may produce.
-
-Examples:
-
-- firm name
-- website
-- phone
-- email
-- address
-- attorneys
-- practice areas
-- source URL
-- confidence level
-
-### Confidence and Source Quality
-
-Explain how trustworthy the source is.
-
-Include:
-
-- high/medium/low confidence
-- source type
-- whether it is primary or secondary
-- known weaknesses
-
-### Save Behavior
-
-Explain what gets saved.
-
-Examples:
-
-- create new firm record
-- update missing website only
-- attach source record
-- save candidate result for review
-- do not save automatically
-
-### Overwrite Behavior
-
-Explain whether existing data can be overwritten.
-
-Default rule:
-
-```text
-Do not overwrite existing non-empty fields automatically.
-```
-
-Allowed overwrite behavior must be specific.
-
-### Cost and Rate-Limit Risk
-
-Explain:
-
-- expected cost
-- rate limit risk
-- provider limits
-- retry behavior
-- failure behavior
-
-### Human Review Needed?
-
-State whether the result must be reviewed before saving.
-
-### Failure Behavior
-
-Explain what happens if the pass fails.
-
-Examples:
-
-- show error
-- skip record
-- retry later
-- save partial result
-- save nothing
-
-### Privacy / Compliance Notes
-
-Mention any privacy, terms-of-service, or compliance concern.
-
-### Approved By
-
-Human owner approval:
-
-```text
-Not approved yet.
-```
-```
+### Verification Status
+Verification status is an administrative state property tracking the human-in-the-loop lifecycle:
+- **CANDIDATE:** System-proposed new firm from an automated pass, not yet reviewed or exposed to standard user search.
+- **PENDING_REVIEW:** Flagged for manual inspect (e.g., during the manual first-pass experiment, or when a conflicting change is detected).
+- **VERIFIED:** Human has explicitly approved this firm and its details.
+- **REJECTED:** Human has flagged this record as invalid, closed, spam, or out-of-scope.
 
 ---
 
-## Source Types
+## 7. ZIP and Geographic Matching Rules
 
-### Manual Source
-
-Manual source means a human added the data directly.
-
-Use for:
-
-- seed data
-- test data
-- known sample firms
-- manually verified corrections
-
-Pros:
-
-- easiest to understand
-- low technical risk
-- no provider cost
-- no scraping risk
-
-Cons:
-
-- not scalable
-- may be incomplete
-- may become stale
-
-Current status:
-
-```text
-Approved for initial build.
-```
+For Version 1, geographic searching is constrained to protect query quality:
+- **Exact Match First:** The search query compares the normalized 5-digit base ZIP code against the `zip` field in the database.
+- **Proximity Expansion:**
+  - If a searched ZIP code yields fewer than 3 results, the app may expand the search radius to adjacent ZIP codes sharing a physical boundary (adjacent ZIP list).
+  - Distance between ZIP code centroids (lat/long) is calculated using the Haversine formula.
+  - Expanded results must be clearly demarcated in the UI (e.g., "Sample results in adjacent ZIP 19102 - 0.8 miles away").
+- **ZIP+4 Handling:** Incoming searches in ZIP+4 format (e.g. `19103-1234`) are normalized to extract the 5-digit base (`19103`) for database matching, but the extension is preserved as metadata.
 
 ---
 
-### Firm Website Source
+## 8. Duplicate Handling
 
-Firm website source means data comes directly from a law firm's own website.
+To prevent multiple listings of the same physical law office, we use the following merging rules:
 
-Potential fields:
-
-- firm name
-- phone
-- email
-- address
-- attorneys
-- practice areas
-- contact page
-- about page
-
-Pros:
-
-- often a primary source
-- useful for contact details
-- useful for attorney and practice area info
-
-Cons:
-
-- websites vary widely
-- scraping may violate terms or be fragile
-- emails may be hidden or protected
-- data may be outdated
-
-Current status:
-
-```text
-Not approved for implementation yet.
-```
-
-Must be documented as a specific fetching pass before use.
+- **Primary Deduplication Key:** Canonical domain name.
+  - Example: `https://www.langergrogan.com/index.html` and `http://langergrogan.com/contact` normalize to `langergrogan.com`.
+  - No database write can create a new prospect if a record already exists with that canonical domain.
+- **Secondary Deduplication Key:** (Normalized Name + State + Normalized Phone).
+  - Used if no website is available.
+  - Punctuation, capitalization, and suffixes (e.g., "LLC", "P.C.") are stripped before comparison.
+- **Merge Logic on Collision:**
+  - If an incoming scraping or API pass finds a duplicate canonical website domain:
+    1. If the new data is of equal or lower confidence, preserve the existing fields.
+    2. If the new data has higher confidence (e.g. verified website crawl vs old Google Place details), fill empty fields and suggest modifications as a review candidate.
+    3. Update the `lastCheckedDate` to the current timestamp.
 
 ---
 
-### Search Engine Source
+## 9. Freshness and Last-Checked Rules
 
-Search engine source means using search results to discover firms, websites, or contact info.
+Law firm structures, contact info, and website domains change regularly. We enforce the following lifecycle rules:
 
-Potential uses:
-
-- find law firms by ZIP
-- discover firm website
-- find contact pages
-- find attorney pages
-
-Pros:
-
-- useful discovery layer
-- broad coverage
-
-Cons:
-
-- result quality varies
-- search APIs may cost money
-- scraping search pages may violate terms
-- snippets may be wrong or stale
-- duplicate detection is difficult
-
-Current status:
-
-```text
-Not approved for implementation yet.
-```
-
-Must be documented as a specific fetching pass before use.
+- **Freshness Window:** 90 days.
+- **Stale State:** After 90 days since the `lastCheckedDate`, a record is marked as "Stale" and scheduled for re-verification.
+- **Verification Lifecycle:**
+  - Stale records are placed in a background verification queue.
+  - The validator checks the website URL. If the HTTP status is a persistent error (e.g., 404, 500, DNS resolution failure) for 3 consecutive attempts over a 7-day period, the record confidence drops to `LOW` and a manual review flag is set.
+  - Verified successful checks update `lastCheckedDate` and reset the 90-day timer.
 
 ---
 
-### Directory Source
+## 10. Manual first-pass workflow
 
-Directory source means public or commercial legal directories.
+To validate our database schema and refine our prospect data fields before writing automation scripts, we propose a manual real-data experiment:
 
-Potential examples:
+### Proposed Manual Verification Experiment for ZIP 19103
+- **Target ZIP:** `19103` (Center City, Philadelphia, PA).
+- **Target Count:** 5 to 10 real boutique law firms (typically 1-15 attorneys).
+- **Manual Discovery Method:** The researcher conducts web searches, maps out candidate firms in the targeted ZIP code, and manually verifies their physical location, telephone, website, practice areas, and attorney rosters.
 
-- legal directories
-- local business directories
-- bar directory pages
-- review sites
+### Example Candidate Records for Future Manual Verification
 
-Pros:
+Below are example candidate records identified as starting points for this proposed manual verification experiment:
 
-- can contain structured firm info
-- may help discover firms
+#### Candidate Record 1
+- **Firm Name:** Langer, Grogan & Diver, P.C.
+- **Website:** `https://langergrogan.com`
+- **Phone:** `215-320-5660`
+- **Address:** 1717 Arch Street, Suite 4020, Philadelphia, PA 19103
+- **Practice Areas:** `["Commercial Litigation", "Antitrust", "Class Actions", "Consumer Protection"]`
+- **Attorney Count Range:** `6-10`
+- **Attorneys:** `["John Langer", "Howard Langer", "Ned Diver", "Peter Leckman", "Irvin Diver"]`
+- **Source URL:** `https://langergrogan.com/contact/`
+- **Source Type:** `MANUAL`
+- **Confidence Level:** `UNKNOWN` (confidence to be assigned after human verification completes)
+- **Verification Status:** `PENDING_REVIEW`
+- **Last Checked:** `2026-06-17T02:13:00Z`
 
-Cons:
+#### Candidate Record 2
+- **Firm Name:** Bodell Bové, LLC
+- **Website:** `https://bodellbove.com`
+- **Phone:** `215-864-6600`
+- **Address:** 1845 Walnut Street, 11th Floor, Suite 1100, Philadelphia, PA 19103
+- **Practice Areas:** `["Complex Litigation", "Insurance Coverage", "Bad Faith Litigation", "Product Liability"]`
+- **Attorney Count Range:** `11-20`
+- **Attorneys:** `["David Bodell", "Robert Bove", "Douglas Kent", "Susan Sullivan"]`
+- **Source URL:** `https://bodellbove.com/contact/`
+- **Source Type:** `MANUAL`
+- **Confidence Level:** `UNKNOWN` (confidence to be assigned after human verification completes)
+- **Verification Status:** `PENDING_REVIEW`
+- **Last Checked:** `2026-06-17T02:13:00Z`
 
-- may be incomplete
-- may contain ads or paid placements
-- terms may restrict automated use
-- data may be stale
-- duplicates are likely
+#### Candidate Record 3
+- **Firm Name:** Tucker Law Group, LLC
+- **Website:** `https://tlgattorneys.com`
+- **Phone:** `215-875-0609`
+- **Address:** Ten Penn Center, 1801 Market Street, Suite 2500, Philadelphia, PA 19103
+- **Practice Areas:** `["Civil Litigation", "Personal Injury", "Employment Law", "Education Law"]`
+- **Attorney Count Range:** `6-10`
+- **Attorneys:** `["Joe Tucker", "Leslie Miller Greenspan", "Susie Young"]`
+- **Source URL:** `https://www.tlgattorneys.com/contact-us/`
+- **Source Type:** `MANUAL`
+- **Confidence Level:** `UNKNOWN` (confidence to be assigned after human verification completes)
+- **Verification Status:** `PENDING_REVIEW`
+- **Last Checked:** `2026-06-17T02:13:00Z`
 
-Current status:
+#### Candidate Record 4
+- **Firm Name:** Galfand Berger, LLP
+- **Website:** `https://galfandberger.com`
+- **Phone:** `215-665-1600`
+- **Address:** 1835 Market Street, Suite 2710, Philadelphia, PA 19103
+- **Practice Areas:** `["Workers' Compensation", "Social Security Disability", "Personal Injury", "Product Liability"]`
+- **Attorney Count Range:** `6-10`
+- **Attorneys:** `["Richard Jurewicz", "Debra Jensen", "Gabriela Raful"]`
+- **Source URL:** `https://galfandberger.com/contact-us/`
+- **Source Type:** `MANUAL`
+- **Confidence Level:** `UNKNOWN` (confidence to be assigned after human verification completes)
+- **Verification Status:** `PENDING_REVIEW`
+- **Last Checked:** `2026-06-17T02:13:00Z`
 
-```text
-Not approved for implementation yet.
+### Comparison Against Existing UI Types
+The current typescript definition in `src/types/prospect.ts` defines a `Prospect` like this:
+```typescript
+export interface Prospect {
+  id: string;
+  firmName: string;
+  zip: string;
+  city: string;
+  state: string;
+  website: string;
+  phone: string;
+  practiceAreas: string[];
+  attorneyCountRange: string;
+  sourceType: string;
+  confidence: 'High' | 'Medium' | 'Low' | 'Unknown';
+  notes: string;
+}
 ```
 
-Must be documented as a specific fetching pass before use.
+**Type changes needed later:**
+- Update `confidence` type to match standard capitalizations: `'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN'`.
+- Add new field `verificationStatus` to match: `'CANDIDATE' | 'PENDING_REVIEW' | 'VERIFIED' | 'REJECTED'`.
+- Add optional fields for `zipExt` (string), `attorneys` (string array), `streetAddress` (string), `sourceUrl` (string), and `lastCheckedDate` (string/Date) so these attributes can be saved and displayed correctly in the detail collapse views.
 
 ---
 
-### Bar Association / Government Source
+## 11. Future Automation Options
 
-Bar or government source means attorney or firm data from official/public institutional sources.
+Once the schema is integrated, discovery can scale using several automation paths:
 
-Potential uses:
-
-- attorney verification
-- bar status
-- office location
-- practice status
-
-Pros:
-
-- often authoritative
-- useful for verification
-
-Cons:
-
-- formats vary by state
-- may have use restrictions
-- not always firm-focused
-- may not include prospecting-friendly contact info
-
-Current status:
-
-```text
-Not approved for implementation yet.
-```
-
-Must be documented as a specific fetching pass before use.
+- **Google Places API:**
+  - Automated worker performs a Text Search query: `law firm near zip [ZIP_CODE]`.
+  - Extracts the name, address, latitude/longitude, website, and phone number.
+  - Creates the skeleton `Prospect` record with a status of `PENDING` and a confidence level of `MEDIUM`.
+- **Targeted Web Crawling (Enrichment Worker):**
+  - An automated worker visits the canonical website domain.
+  - Scrapes the main page, contact page, and team page.
+  - Matches phone numbers, emails, addresses, and attorney name lists.
+- **LLM/AI Extraction Parser:**
+  - Feeds the scraped contact page HTML or raw text to an AI model (e.g. Gemini 1.5/2.0) with a structured JSON schema.
+  - Extracts practice areas, attorney names, and confirms the firm fits the "boutique" size category (1-15 attorneys).
 
 ---
 
-### Paid Data Provider Source
+## 12. Risks and Constraints
 
-Paid provider source means a commercial API or database.
-
-Pros:
-
-- structured data
-- predictable API behavior
-- potentially better coverage
-
-Cons:
-
-- cost
-- rate limits
-- licensing restrictions
-- vendor lock-in
-- may still be incomplete
-
-Current status:
-
-```text
-Not approved for implementation yet.
-```
-
-No provider should be added until compared and approved.
+- **Rate Limits & API Costs:** Sourcing data from third-party lookup APIs (like Google Places) introduces cost and API rate limits. Google Places API pricing varies dynamically by SKU (e.g., Basic, Contact, or Atmosphere fields), field selection, and usage tier, and must be verified against official Google Places API pricing documentation prior to implementation. Data searches must be cached where permitted.
+- **ToS and Legal Boundaries:** Scrapers must comply with robots.txt. Automated scraping of search engine result pages or state bar websites can violate Terms of Service and trigger IP blocks.
+- **AI Hallucinations:** When parsing unstructured text, AI models might fabricate attorney names or mistake office hours for phone numbers. A human-in-the-loop review interface is necessary for low-confidence inferences.
+- **Data Compliance (Privacy & Anti-Spam):** Collecting contact details for sales prospecting must comply with regional legislation (e.g., CAN-SPAM, TCPA, GDPR). Sales reps must handle opt-out records.
 
 ---
 
-### AI Model Source
+## 13. What Must Be True Before Database Persistence
 
-AI model source means using an AI model to extract, classify, summarize, or infer data.
-
-Potential uses:
-
-- classify practice areas
-- extract attorneys from page text
-- summarize website quality
-- normalize addresses
-- infer confidence
-
-Pros:
-
-- flexible
-- useful for messy text
-- can improve usability
-
-Cons:
-
-- hallucination risk
-- cost
-- unclear confidence if not controlled
-- requires source text and audit trail
-- should not be treated as a primary source by itself
-
-Current status:
-
-```text
-Not approved for implementation yet.
-```
-
-AI output must cite or attach source context when saved.
+Before we write schema models or spin up database tables, the following must occur:
+1. **Schema Refinement:** Update `src/types/prospect.ts` to accommodate the physical addresses, attorney lists, source URLs, and last-checked timestamps.
+2. **Database Design Review:** Define the exact schemas in a database design review document.
+3. **Mock Contract Agreements:** Define API request/response structures matching the real fields.
 
 ---
 
-## Data Save Rules
-
-### Default Save Rule
-
-Default behavior:
-
-```text
-Do not save externally fetched data automatically unless the pass explicitly allows it.
-```
-
-The safest early pattern is:
-
-```text
-Fetch → show candidate → human review → save approved fields.
-```
-
-### Required Metadata for Saved External Data
-
-When external data is eventually saved, each field or source record should be traceable.
-
-Potential metadata:
-
-- source label
-- source URL
-- fetched at timestamp
-- pass name
-- pass version
-- confidence level
-- raw value
-- normalized value
-- review status
-- reviewed by
-- reviewed at
-
-The database plan will decide exact implementation.
-
----
-
-## Overwrite Rules
-
-### Default Overwrite Rule
-
-```text
-Do not overwrite existing non-empty fields automatically.
-```
-
-### Safer Update Pattern
-
-Use this order:
-
-1. Fill empty fields.
-2. Save conflicting values as candidates.
-3. Preserve existing values.
-4. Show source/confidence.
-5. Let human-approved logic decide later.
-
-### Never Silently Overwrite
-
-Do not silently overwrite:
-
-- firm name
-- website
-- phone
-- email
-- address
-- attorney list
-- practice areas
-- user notes
-- saved lead status
-- follow-up tasks
-- recent ZIP history
-
-Private user workflow data should never be overwritten by global fetching.
-
----
-
-## Global Data vs Private Data
-
-### Global / Shared Research Data
-
-External fetching may eventually affect global data such as:
-
-- firm records
-- attorney records
-- practice areas
-- ZIP research
-- source records
-- cached ZIP results
-
-### Private / User Workflow Data
-
-External fetching must not overwrite private user data such as:
-
-- saved leads
-- notes
-- statuses
-- tasks
-- follow-up reminders
-- recent ZIP searches
-
-Core rule:
-
-```text
-Global research data can be shared.
-User workflow data must be private.
-```
-
----
-
-## Confidence Levels
-
-Use simple confidence levels at first.
-
-```text
-High
-Medium
-Low
-Unknown
-```
-
-### High Confidence
-
-Use when:
-
-- source is primary
-- value is directly visible
-- field is recent enough
-- value does not conflict with existing data
-
-Example:
-
-```text
-Phone number listed on the firm's official contact page.
-```
-
-### Medium Confidence
-
-Use when:
-
-- source is secondary but credible
-- value appears consistent
-- some freshness uncertainty exists
-
-Example:
-
-```text
-Address from a reputable directory that matches city/state.
-```
-
-### Low Confidence
-
-Use when:
-
-- source is weak
-- value is inferred
-- source is stale
-- conflicting values exist
-
-Example:
-
-```text
-Practice area inferred from search snippet only.
-```
-
-### Unknown Confidence
-
-Use when:
-
-- confidence has not been assessed
-- seed data is placeholder only
-- source is missing
-
----
-
-## Candidate Data Pattern
-
-For future enrichment, prefer a candidate pattern.
-
-Instead of immediately updating firm records, external passes may create candidate data.
-
-Example:
-
-```text
-FirmCandidateWebsite
-FirmCandidatePhone
-FirmCandidateEmail
-FirmCandidateAddress
-FirmCandidatePracticeArea
-```
-
-A candidate should include:
-
-- proposed value
-- source
-- confidence
-- pass name
-- fetched at
-- status
-
-Possible statuses:
-
-```text
-Pending
-Approved
-Rejected
-Superseded
-```
-
-This may be overkill for the first MVP, but it is safer than uncontrolled overwrites.
-
----
-
-## Cost and Rate Limit Rules
-
-Before adding a provider or API, document:
-
-- pricing model
-- free tier
-- expected calls per ZIP search
-- expected calls per firm
-- rate limits
-- daily/monthly limit
-- retry behavior
-- timeout behavior
-- failure behavior
-- whether results can be cached
-- whether terms allow the intended use
-
-Do not add a provider just because it is convenient.
-
----
-
-## Trigger Rules
-
-External data fetching should not run automatically from normal user actions unless explicitly approved.
-
-Safer early triggers:
-
-- admin-only manual action
-- local script run by human
-- one-time controlled import
-- explicit "research this ZIP" button later
-
-Riskier triggers:
-
-- every page load
-- every ZIP search
-- background cron without review
-- automatic refresh of all records
-- automatic enrichment of saved leads
-
-Default early rule:
-
-```text
-No automatic external fetching from user ZIP search.
-```
-
----
-
-## Prompt Rules
-
-If AI prompts are used later, the exact prompt must be documented here.
-
-Prompt documentation must include:
-
-- model/provider
-- system prompt if any
-- user prompt template
-- input variables
-- expected JSON/output format
-- validation rules
-- refusal/failure handling
-- hallucination controls
-- source citation requirements
-- save behavior
-
-Do not use vague prompt descriptions like:
-
-```text
-Ask AI to enrich the firm.
-```
-
-Use exact prompts when implementation is approved.
-
----
-
-## Example Future Passes
-
-These are examples only.
-
-They are not approved yet.
-
-### Example Pass 1: ZIP Firm Discovery
-
-Possible purpose:
-
-```text
-Find candidate law firms for a ZIP code.
-```
-
-Possible trigger:
-
-```text
-Admin runs controlled research for one ZIP.
-```
-
-Possible output:
-
-- firm name
-- website candidate
-- address candidate
-- source URL
-- confidence
-
-Status:
-
-```text
-Not approved.
-```
-
----
-
-### Example Pass 2: Firm Website Contact Extraction
-
-Possible purpose:
-
-```text
-Extract phone, email, address, attorneys, and practice areas from a known firm website.
-```
-
-Possible trigger:
-
-```text
-Admin enriches one selected firm.
-```
-
-Possible output:
-
-- phone
-- email
-- address
-- attorney names
-- practice areas
-- source page URLs
-- confidence
-
-Status:
-
-```text
-Not approved.
-```
-
----
-
-### Example Pass 3: Website Health Review
-
-Possible purpose:
-
-```text
-Estimate whether a firm's website looks outdated, broken, or incomplete.
-```
-
-Possible trigger:
-
-```text
-Admin runs review on one known firm website.
-```
-
-Possible output:
-
-- website exists
-- loads successfully
-- mobile-friendly signal
-- SSL signal
-- last visible update clue
-- contact form presence
-- confidence
-
-Status:
-
-```text
-Not approved.
-```
-
----
-
-## First Approved Data Approach
-
-For now, the only approved data approach is:
-
-```text
-Manual seed data.
-```
-
-### Approved Pass 0: Manual Seed Data
-
-#### Status
-
-Approved for initial build.
-
-#### Purpose
-
-Provide controlled sample law firm prospect data so the app can prove ZIP search and prospect display without external fetching.
-
-#### Trigger
-
-Human creates or edits seed data manually.
-
-#### Input
-
-Human-provided sample firm information.
-
-#### Source
-
-Manual/test data.
-
-If real public information is used, include source labels where practical.
-
-#### Exact Prompt / Query / API Request
-
-None.
-
-No external prompt, query, or API request is used.
-
-#### Output Fields
-
-Possible fields:
-
-- firm name
-- website
-- phone
-- email
-- street address
-- city
-- state
-- ZIP code
-- practice areas
-- attorney names
-- source label
-- source URL
-- confidence level
-- notes
-
-#### Confidence and Source Quality
-
-Default confidence may be:
-
-```text
-Unknown
-```
-
-or
-
-```text
-Manual seed
-```
-
-Do not imply the data is complete or verified unless it has been reviewed.
-
-#### Save Behavior
-
-Seed data may be saved in a fixture, seed script, local database, or simple data file depending on the implementation phase.
-
-#### Overwrite Behavior
-
-Manual seed data should not overwrite private user workflow data.
-
-#### Cost and Rate-Limit Risk
-
-No provider cost.
-
-No rate limit risk.
-
-#### Human Review Needed?
-
-Yes.
-
-The human should review the seed data shape and sample records.
-
-#### Failure Behavior
-
-If seed data is missing or invalid, the app should show a clear empty state or development error depending on the phase.
-
-#### Privacy / Compliance Notes
-
-Do not include private, sensitive, or non-public personal data in seed data.
-
----
-
-## Approval Rule
-
-A future data-fetching pass is approved only when:
-
-1. It is documented in this file.
-2. The human user reviews it.
-3. The human user explicitly says it is approved.
-4. It is added to `task/current-task.md` for implementation.
-
-Until then, it is out of scope.
+## 14. Explicit Non-Goals for Now
+
+- **No live API fetching implementation:** We will not install or configure Google Places SDK or scraping libraries in this phase.
+- **No scraper scripts:** Writing automated python/node scripts to scan sites or bar websites is strictly out of scope.
+- **No database schemas or migrations:** No Prisma schema changes or docker-postgres configurations.
+- **No background workers or cron configuration:** Scheduling tasks is not part of this scope.
+- **No auth setup:** No integration of Resend or cookies.
 
 ---
 
 ## Next Recommended File
 
-After this file is saved, fill in:
-
-```text
-docs/04-auth-account-plan.md
-```
-
-That file should define the delayed custom email-code auth direction and what auth should not include.
+After this data plan is approved by the human owner, proceed to human review of this plan. No subsequent planning documents or code files should be modified until review is completed.
