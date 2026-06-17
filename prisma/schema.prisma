@@ -1,0 +1,61 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ConfidenceLevel {
+  HIGH
+  MEDIUM
+  LOW
+  UNKNOWN
+}
+
+enum VerificationStatus {
+  CANDIDATE
+  PENDING_REVIEW
+  VERIFIED
+  REJECTED
+  STALE
+}
+
+enum SourceType {
+  BAR_DIRECTORY
+  GOOGLE_MAPS
+  WEB_SCRAPE
+  MANUAL
+  MANUAL_SEED
+}
+
+model Firm {
+  id                 String             @id @default(uuid())
+  firmName           String
+  zip                String
+  zipExt             String?
+  city               String
+  state              String
+  streetAddress      String?
+  website            String?
+  phone              String?
+  email              String?
+  practiceAreas      String[]
+  attorneyCountRange String
+  attorneys          String[]
+  sourceType         SourceType
+  sourceUrl          String?
+  confidenceLevel    ConfidenceLevel    @default(UNKNOWN)
+  verificationStatus VerificationStatus @default(CANDIDATE)
+  lastCheckedDate    DateTime?
+  globalNotes        String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([zip])
+  @@index([city, state])
+}

@@ -1521,3 +1521,210 @@ No new risks. The design remains documentation-only.
 ### Next Recommended Step
 
 Wait for the human developer to approve the database plan before starting implementation tasks.
+
+---
+
+## 2026-06-16 — Fix missing Vitest dependency in package.json
+
+### Task Summary
+
+Fix the missing Vitest package dependency in `package.json` devDependencies which was causing compilation errors in the IDE and test-run command failures (`vitest: command not found`).
+
+### Files Created
+
+None.
+
+### Files Changed
+
+- `package.json` — Added `"vitest": "^1.6.0"` to the `devDependencies` block to resolve the runtime and compile-time issues.
+- `tasks/work.md` — Logged the dependency fix session.
+
+### What Changed
+
+- Restored the missing `"vitest": "^1.6.0"` to the `package.json` devDependencies list.
+
+### Why It Changed
+
+To resolve the compiler error in `src/utils/prospectMatcher.test.ts` and enable standard execution of the Vitest unit tests via `npm run test` after packages are updated.
+
+### Commands Suggested
+
+The human should install the updated dependency and run the tests:
+
+```bash
+npm install
+npm run test
+```
+
+### Commands Run by Human
+
+No commands run.
+
+### Results Pasted by Human
+
+No results pasted.
+
+### Verification
+
+Verify that:
+1. `package.json` lists `"vitest"` in `devDependencies`.
+2. Running the commands above installs the dependencies and runs the unit tests successfully.
+
+### Known Risks
+
+No known risks. This is a dev dependency correction.
+
+### Next Recommended Step
+
+Wait for the human developer to approve the database plan before starting implementation tasks.
+
+---
+
+## 2026-06-17 — Review Prisma setup and define minimal Firm model
+
+### Task Summary
+
+Reviewed the existing Prisma + Neon configuration initialized by the developer, created a schema model for the global `Firm` entity and its associated enums, configured `.env.example` with Neon connection placeholders, unignored `.env.example` in `.gitignore`, and updated the planning documents to align with the schema properties.
+
+### Files Created
+
+- `.env.example` — holds the database connection string placeholders for DATABASE_URL and DIRECT_URL.
+
+### Files Changed
+
+- `prisma/schema.prisma` — defined the minimal `Firm` model and enums, and removed `url` and `directUrl` from the datasource block to conform to Prisma 7.
+- `prisma.config.ts` — added `directUrl` configuration parameters to the datasource block.
+- `.gitignore` — added `!.env.example` so that it can be committed while maintaining security on other local env configurations.
+- `docs/planning/05-database-plan.md` — updated the conceptual sketch to remove the `@unique` constraint on the `website` field to support multi-office locations as independent entries sharing the same domain.
+- `tasks/work.md` — logged this work entry.
+
+### What Changed
+
+- Defined three Prisma enums (`ConfidenceLevel`, `VerificationStatus`, and `SourceType`) matching the frontend types.
+- Defined the Prisma `Firm` model containing all canonical firm metadata fields matching the frontend `Prospect` type.
+- Configured indexes on `zip` and `[city, state]` on the `Firm` model for query optimization.
+- Created `.env.example` with placeholder Neon connection parameters.
+- Configured `.gitignore` to explicitly unignore `.env.example`.
+- Removed `@unique` constraint on the `website` field from the planning-only schema model sketch in `docs/planning/05-database-plan.md` to ensure consistency with the actual implementation (allowing multi-office listings under the same website domain).
+- Removed `url` and `directUrl` parameters from the `datasource` block in `prisma/schema.prisma` due to deprecation/removal in Prisma 7.
+- Configured the datasource block in `prisma.config.ts` using the official Prisma 7 config syntax with `env("DATABASE_URL")` imported from `"prisma/config"`. We removed the `directUrl` parameter and `as any` casting workaround, keeping the config file fully typed.
+
+### Why It Changed
+
+To establish the minimal database foundation slice for the global/shared firm directory. No private user workflow state is modeled, keeping the schema clean, lightweight, and focused purely on prospect ZIP search synchronization before authentication is designed. Uniqueness on the website was removed to support independent multi-office firm records sharing the same primary website.
+Additionally, since Prisma 7 moved migration/connection URL specifications from the schema file directly into `prisma.config.ts`, we migrated these parameters to the configuration file to resolve standard CLI validation errors.
+
+### Commands Suggested
+
+The human may run these commands:
+
+```bash
+npx prisma format
+npm run test
+npm run build
+```
+
+Then once the human approves the migration task, they can run:
+
+```bash
+npx prisma migrate dev --name init_firm_model
+```
+
+### Commands Run by Human
+
+The human ran the following commands prior to and during this task:
+
+```bash
+npm install
+npx prisma format
+```
+
+### Results Pasted by Human
+
+The human pasted:
+- Successful `npm install` output indicating packages added and audited.
+- Validation errors from `npx prisma format` showing that `url` and `directUrl` are no longer supported in Prisma 7 schema files.
+
+### Verification
+
+The human can check that:
+1. `prisma/schema.prisma` exists and contains the enums and `Firm` model, without `url` or `directUrl` fields in the `datasource` block.
+2. `prisma.config.ts` includes the typed `url` parameter in the datasource block (pointing to `env("DATABASE_URL")`) with no type overrides or workarounds.
+3. `.env.example` contains only placeholders and is tracked/not ignored.
+4. Running `npx prisma format` formats the schema file successfully.
+5. Production build (`npm run build`) compiles cleanly without type errors.
+
+### Known Risks
+
+- The database stack (Prisma + Neon) uses Postgres-specific features (string arrays like `String[]` for `practiceAreas` and `attorneys`), which are not compatible with local SQLite. Local testing must connect to a Neon dev branch database or a local PostgreSQL instance.
+
+### Next Recommended Step
+
+Phase 5.3: Implement Database Seeding (write and run a seed script to load mockup data into the new Postgres database structure).
+
+---
+
+## 2026-06-17 — Review Prisma schema and prepare migration command
+
+### Task Summary
+
+Review the Prisma schema and configuration for migration readiness, recommend the human-run migration command, and wait for the human to execute the migration.
+
+### Files Created
+
+None.
+
+### Files Changed
+
+- `tasks/work.md` — logged this session's review of Prisma config and recommendation of the migration command.
+
+### What Changed
+
+- Reviewed `prisma/schema.prisma` and `prisma.config.ts`.
+- Verified database plan constraints (canonical model only, indexes on zip and [city, state], enum matches).
+- Prepared the exact commands for the human developer to run.
+- Logged the task progress in `tasks/work.md`.
+
+### Why It Changed
+
+To ensure a safe and controlled migration process where the human project owner runs all commands, keeping the agent from executing anything directly.
+
+### Commands Suggested
+
+```bash
+npx prisma format
+npx prisma migrate dev --name init_firm_model
+```
+
+### Commands Run by Human
+
+1. Generate client:
+   ```bash
+   npx prisma generate
+   ```
+2. Database migration:
+   ```bash
+   npx prisma migrate dev --name init_firm_model
+   ```
+
+### Results Pasted by Human
+
+The human successfully ran the migration and it created:
+`prisma/migrations/20260617044354_init_firm_model/migration.sql`
+
+### Verification
+
+Reviewed the generated migration SQL file and verified:
+1. It creates only the expected `Firm` table and the enums `ConfidenceLevel`, `VerificationStatus`, and `SourceType`.
+2. It correctly sets up indexes `Firm_zip_idx` on `zip` and `Firm_city_state_idx` on `(city, state)`.
+3. It uses Postgres array columns (`TEXT[]`) for `practiceAreas` and `attorneys`.
+4. It does not add auth/user/saved-lead/search-history/scraping tables.
+5. It does not contain destructive SQL or secrets.
+
+### Known Risks
+
+- The database stack (Prisma + Neon) uses Postgres-specific features (string arrays like `String[]` for `practiceAreas` and `attorneys`), which are not compatible with local SQLite. Local testing must connect to a Neon dev branch database or a local PostgreSQL instance.
+
+### Next Recommended Step
+
+Phase 5.3: Implement Database Seeding (write and run a seed script to load mockup data into the new Postgres database structure).

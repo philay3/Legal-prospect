@@ -157,8 +157,6 @@ Below is the planning-only sketch of the schema for the first global database sl
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -191,7 +189,7 @@ enum SourceType {
 model Firm {
   id                 String             @id @default(uuid())
   firmName           String
-  website            String?            @unique // Enforces domain deduplication
+  website            String?            // website domain acts as a deduplication key, but is not unique to support multi-office firms
   phone              String?
   email              String?
   streetAddress      String?
@@ -222,6 +220,9 @@ model Firm {
 To integrate Prisma and Neon, the project will conceptually require two environment variables:
 - `DATABASE_URL`: Connection string pointing to the Neon transaction connection pooler (port 5432 or with pool query params) to manage serverless connection spikes.
 - `DIRECT_URL`: Direct connection string pointing directly to Neon's database instance, bypassing connection pooling (required for running migrations safely).
+
+> [!NOTE]
+> In Prisma 7, connection URLs are defined in `prisma.config.ts` instead of `schema.prisma`. To maintain strict typing, `prisma.config.ts` only wires up `DATABASE_URL`. The `DIRECT_URL` is defined in `.env` and `.env.example` but is not referenced in the config. Thus, executing migrations or workflows requiring a direct connection (bypassing connection pooling) will require a separate human-reviewed Prisma/Neon migration workflow (e.g., temporarily adjusting `prisma.config.ts` or passing dynamic overrides).
 
 ### Secrets Protection Guidelines
 - **No commits:** Under no circumstances should database credentials or real credentials be written to version control.
