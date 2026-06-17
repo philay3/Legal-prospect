@@ -2,6 +2,7 @@ import "dotenv/config";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "../src/generated/prisma";
 import { SEED_PROSPECTS } from "../src/data/prospects";
+import { REAL_FIRMS } from "../src/data/real-firms";
 
 const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL;
 
@@ -16,7 +17,9 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   console.log("Starting database seeding...");
 
-  for (const prospect of SEED_PROSPECTS) {
+  const ALL_FIRM_SEED_RECORDS = [...SEED_PROSPECTS, ...REAL_FIRMS];
+
+  for (const prospect of ALL_FIRM_SEED_RECORDS) {
     console.log(`Upserting firm: ${prospect.firmName} (${prospect.id})`);
     
     const mappedFirm = {

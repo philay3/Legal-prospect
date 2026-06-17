@@ -1929,4 +1929,319 @@ No known risks. Scope was strictly restricted to `src/app/page.tsx` search integ
 
 ### Next Recommended Step
 
-Phase 5.8: Implement customizable user/session-specific prospect notes and database testing.
+Phase 5.8 — Production DB-Backed Search Deployment Readiness
+
+---
+
+## 2026-06-17 — Phase 5.8 — Production DB-Backed Search Deployment Readiness
+
+### Task Summary
+
+Safely prepare and verify the production deployment of the DB-backed ZIP-code prospect search on Vercel and Neon Postgres.
+
+### Files Created
+
+None.
+
+### Files Changed
+
+- `tasks/work.md` — Logged the verification results and deployment details.
+- `tasks/current-task.md` — Marked Phase 5.8 as completed and updated to Phase 6.1.
+
+### What Changed
+
+- Verified environment variables configurations (`DATABASE_URL`, `DIRECT_URL`) for Neon/Prisma in the production Vercel project environment.
+- Loaded seed data to the production database via human execution of `npm run db:seed`.
+- Verified live production search functionality via API and UI verification on `https://legal-prospect.vercel.app`.
+- Verified that all static frontend in-memory behaviors (expanded state, save/unsave) persist locally as expected.
+
+### Why It Changed
+
+To complete the rollout and launch of the database-backed ZIP search MVP to production, ensuring future iterations build on a verified, live database integration.
+
+### Commands Suggested
+
+None.
+
+### Commands Run by Human
+
+1. Database seeding:
+   ```bash
+   npm run db:seed
+   ```
+2. Production verification via browser and HTTP testing.
+
+### Results Pasted by Human
+
+The human developer successfully deployed the database-backed ZIP-code search to production and confirmed the live application (including API endpoints and frontend search interactions) functions correctly.
+
+### Verification
+
+1. Accessing `https://legal-prospect.vercel.app/api/prospects/search?zip=19103` returns the JSON array of seeded prospects from Neon Postgres.
+2. Accessing the homepage and searching `19103` loads the prospects list correctly.
+
+### Known Risks
+
+No known risks. All tables remain server-side and client-side interactions (like saving leads) remain strictly in-memory.
+
+### Next Recommended Step
+
+Phase 6.1 — Define the first small verified real-firm data intake workflow.
+
+---
+
+## 2026-06-17 — Phase 6.1 — Define First Small Verified Real-Firm Data Intake Workflow
+
+### Task Summary
+
+Define a small, safe, human-reviewable workflow for adding the first verified real law firm records to the canonical `Firm` database.
+
+### Files Created
+
+- `docs/planning/13-first-real-firm-intake-workflow.md` — planning document outlining targets, batch size, qualification rules, fields, verification/confidence logic, deduplication rules, a manual check list, and storage recommendations.
+
+### Files Changed
+
+- `tasks/work.md` — logged the completion of this planning task.
+
+### What Changed
+
+- Created a new planning document (`13-first-real-firm-intake-workflow.md`) detailing the manual intake workflow for verified real boutique law firm prospects.
+- Recommended target ZIP `19103` and a small batch size of 5–10 records.
+- Defined explicit data validation rules, required/optional fields, priority of web vs profile directory sources, deduplication logic (using website domains), and a step-by-step researcher checklist.
+- Recommended a version-controlled TypeScript file (`src/data/real-firms.ts`) for storing incoming verified records.
+
+### Why It Changed
+
+- To ensure the project builds a trustworthy real-world database intake pipeline, laying down clear guidelines for human verification and data safety before scaling to automation.
+
+### Commands Suggested
+
+No commands suggested.
+
+### Commands Run by Human
+
+No commands run.
+
+### Results Pasted by Human
+
+No results pasted.
+
+### Verification
+
+The human should review:
+- [docs/planning/13-first-real-firm-intake-workflow.md](file:///Users/phillipanthony/Desktop/Phase02/legal-prospecting-planning-docs-starter/docs/planning/13-first-real-firm-intake-workflow.md)
+
+### Known Risks
+
+- Sourcing errors from manual transcription can lead to validation issues. These are mitigated by applying TypeScript type verification on compilation.
+
+### Next Recommended Step
+
+Phase 6.2 — Prepare first reviewed real-firm intake template.
+
+---
+
+## 2026-06-17 — Phase 6.2 — Prepare Manual Real-Firm Intake Template
+
+### Task Summary
+
+Prepare a safe, empty manual real-firm intake template file and wire it into the existing seed script plumbing without adding any actual real firm records, database schema changes, or migrations.
+
+### Files Created
+
+- `src/data/real-firms.ts` — TypeScript template for manually verified real law firm records, initialized as an empty array with commented guidelines and schema template structure.
+- `docs/planning/14-real-firm-intake-template.md` — Planning/checklist document describing the targets, recommended pilot size (1-3 firms), validation standards, source priority, placeholder rejections, deduplication checks, recommended defaults, and a per-record checklist for the manual intake workflow in ZIP 19103.
+
+### Files Changed
+
+- `prisma/seed.ts` — Updated to import `REAL_FIRMS` and combine it with `SEED_PROSPECTS` for database seeding via the existing idempotent upsert logic.
+- `tasks/work.md` — Logged the implementation details of this phase.
+- `tasks/current-task.md` — Updated the current task to Phase 6.3.
+
+### What Changed
+
+- Created the template data file `src/data/real-firms.ts` containing the `REAL_FIRMS` exported array (empty by default).
+- Wired `REAL_FIRMS` into the database seed script `prisma/seed.ts` to ensure compatibility.
+- Created `docs/planning/14-real-firm-intake-template.md` outlining the verification, deduplication, and input guidelines for human researchers.
+- Updated task and log files to track progress.
+
+### Why It Changed
+
+To establish the required file structure and database-seed integration (plumbing only) for importing manually verified real law firm prospects, ensuring that future real-data entry is controlled, type-safe, version-controlled, and follows a structured validation checklist without affecting the current database configuration or seeding.
+
+### Commands Suggested
+
+The human may run these commands:
+
+```bash
+npm run test
+npm run build
+npx prisma db seed
+npm run dev
+```
+
+### Commands Run by Human
+
+`No commands run.`
+
+### Results Pasted by Human
+
+`No results pasted.`
+
+### Verification
+
+The human can verify that:
+1. `src/data/real-firms.ts` exists, compiles, and contains the empty `REAL_FIRMS` array.
+2. `docs/planning/14-real-firm-intake-template.md` exists and contains the required guidelines.
+3. `npm run test` and `npm run build` run successfully (to be run by the human).
+4. `npx prisma db seed` seeds the database cleanly without errors (to be run by the human).
+
+### Known Risks
+
+No known risks. `REAL_FIRMS` starts as an empty array, so no real firm records are inserted yet and current seed behavior for existing demo prospects remains unchanged.
+
+### Next Recommended Step
+
+Phase 6.3 — Add first 1–3 human-verified real firm records
+
+---
+
+## 2026-06-17 — Phase 6.3 — Add First 1–3 Human-Reviewed Real Firm Records
+
+### Task Summary
+
+Added the first three human-reviewed real boutique law firm records in ZIP 19103 to `src/data/real-firms.ts`. These records use conservative metadata defaults (`sourceType: "MANUAL"`, `confidenceLevel: "MEDIUM"`, `verificationStatus: "PENDING_REVIEW"`) as required.
+
+### Files Created
+
+None.
+
+### Files Changed
+
+- `src/data/real-firms.ts` — Added the 3 human-reviewed real law firm records: Martin Law LLC, Ballard Spahr LLP, and Nissenbaum Law Group, LLC.
+- `tasks/work.md` — Logged Phase 6.3 completion and next steps.
+- `tasks/current-task.md` — Updated the current task state to prepare for Phase 6.4.
+
+### What Changed
+
+- Populated `REAL_FIRMS` array in `src/data/real-firms.ts` with:
+  1. **Martin Law LLC** (`firm-real-19103-martin-law`)
+  2. **Ballard Spahr LLP** (`firm-real-19103-ballard-spahr`)
+  3. **Nissenbaum Law Group, LLC** (`firm-real-19103-nissenbaum-law-group`)
+- Set appropriate fields (`website`, `phone`, `streetAddress`, `practiceAreas`, `attorneys`) as provided by the human, ensuring `sourceType` is `MANUAL`, `confidenceLevel` is `MEDIUM`, and `verificationStatus` is `PENDING_REVIEW`.
+
+### Why It Changed
+
+To introduce the first real-world boutique law firm records into the project's data flow, enabling validation of the database seed script and the ZIP-code search pipeline under real-world data values.
+
+### Commands Suggested
+
+The human should run these commands to seed the new real records and test the build:
+
+```bash
+npm run test
+npm run build
+npx prisma db seed
+npm run dev
+git status
+git diff
+```
+
+### Commands Run by Human
+
+`No commands run.`
+
+### Results Pasted by Human
+
+`No results pasted.`
+
+### Verification
+
+The human should verify:
+1. Running `npm run test` passes cleanly.
+2. Running `npm run build` succeeds without type errors.
+3. Seeding the database using `npx prisma db seed` runs successfully and logs upserts for the 3 new real firms.
+4. Searching ZIP `19103` on the local UI retrieves the new real firms alongside the existing demo prospects, and expanding them renders their details correctly.
+
+### Known Risks
+
+None. The schema is unchanged, existing demo prospects are preserved, and all fields align exactly with the `Prospect` type interface.
+
+### Next Recommended Step
+
+Phase 6.4.1 — Sort prospect search results by confidence
+
+---
+
+## 2026-06-17 — Phase 6.4.1 — Sort prospect search results by confidence
+
+### Task Summary
+
+Updated the database-backed ZIP-code prospect search API to sort results first by confidence level (HIGH > MEDIUM > LOW > UNKNOWN/others) and then alphabetically by firm name, and updated the corresponding API test suite.
+
+### Files Created
+
+None.
+
+### Files Changed
+
+- `src/app/api/prospects/search/route.ts` — Implemented in-memory sorting logic after database query.
+- `src/app/api/prospects/search/route.test.ts` — Added test case verifying confidence-first and then alphabetical ordering.
+
+### What Changed
+
+- In `src/app/api/prospects/search/route.ts`, defined a mapping for confidence levels (`HIGH: 3`, `MEDIUM: 2`, `LOW: 1`) and sorted the resulting `Prospect` array descending by rank, using case-sensitive alphabetical order on `firmName` as the tiebreaker.
+- In `src/app/api/prospects/search/route.test.ts`, added a test case asserting the sorted order of 5 mock firms with varied confidence levels and names.
+
+### Why It Changed
+
+To prioritize high-confidence data (verified real firms) at the top of the search results list, improving user search utility.
+
+### Commands Suggested
+
+The human should run these commands to verify:
+
+```bash
+npm run test
+npm run build
+curl "http://localhost:3000/api/prospects/search?zip=19103"
+```
+
+### Commands Run by Human
+
+The human ran the following read-only local curl commands:
+
+```bash
+curl "http://localhost:3000/api/prospects/search?zip=19103"
+curl "http://localhost:3000/api/prospects/search?zip=19103" | jq
+```
+
+No database, migration, destructive, git, install, build, or test commands were run.
+
+### Results Pasted by Human
+
+The curl output confirmed the sorting order:
+- `Ballard Spahr LLP` (confidence: `MEDIUM`)
+- `Martin Law LLC` (confidence: `MEDIUM`)
+- `Nissenbaum Law Group, LLC` (confidence: `MEDIUM`)
+- `Broad Street Employment Law Group` (confidence: `UNKNOWN`)
+- `Liberty Legal Associates` (confidence: `UNKNOWN`)
+- `Rittenhouse Family Law Partners` (confidence: `UNKNOWN`)
+- `Schuylkill IP Law Group` (confidence: `UNKNOWN`)
+
+This matches the expected ordering (MEDIUM > UNKNOWN, then alphabetical).
+
+### Verification
+
+Verify that:
+1. Running `npm run test` passes all tests (including the new API sorting test).
+2. The endpoint `http://localhost:3000/api/prospects/search?zip=19103` returns results ordered by confidence level descending, then alphabetically by firm name.
+
+### Known Risks
+
+No known risks. The sorting is done in-memory after Prisma fetches matching ZIP code records, avoiding database-specific raw SQL sorting dependencies.
+
+### Next Recommended Step
+
+Phase 6.5 — Post-Deployment Production Verification

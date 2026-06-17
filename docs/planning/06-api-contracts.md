@@ -1015,12 +1015,16 @@ Do not add pagination until result sizes require it.
 
 ## Sorting and Ranking
 
-MVP search can use simple deterministic ordering.
+MVP search uses a simple deterministic ordering.
 
-Possible early order:
+### Result Ordering Rule (Phase 6.4.1/6.4.2)
+Results are sorted by confidence level descending:
+1. `HIGH`
+2. `MEDIUM`
+3. `LOW`
+4. Unknown/null/unspecified fallback (`UNKNOWN`)
 
-1. exact ZIP match
-2. firm name alphabetical
+Within the same confidence level, results are sorted alphabetically (case-insensitive ascending) by `firmName`.
 
 Do not add AI ranking or scoring during MVP.
 

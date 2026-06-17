@@ -56,6 +56,25 @@ export async function GET(request: NextRequest) {
       globalNotes: firm.globalNotes,
     }));
 
+    // Sort results by confidence level: HIGH (3) > MEDIUM (2) > LOW (1) > UNKNOWN/others (0).
+    // Within the same confidence level, sort alphabetically by firm name.
+    const confidenceRank: Record<string, number> = {
+      HIGH: 3,
+      MEDIUM: 2,
+      LOW: 1,
+    };
+
+    results.sort((a, b) => {
+      const bRank = confidenceRank[b.confidenceLevel] ?? 0;
+      const aRank = confidenceRank[a.confidenceLevel] ?? 0;
+
+      if (bRank !== aRank) {
+        return bRank - aRank;
+      }
+
+      return a.firmName.localeCompare(b.firmName);
+    });
+
     return NextResponse.json({
       query: {
         zip,

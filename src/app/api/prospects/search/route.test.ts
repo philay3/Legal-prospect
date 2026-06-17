@@ -133,4 +133,75 @@ describe("GET /api/prospects/search", () => {
     const data = await response.json();
     expect(data.error).toContain("unexpected error occurred");
   });
+
+  it("should sort results by confidenceLevel descending, then alphabetically by firmName", async () => {
+    const mockFirms = [
+      {
+        id: "firm-1",
+        firmName: "Zeta Law",
+        zip: "19103",
+        sourceType: "MANUAL_SEED",
+        confidenceLevel: "LOW",
+        verificationStatus: "VERIFIED",
+        lastCheckedDate: new Date("2026-06-17T12:00:00.000Z"),
+      },
+      {
+        id: "firm-2",
+        firmName: "Alpha Law",
+        zip: "19103",
+        sourceType: "MANUAL_SEED",
+        confidenceLevel: "HIGH",
+        verificationStatus: "VERIFIED",
+        lastCheckedDate: new Date("2026-06-17T12:00:00.000Z"),
+      },
+      {
+        id: "firm-3",
+        firmName: "Beta Law",
+        zip: "19103",
+        sourceType: "MANUAL_SEED",
+        confidenceLevel: "MEDIUM",
+        verificationStatus: "VERIFIED",
+        lastCheckedDate: new Date("2026-06-17T12:00:00.000Z"),
+      },
+      {
+        id: "firm-4",
+        firmName: "Gamma Law",
+        zip: "19103",
+        sourceType: "MANUAL_SEED",
+        confidenceLevel: "HIGH",
+        verificationStatus: "VERIFIED",
+        lastCheckedDate: new Date("2026-06-17T12:00:00.000Z"),
+      },
+      {
+        id: "firm-5",
+        firmName: "Delta Law",
+        zip: "19103",
+        sourceType: "MANUAL_SEED",
+        confidenceLevel: "UNKNOWN",
+        verificationStatus: "VERIFIED",
+        lastCheckedDate: new Date("2026-06-17T12:00:00.000Z"),
+      },
+    ];
+
+    vi.mocked(prisma.firm.findMany).mockResolvedValue(mockFirms as any);
+
+    const request = new NextRequest("http://localhost/api/prospects/search?zip=19103");
+    const response = await GET(request);
+    expect(response.status).toBe(200);
+
+    const data = await response.json();
+    expect(data.results).toHaveLength(5);
+
+    // Expected order:
+    // 1. Alpha Law (HIGH)
+    // 2. Gamma Law (HIGH) -> alphabetical tiebreaker: Alpha before Gamma
+    // 3. Beta Law (MEDIUM)
+    // 4. Zeta Law (LOW)
+    // 5. Delta Law (UNKNOWN)
+    expect(data.results[0].firmName).toBe("Alpha Law");
+    expect(data.results[1].firmName).toBe("Gamma Law");
+    expect(data.results[2].firmName).toBe("Beta Law");
+    expect(data.results[3].firmName).toBe("Zeta Law");
+    expect(data.results[4].firmName).toBe("Delta Law");
+  });
 });
