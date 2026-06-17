@@ -1249,3 +1249,73 @@ No known risks. This is a documentation-only planning task.
 ### Next Recommended Step
 
 Human review of the proposed real data acquisition plan in `docs/planning/03-data-fetching-plan.md`.
+
+---
+
+## 2026-06-16 — Create Prospect Data Model Gap Analysis
+
+### Task Summary
+
+This task involved creating a gap analysis document comparing the existing frontend-only `Prospect` type interface with the requirements of the database-level Real Data Acquisition Plan. It highlights the supported, missing, deferred, and future fields, separates global/shared directories from private user workspaces, clarifies data confidence vs verification lifecycle states, and outlines recommended staging steps.
+
+### Files Created
+
+- `docs/planning/12-prospect-data-model-gap-analysis.md` — holds the prospect data model gap analysis, comparison table, field ownership categorization, and future schemas.
+
+### Files Changed
+
+- `tasks/work.md` — logged this task's work details.
+
+### What Changed
+
+- Created a new planning document: [12-prospect-data-model-gap-analysis.md](file:///Users/phillipanthony/Desktop/Phase02/legal-prospecting-planning-docs-starter/docs/planning/12-prospect-data-model-gap-analysis.md).
+- Documented 6 existing fields (`id`, `firmName`, `website`, `phone`, `city`, `state`, `zip`, `practiceAreas`, `attorneyCountRange`, `sourceType`, `notes`) and mapped them to their corresponding roles.
+- Identified 6 missing fields (`email`, `streetAddress`, `zipExt`, `attorneys`, `sourceUrl`, `lastCheckedDate`) to be added.
+- Categorized data fields by ownership: global/shared firm directory versus private/user-specific lead tracking and history.
+- Clarified the conceptual difference between `confidenceLevel` (trustworthiness score of details) and `verificationStatus` (lifecycle phase of database reviews).
+- Proposed a future type definition sketch `FutureProspect` containing all canonical properties.
+- Outlined non-goals, risks, and follow-up activities.
+
+### Why It Changed
+
+To establish a clear path for database schema integration (Prisma) and user workspace models without introducing live code premature modifications. This ensures the team knows what attributes can be staged in the frontend type models before full persistence planning.
+
+### Commands Suggested
+
+No terminal commands were run. If the human wants to check the repo afterward, suggest:
+
+```bash
+git status
+git diff
+```
+
+If everything is correct, the human may commit with:
+
+```bash
+git add docs/planning/12-prospect-data-model-gap-analysis.md tasks/work.md
+git commit -m "Document prospect data model gaps"
+git push
+```
+
+### Commands Run by Human
+
+No commands run.
+
+### Results Pasted by Human
+
+No results pasted.
+
+### Verification
+
+The human can check that:
+1. [12-prospect-data-model-gap-analysis.md](file:///Users/phillipanthony/Desktop/Phase02/legal-prospecting-planning-docs-starter/docs/planning/12-prospect-data-model-gap-analysis.md) exists and contains all 14 required sections.
+2. No app source code files (`src/`), databases, API endpoints, or auth configurations have been changed or created.
+3. No terminal commands were executed by the agent.
+
+### Known Risks
+
+No known risks. This is a documentation-only gap analysis.
+
+### Next Recommended Step
+
+Update `src/types/prospect.ts` and `src/data/prospects.ts` with the new fields (like `streetAddress`, `sourceUrl`, `email`, `zipExt`, `attorneys`) and update [ProspectCard.tsx](file:///Users/phillipanthony/Desktop/Phase02/legal-prospecting-planning-docs-starter/src/components/ProspectCard.tsx) to render the new details in its expanded layout view.

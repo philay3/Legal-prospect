@@ -1,25 +1,34 @@
-# Current Task: Document first public MVP deployment
+# Current Task: Create prospect data model gap analysis
 
 ## Status
 
-Completed. Deployed URL has been recorded and verified.
-
+Ready for coding agent.
 
 ## Goal
 
-Support and document the first public deployment of the Legal Prospector Next.js app.
+Create a practical gap analysis between the current sample-data `Prospect` type and the new real-data acquisition plan.
 
-The human will perform the actual GitHub/Vercel deployment steps. The coding agent should only inspect/update documentation and provide verification guidance.
+The goal is to understand what the current app data model supports, what the real-data plan will eventually require, and which type/model changes should be deferred until database, API, and user ownership decisions are made.
 
-## Current phase
+This is a planning/documentation task only.
 
-```text
-Phase 2.5: First Public Deployment
-```
+Do not implement type changes, database changes, auth, API routes, scraping, external fetching, or saved-lead persistence yet.
 
 ## Current project state
 
-The app currently supports:
+The app is publicly deployed at:
+
+https://legal-prospect.vercel.app
+
+Completed phases:
+
+- Phase 0: Control and Planning
+- Phase 1: Basic App Shell
+- Phase 2: ZIP-code Prospect Search Shell
+- Phase 2.5: First Public Deployment
+- Phase 3: Real Data Acquisition Plan
+
+The current app supports:
 
 - ZIP-code prospect search against manually curated sample data
 - ZIP+4 normalization
@@ -27,192 +36,250 @@ The app currently supports:
 - prospect result cards
 - expandable/collapsible prospect details
 - browser-session save/unsave UI
-- accessible `ProspectCard` buttons
+- accessible ProspectCard buttons
 - public-facing copy and metadata
-- first-deploy checklist
-- passing tests and build from human-run verification
+- deployed public MVP shell
 
-The previous task, `Prepare app for first public deployment`, has been committed.
+The real-data acquisition plan has now been created and committed.
 
-## Deployment split
+## Product objective
 
-The human will handle:
+The real product objective remains:
 
-- terminal commands
-- git push
-- GitHub repository setup if needed
-- Vercel project import
-- deploy button clicks
-- production deployment checks
-- providing the deployed URL
+A user or sales rep enters a postal ZIP code, and the site finds real small/boutique law firm prospects in or near that ZIP.
 
-The coding agent will handle:
+Useful real prospect data should eventually include:
 
-- documentation updates
-- deployment checklist cleanup
-- recording the final deployment URL after the human provides it
-- final report
+- firm name
+- website
+- phone
+- city/state/ZIP
+- street address
+- practice areas
+- attorney count or size estimate
+- attorney names, if available and verified
+- source URL
+- source type
+- confidence level
+- verification status
+- last checked date
 
-## Human-controlled command rule
+## Files to review
 
-The coding agent must not run terminal commands.
-
-This includes:
+Review these files first:
 
 ```text
-git status
-git add
-git commit
-git push
-npm run test
-npm run build
-npm run dev
-vercel
-npx
+src/types/prospect.ts
+src/data/prospects.ts
+src/components/ProspectCard.tsx
+docs/planning/03-data-fetching-plan.md
+tasks/work.md
 ```
 
-Commands may be suggested under `Commands for human to run`, but not executed by the coding agent.
+Also review existing planning docs if needed, especially:
+
+```text
+docs/planning/09-roadmap.md
+docs/planning/08-coding-agent-rules.md
+```
 
 ## Scope
 
 Allowed:
 
-- Inspect deployment-related files.
-- Confirm the app has no required environment variables based on current code/docs.
-- Confirm `package.json` has expected scripts if needed.
-- Update `docs/planning/11-first-deploy-checklist.md` with deployment result details after the human provides the URL.
-- Update `tasks/work.md` with a brief deployment task entry.
-- Optionally update `README.md` only if the deployment documentation is clearly incomplete.
-- Provide a post-deploy verification checklist.
+- Create a new planning document, preferably:
+
+```text
+docs/planning/12-prospect-data-model-gap-analysis.md
+```
+
+- Compare the current `Prospect` type against the fields described in the real-data acquisition plan.
+- Identify which fields are already supported.
+- Identify which fields are missing.
+- Identify which fields belong to global/shared prospect data.
+- Identify which fields belong to private/user-specific workflow data.
+- Recommend future type/model changes at a planning level only.
+- Identify which fields should be added later to the frontend sample type.
+- Identify which fields should wait for database/API planning.
+- Update `tasks/work.md` with a brief note.
 
 Explicitly forbidden:
 
-- No app feature changes.
-- No visual redesign.
+- No app source-code changes.
+- No edits to `src/types/prospect.ts`.
+- No edits to `src/data/prospects.ts`.
+- No edits to `src/components/ProspectCard.tsx`.
 - No database.
 - No Prisma.
 - No migrations.
 - No auth.
 - No user accounts.
-- No dashboard.
 - No backend API routes.
-- No saved leads table.
-- No saved lead model.
-- No localStorage.
-- No sessionStorage.
-- No cookies.
-- No external fetching.
-- No scraping.
-- No enrichment.
+- No scraping code.
+- No external fetch code.
+- No enrichment implementation.
+- No provider/API integration.
+- No saved leads persistence.
+- No dashboard.
 - No new dependencies.
-- No Vercel analytics package.
-- No environment variables unless the human explicitly identifies a required one.
 - Do not run terminal commands.
 
-## Deployment URL
+## Data ownership rule
 
-The human will provide the deployed URL.
+Keep this distinction clear:
 
-When the human provides it, document it in:
+Global/shared data:
+
+- ZIP research
+- firm records
+- attorney records
+- practice areas
+- source records
+- cached ZIP results
+- source URLs
+- confidence level
+- verification status
+- last checked date
+
+Private/user-specific data:
+
+- saved leads
+- notes
+- statuses
+- tasks
+- reminders
+- recent searches
+- user-specific lead ownership
+- follow-up workflow state
+
+This task is about planning the global/shared prospect data model.
+
+Do not design private saved-lead persistence yet.
+
+## Required sections for the new gap-analysis document
+
+The new document should include these sections:
+
+1. Purpose
+2. Current state
+3. Current `Prospect` type summary
+4. Real-data plan field summary
+5. Field-by-field gap table
+6. Global/shared data fields
+7. Private/user-specific fields to defer
+8. Frontend sample-data fields that can be added later
+9. Database/API fields that should wait
+10. Confidence vs verification status clarification
+11. Recommended future model shape
+12. Risks and scope-control notes
+13. Explicit non-goals for now
+14. Suggested follow-up tasks
+
+## Guidance for the field-by-field gap table
+
+Create a table like this:
+
+| Field | Current support | Real-data need | Ownership | Recommendation |
+| :--- | :--- | :--- | :--- | :--- |
+| `firmName` | Supported | Required | Global/shared | Keep |
+| `streetAddress` | Missing | Required later | Global/shared | Add later after UI/type planning |
+| `sourceUrl` | Missing | Required later | Global/shared | Add before real-data records are displayed |
+| `saved` | In-memory only | Private user workflow | Private/user-specific | Do not persist until auth/database ownership is planned |
+
+Use the actual current type and real-data plan as the source of truth.
+
+## Confidence vs verification status clarification
+
+The gap analysis should clearly separate these two concepts:
 
 ```text
-docs/planning/11-first-deploy-checklist.md
-tasks/work.md
+confidenceLevel = how trustworthy the data is after review
+verificationStatus = where the record is in the research workflow
 ```
 
-Use a clear format such as:
+Recommended future values:
 
 ```text
-Public deployment URL: https://example.vercel.app
-Deployment date: YYYY-MM-DD
-Deployment phase: Phase 2.5 first public MVP
+confidenceLevel: HIGH | MEDIUM | LOW | UNKNOWN
+verificationStatus: CANDIDATE | PENDING_REVIEW | VERIFIED | REJECTED | STALE
 ```
 
-## Post-deploy verification to document
+Do not implement these values yet. Document them only.
 
-Record whether the human verified:
+## Recommended future model shape
 
-1. Home page loads.
-2. Browser tab title is correct.
-3. Header badge reads `Legal Prospect Search`.
-4. Search ZIP `19103`.
-5. Sample prospects appear.
-6. Expand/collapse works.
-7. Save/unsave works.
-8. Saved count updates.
-9. Invalid ZIP validation works.
-10. Unsupported ZIP empty state works.
-11. Refresh clears saved browser-session state.
-12. Public copy remains honest about manually curated sample data.
+The document may propose a future interface shape, but it must be clearly labeled as planning-only pseudocode.
 
-## Files likely involved
+Example:
 
-Likely files:
-
-- `docs/planning/11-first-deploy-checklist.md`
-- `tasks/work.md`
-
-Possibly involved:
-
-- `README.md`
-
-Do not touch app source files unless there is a clear deployment-blocking issue and the human approves it.
-
-## Testing guidance
-
-No new tests are required.
-
-Preserve all existing tests.
-
-Do not add:
-
-- React Testing Library
-- Playwright
-- Cypress
-- new test dependencies
-
-## Commands for human to run
-
-The human may run these before deployment:
-
-```bash
-git status
-npm run test
-npm run build
-git push
+```ts
+// Planning-only sketch. Do not implement in this task.
+interface FutureProspect {
+  id: string;
+  firmName: string;
+  website: string;
+  phone: string;
+  streetAddress?: string;
+  city: string;
+  state: string;
+  zip: string;
+  zipExt?: string;
+  practiceAreas: string[];
+  attorneyCountRange: string;
+  attorneys?: string[];
+  sourceUrl?: string;
+  sourceType: string;
+  confidenceLevel: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
+  verificationStatus: 'CANDIDATE' | 'PENDING_REVIEW' | 'VERIFIED' | 'REJECTED' | 'STALE';
+  lastCheckedDate?: string;
+}
 ```
 
-The human may run these after documentation updates:
+The coding agent may refine this sketch based on the actual current code and planning document.
+
+## Human-run verification commands
+
+No commands are required for a docs-only task.
+
+If the human wants to check the repo afterward, recommend:
 
 ```bash
 git status
 git diff
-npm run test
-npm run build
-git add .
-git commit -m "Document first public deployment"
+```
+
+If everything is good, the human may commit with:
+
+```bash
+git add docs/planning/12-prospect-data-model-gap-analysis.md tasks/work.md
+git commit -m "Document prospect data model gaps"
 git push
 ```
+
+Only the human should run these commands.
 
 ## Acceptance criteria
 
 This task is complete when:
 
-- The human has deployed the app to Vercel.
-- The human has provided the public deployment URL.
-- The deployment URL is documented.
-- Post-deploy verification is documented.
-- `tasks/work.md` is updated.
-- No app code changes were made unless explicitly approved by the human.
-- No persistence, auth, database, API route, dependency, analytics, dashboard, external data, scraping, or enrichment work was added.
+- `docs/planning/12-prospect-data-model-gap-analysis.md` exists.
+- The document compares the current `Prospect` type with the real-data acquisition plan.
+- The document clearly identifies supported, missing, deferred, and future fields.
+- The document separates global prospect data from private user workflow data.
+- The document clarifies `confidenceLevel` vs `verificationStatus`.
+- The document does not implement app-code, database, auth, API, scraping, fetching, dependency, or persistence changes.
+- `tasks/work.md` is updated with a brief task note.
+- No terminal commands were run.
 
 ## Final report required from coding agent
 
 When finished, report:
 
-1. Deployment URL documented.
-2. Files changed.
-3. Whether any deployment issue was found.
-4. Whether any app code changes were required.
-5. Confirmation that no persistence/auth/database/API/dependency/external-data work was added.
-6. Human post-deploy verification checklist.
+1. Files changed.
+2. Summary of the gap analysis.
+3. Key fields already supported.
+4. Key fields missing or deferred.
+5. Recommendation for the next smallest safe task.
+6. Confirmation that no app code, database, auth, API routes, scraping, external fetching, dependencies, or persistence work was added.
+7. Confirmation that no terminal commands were run.
+8. Suggested human review steps.
