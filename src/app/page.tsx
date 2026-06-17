@@ -114,7 +114,7 @@ export default function Home() {
               <p className="results-subtitle">
                 Currently showing manually curated sample prospect data.{" "}
                 {savedProspectIds.length > 0 && (
-                  <span className="saved-helper-text">Saved for this demo session only.</span>
+                  <span className="saved-helper-text">Saved for this browser session only.</span>
                 )}
               </p>
             </div>
