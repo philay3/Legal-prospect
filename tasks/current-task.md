@@ -1,4 +1,4 @@
-# Current Task: Create prospect data model gap analysis
+# Current Task: Align frontend Prospect type and sample data with real-data fields
 
 ## Status
 
@@ -6,13 +6,11 @@ Ready for coding agent.
 
 ## Goal
 
-Create a practical gap analysis between the current sample-data `Prospect` type and the new real-data acquisition plan.
+Update the frontend-only `Prospect` type, sample seed data, and result card display so the public MVP can represent the real-data fields identified in the prospect data model gap analysis.
 
-The goal is to understand what the current app data model supports, what the real-data plan will eventually require, and which type/model changes should be deferred until database, API, and user ownership decisions are made.
+This is a small controlled app-code task.
 
-This is a planning/documentation task only.
-
-Do not implement type changes, database changes, auth, API routes, scraping, external fetching, or saved-lead persistence yet.
+The goal is not to add real data fetching or persistence. The goal is to make the current seed-data app shape ready for real prospect fields later.
 
 ## Current project state
 
@@ -27,6 +25,7 @@ Completed phases:
 - Phase 2: ZIP-code Prospect Search Shell
 - Phase 2.5: First Public Deployment
 - Phase 3: Real Data Acquisition Plan
+- Phase 3.1: Prospect Data Model Gap Analysis
 
 The current app supports:
 
@@ -40,7 +39,7 @@ The current app supports:
 - public-facing copy and metadata
 - deployed public MVP shell
 
-The real-data acquisition plan has now been created and committed.
+The project now has planning docs for real-data acquisition and prospect model gaps.
 
 ## Product objective
 
@@ -55,6 +54,7 @@ Useful real prospect data should eventually include:
 - phone
 - city/state/ZIP
 - street address
+- ZIP+4 extension, if available
 - practice areas
 - attorney count or size estimate
 - attorney names, if available and verified
@@ -64,22 +64,24 @@ Useful real prospect data should eventually include:
 - verification status
 - last checked date
 
-## Files to review
+## Files to review first
 
-Review these files first:
+Review these files before editing:
 
 ```text
 src/types/prospect.ts
 src/data/prospects.ts
 src/components/ProspectCard.tsx
+src/utils/prospectMatcher.ts
+src/utils/prospectMatcher.test.ts
 docs/planning/03-data-fetching-plan.md
+docs/planning/12-prospect-data-model-gap-analysis.md
 tasks/work.md
 ```
 
-Also review existing planning docs if needed, especially:
+Also review existing rules if needed:
 
 ```text
-docs/planning/09-roadmap.md
 docs/planning/08-coding-agent-rules.md
 ```
 
@@ -87,28 +89,14 @@ docs/planning/08-coding-agent-rules.md
 
 Allowed:
 
-- Create a new planning document, preferably:
-
-```text
-docs/planning/12-prospect-data-model-gap-analysis.md
-```
-
-- Compare the current `Prospect` type against the fields described in the real-data acquisition plan.
-- Identify which fields are already supported.
-- Identify which fields are missing.
-- Identify which fields belong to global/shared prospect data.
-- Identify which fields belong to private/user-specific workflow data.
-- Recommend future type/model changes at a planning level only.
-- Identify which fields should be added later to the frontend sample type.
-- Identify which fields should wait for database/API planning.
-- Update `tasks/work.md` with a brief note.
+- Update `src/types/prospect.ts`.
+- Update `src/data/prospects.ts`.
+- Update `src/components/ProspectCard.tsx` to display the new frontend-safe fields.
+- Update tests only if existing type/data changes require test adjustments.
+- Update `tasks/work.md` with a brief task note.
 
 Explicitly forbidden:
 
-- No app source-code changes.
-- No edits to `src/types/prospect.ts`.
-- No edits to `src/data/prospects.ts`.
-- No edits to `src/components/ProspectCard.tsx`.
 - No database.
 - No Prisma.
 - No migrations.
@@ -120,166 +108,246 @@ Explicitly forbidden:
 - No enrichment implementation.
 - No provider/API integration.
 - No saved leads persistence.
+- No localStorage/sessionStorage/cookies.
 - No dashboard.
 - No new dependencies.
+- No deployment changes.
 - Do not run terminal commands.
+
+## Important command rule
+
+Do not run terminal commands.
+
+This includes, but is not limited to:
+
+```bash
+npm run test
+npm run build
+npm run dev
+git status
+git diff
+git add
+git commit
+git push
+npm install
+npx
+```
+
+You may recommend commands only under:
+
+```text
+Commands for human to run
+```
+
+The human runs all commands.
 
 ## Data ownership rule
 
 Keep this distinction clear:
 
-Global/shared data:
+Global/shared prospect data:
 
-- ZIP research
 - firm records
 - attorney records
 - practice areas
-- source records
-- cached ZIP results
 - source URLs
+- source type
 - confidence level
 - verification status
 - last checked date
+- ZIP research
+- cached ZIP results
 
-Private/user-specific data:
+Private/user-specific workflow data:
 
 - saved leads
-- notes
-- statuses
+- notes written by a user
+- user-specific statuses
 - tasks
 - reminders
 - recent searches
-- user-specific lead ownership
 - follow-up workflow state
 
-This task is about planning the global/shared prospect data model.
+This task may add frontend fields for global/shared prospect data only.
 
-Do not design private saved-lead persistence yet.
+Do not persist or model private saved-lead/user workflow data.
 
-## Required sections for the new gap-analysis document
+## Required implementation
 
-The new document should include these sections:
+### 1. Update `src/types/prospect.ts`
 
-1. Purpose
-2. Current state
-3. Current `Prospect` type summary
-4. Real-data plan field summary
-5. Field-by-field gap table
-6. Global/shared data fields
-7. Private/user-specific fields to defer
-8. Frontend sample-data fields that can be added later
-9. Database/API fields that should wait
-10. Confidence vs verification status clarification
-11. Recommended future model shape
-12. Risks and scope-control notes
-13. Explicit non-goals for now
-14. Suggested follow-up tasks
+Replace the loose current confidence/source strings with typed planning-safe fields.
 
-## Guidance for the field-by-field gap table
-
-Create a table like this:
-
-| Field | Current support | Real-data need | Ownership | Recommendation |
-| :--- | :--- | :--- | :--- | :--- |
-| `firmName` | Supported | Required | Global/shared | Keep |
-| `streetAddress` | Missing | Required later | Global/shared | Add later after UI/type planning |
-| `sourceUrl` | Missing | Required later | Global/shared | Add before real-data records are displayed |
-| `saved` | In-memory only | Private user workflow | Private/user-specific | Do not persist until auth/database ownership is planned |
-
-Use the actual current type and real-data plan as the source of truth.
-
-## Confidence vs verification status clarification
-
-The gap analysis should clearly separate these two concepts:
-
-```text
-confidenceLevel = how trustworthy the data is after review
-verificationStatus = where the record is in the research workflow
-```
-
-Recommended future values:
-
-```text
-confidenceLevel: HIGH | MEDIUM | LOW | UNKNOWN
-verificationStatus: CANDIDATE | PENDING_REVIEW | VERIFIED | REJECTED | STALE
-```
-
-Do not implement these values yet. Document them only.
-
-## Recommended future model shape
-
-The document may propose a future interface shape, but it must be clearly labeled as planning-only pseudocode.
-
-Example:
+Recommended shape:
 
 ```ts
-// Planning-only sketch. Do not implement in this task.
-interface FutureProspect {
+export type ConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
+
+export type VerificationStatus =
+  | 'CANDIDATE'
+  | 'PENDING_REVIEW'
+  | 'VERIFIED'
+  | 'REJECTED'
+  | 'STALE';
+
+export type SourceType =
+  | 'BAR_DIRECTORY'
+  | 'GOOGLE_MAPS'
+  | 'WEB_SCRAPE'
+  | 'MANUAL'
+  | 'MANUAL_SEED';
+
+export interface Prospect {
   id: string;
   firmName: string;
-  website: string;
-  phone: string;
-  streetAddress?: string;
+  zip: string;
+  zipExt?: string | null;
   city: string;
   state: string;
-  zip: string;
-  zipExt?: string;
+  streetAddress?: string | null;
+  website: string | null;
+  phone: string | null;
+  email?: string | null;
   practiceAreas: string[];
   attorneyCountRange: string;
   attorneys?: string[];
-  sourceUrl?: string;
-  sourceType: string;
-  confidenceLevel: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
-  verificationStatus: 'CANDIDATE' | 'PENDING_REVIEW' | 'VERIFIED' | 'REJECTED' | 'STALE';
-  lastCheckedDate?: string;
+  sourceType: SourceType;
+  sourceUrl?: string | null;
+  confidenceLevel: ConfidenceLevel;
+  verificationStatus: VerificationStatus;
+  lastCheckedDate?: string | null;
+  globalNotes: string | null;
 }
 ```
 
-The coding agent may refine this sketch based on the actual current code and planning document.
+Use this as guidance, but adapt carefully to the existing codebase.
 
-## Human-run verification commands
+### 2. Update `src/data/prospects.ts`
 
-No commands are required for a docs-only task.
+Update existing manually curated sample records to match the new type.
 
-If the human wants to check the repo afterward, recommend:
+Important:
 
-```bash
-git status
-git diff
-```
+- Keep the data honest as sample/seed data.
+- Do not replace the current sample data with real law firms in this task.
+- Do not add scraped or externally sourced records.
+- Use `sourceType: 'MANUAL_SEED'`.
+- Use `confidenceLevel: 'UNKNOWN'` or another honest value appropriate for sample data.
+- Use `verificationStatus: 'CANDIDATE'` or another honest value appropriate for sample/demo data.
+- Preserve ZIP `19103` behavior.
+- Preserve unsupported-ZIP empty state behavior.
+- Preserve ZIP+4 normalization behavior.
 
-If everything is good, the human may commit with:
+For fields that are not meaningful in sample data, use `null`, empty arrays, or clearly fake/demo-safe values.
 
-```bash
-git add docs/planning/12-prospect-data-model-gap-analysis.md tasks/work.md
-git commit -m "Document prospect data model gaps"
-git push
-```
+### 3. Update `src/components/ProspectCard.tsx`
 
-Only the human should run these commands.
+Update the card to use the renamed/added fields.
+
+Required display behavior:
+
+- Preserve existing card layout and behavior.
+- Preserve expand/collapse behavior.
+- Preserve save/unsave behavior.
+- Preserve accessibility attributes already added.
+- Display `streetAddress` if present.
+- Display `sourceUrl` if present.
+- Display `confidenceLevel`.
+- Display `verificationStatus`.
+- Display `lastCheckedDate` if present.
+- Display attorney names if `attorneys` has values.
+- Use `globalNotes` instead of `notes`.
+
+Important:
+
+- Do not add large UI redesign.
+- Do not add routing.
+- Do not add new components unless clearly necessary.
+- Do not make source links misleading. If sample data has no real source URL, do not show one.
+
+### 4. Preserve behavior
+
+Do not intentionally change:
+
+- search input behavior
+- invalid ZIP validation
+- unsupported ZIP empty state
+- ZIP+4 normalization
+- matching logic
+- saved count
+- save/unsave state being browser-session only
+- public copy/disclaimer that data is manually curated sample data
+
+### 5. Update tests only if needed
+
+If the type/data changes break existing tests, update tests minimally.
+
+Do not add a new test framework.
+
+Do not add Playwright/Cypress/React Testing Library.
+
+Keep tests focused on existing pure business logic unless a tiny type/data update is required.
+
+### 6. Update `tasks/work.md`
+
+Add a brief log entry explaining:
+
+- frontend prospect type aligned with real-data planning fields
+- sample seed records updated to match new shape
+- ProspectCard updated to render new fields
+- no database/auth/API/scraping/persistence/dependency work added
+- no terminal commands run
 
 ## Acceptance criteria
 
 This task is complete when:
 
-- `docs/planning/12-prospect-data-model-gap-analysis.md` exists.
-- The document compares the current `Prospect` type with the real-data acquisition plan.
-- The document clearly identifies supported, missing, deferred, and future fields.
-- The document separates global prospect data from private user workflow data.
-- The document clarifies `confidenceLevel` vs `verificationStatus`.
-- The document does not implement app-code, database, auth, API, scraping, fetching, dependency, or persistence changes.
-- `tasks/work.md` is updated with a brief task note.
+- `src/types/prospect.ts` defines typed `ConfidenceLevel`, `VerificationStatus`, and `SourceType`.
+- `Prospect` uses `confidenceLevel` instead of loose `confidence`.
+- `Prospect` uses `globalNotes` instead of `notes`.
+- `src/data/prospects.ts` compiles conceptually against the new `Prospect` shape.
+- Sample data remains clearly manually curated seed/demo data.
+- `ProspectCard` renders the updated fields without changing the core interaction behavior.
+- ZIP `19103` sample search behavior is preserved.
+- ZIP+4 normalization behavior is preserved.
+- Save/unsave remains in-memory only.
+- No database/auth/API/scraping/fetching/dependency/persistence work is added.
+- `tasks/work.md` is updated.
 - No terminal commands were run.
+
+## Commands for human to run
+
+After the agent finishes, the human may run:
+
+```bash
+npm run test
+npm run build
+npm run dev
+git status
+git diff
+```
+
+If everything looks good, the human may commit with:
+
+```bash
+git add src/types/prospect.ts src/data/prospects.ts src/components/ProspectCard.tsx src/utils/prospectMatcher.test.ts tasks/work.md
+git commit -m "Align frontend prospect model with real-data fields"
+git push
+```
+
+Adjust the `git add` command if no test file was changed.
 
 ## Final report required from coding agent
 
 When finished, report:
 
 1. Files changed.
-2. Summary of the gap analysis.
-3. Key fields already supported.
-4. Key fields missing or deferred.
-5. Recommendation for the next smallest safe task.
-6. Confirmation that no app code, database, auth, API routes, scraping, external fetching, dependencies, or persistence work was added.
-7. Confirmation that no terminal commands were run.
-8. Suggested human review steps.
+2. Summary of type changes.
+3. Summary of sample-data changes.
+4. Summary of ProspectCard display changes.
+5. Whether any tests were edited and why.
+6. Confirmation that search, ZIP+4 normalization, save/unsave, and empty states were intended to remain unchanged.
+7. Confirmation that no database, auth, API routes, scraping, external fetching, new dependencies, deployment changes, or persistence work was added.
+8. Confirmation that no terminal commands were run.
+9. Commands for the human to run.
+10. Suggested human review steps.

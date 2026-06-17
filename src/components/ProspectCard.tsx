@@ -20,17 +20,15 @@ export function ProspectCard({
       <div className="prospect-header">
         <h3 className="prospect-name">{prospect.firmName}</h3>
         <span
-          className={`confidence-badge confidence-${prospect.confidence
-            .split(" ")[0]
-            .toLowerCase()}`}
+          className={`confidence-badge confidence-${prospect.confidenceLevel.toLowerCase()}`}
         >
-          {prospect.confidence}
+          {prospect.confidenceLevel}
         </span>
       </div>
 
       <div className="prospect-meta">
         <span className="meta-item location">
-          📍 {prospect.city}, {prospect.state} {prospect.zip}
+          📍 {prospect.streetAddress ? `${prospect.streetAddress}, ` : ""}{prospect.city}, {prospect.state} {prospect.zip}{prospect.zipExt ? `-${prospect.zipExt}` : ""}
         </span>
         <span className="meta-item size">
           👥 {prospect.attorneyCountRange} attorneys
@@ -54,6 +52,14 @@ export function ProspectCard({
                 <span className="contact-value">{prospect.phone}</span>
               </div>
             )}
+            {prospect.email && (
+              <div className="contact-item">
+                <span className="contact-label">Email:</span>{" "}
+                <a href={`mailto:${prospect.email}`} className="contact-link">
+                  {prospect.email}
+                </a>
+              </div>
+            )}
             {prospect.website && (
               <div className="contact-item">
                 <span className="contact-label">Website:</span>{" "}
@@ -67,16 +73,36 @@ export function ProspectCard({
                 </a>
               </div>
             )}
+            {prospect.sourceUrl && (
+              <div className="contact-item">
+                <span className="contact-label">Source URL:</span>{" "}
+                <a
+                  href={prospect.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="contact-link"
+                >
+                  {prospect.sourceUrl.replace("https://", "").split("/")[0]}
+                </a>
+              </div>
+            )}
+            {prospect.attorneys && prospect.attorneys.length > 0 && (
+              <div className="contact-item">
+                <span className="contact-label">Attorneys:</span>{" "}
+                <span className="contact-value">{prospect.attorneys.join(", ")}</span>
+              </div>
+            )}
           </div>
 
-          {prospect.notes && (
+          {prospect.globalNotes && (
             <div className="prospect-notes">
-              <span className="notes-label">Notes:</span> {prospect.notes}
+              <span className="notes-label">Notes:</span> {prospect.globalNotes}
             </div>
           )}
 
           <div className="prospect-source">
-            Source: {prospect.sourceType}
+            Verification: {prospect.verificationStatus} | Source: {prospect.sourceType}
+            {prospect.lastCheckedDate && ` | Checked: ${prospect.lastCheckedDate}`}
           </div>
         </>
       )}

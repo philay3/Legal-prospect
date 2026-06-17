@@ -1319,3 +1319,75 @@ No known risks. This is a documentation-only gap analysis.
 ### Next Recommended Step
 
 Update `src/types/prospect.ts` and `src/data/prospects.ts` with the new fields (like `streetAddress`, `sourceUrl`, `email`, `zipExt`, `attorneys`) and update [ProspectCard.tsx](file:///Users/phillipanthony/Desktop/Phase02/legal-prospecting-planning-docs-starter/src/components/ProspectCard.tsx) to render the new details in its expanded layout view.
+
+---
+
+## 2026-06-16 — Align Frontend Prospect Model with Real-Data Fields
+
+### Task Summary
+
+Aligned the frontend-only `Prospect` type, sample seed records, and the result card UI with the real-data fields identified in the prospect data model gap analysis. This prepares the app's interfaces and styling for real law firm data integration later.
+
+### Files Created
+
+None.
+
+### Files Changed
+
+- `src/types/prospect.ts` — Updated the `Prospect` type interface with fields (like `streetAddress`, `email`, `sourceUrl`, etc.) and defined enums for `ConfidenceLevel`, `VerificationStatus`, and `SourceType`.
+- `src/data/prospects.ts` — Updated sample seed records to comply with the updated type definitions, using clearly demo-safe placeholders/nulls.
+- `src/components/ProspectCard.tsx` — Enriched the card UI rendering to support the new metadata fields, and used the updated `confidenceLevel` badge logic.
+- `src/utils/prospectMatcher.test.ts` — Updated test mock data records to conform to the new type definition structure.
+- `tasks/work.md` — Logged this session's work details.
+
+### What Changed
+
+- Replaced loose `confidence` and `notes` fields with `confidenceLevel` (restricted to `'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN'`) and `globalNotes`.
+- Added new fields: `zipExt`, `streetAddress`, `email`, `attorneys`, `sourceUrl`, `verificationStatus`, and `lastCheckedDate` to the frontend `Prospect` model.
+- Updated the 4 fictional seed records in `src/data/prospects.ts` to map to the new interface, using obviously demo-only placeholders (`"123 Demo Street"`, `"prospect1-demo@example.com"`, etc.) and `null` values to keep the seed data clean and not misleading.
+- Modified the `<ProspectCard />` component to render street address, email (mailto: link), source URL (link), last checked date, list of attorneys, verification status, and confidence levels.
+- Updated `mockProspects` in `src/utils/prospectMatcher.test.ts` to resolve Vitest type errors.
+
+### Why It Changed
+
+- To ensure the frontend app shell structure matches the database-level Real Data Acquisition Plan.
+- To prepare for the future backend development using the preferred database stack (Prisma + Neon).
+- To keep the sample seed data clearly distinct from verified real law firm records as requested.
+
+### Commands Suggested
+
+1. Run the test suite:
+   ```bash
+   npm run test
+   ```
+2. Build verification:
+   ```bash
+   npm run build
+   ```
+3. Start local development server:
+   ```bash
+   npm run dev
+   ```
+
+### Commands Run by Human
+
+No commands run.
+
+### Results Pasted by Human
+
+No results pasted.
+
+### Verification
+
+The human should verify:
+1. Start the application dev server (`npm run dev`) and run tests (`npm run test`) to ensure everything builds and passes.
+2. In the browser, search ZIP `19103` and check that the 4 demo prospects render correctly with the new metadata fields in both collapsed and expanded views.
+3. Test search validation using invalid ZIPs (e.g. `123`) and verify that search for a non-seeded ZIP (e.g. `90210`) shows the empty state correctly.
+
+### Known Risks
+
+- The database stack (Prisma + Neon) has been designated as the preferred target but is not yet initialized or connected.
+
+### Next Recommended Step
+
+Prepare the Prisma database schema and migration plan using Neon PostgreSQL.
