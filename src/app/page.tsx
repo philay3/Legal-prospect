@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { SEED_PROSPECTS } from "@/data/prospects";
-import { matchProspectsByZip, normalizeZipCode } from "@/utils/prospectMatcher";
+import { normalizeZipCode } from "@/utils/prospectMatcher";
 import { ProspectCard } from "@/components/ProspectCard";
+import type { Prospect } from "@/types/prospect";
 
 export default function Home() {
   const [searchZip, setSearchZip] = useState("");
@@ -11,14 +11,19 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [expandedProspects, setExpandedProspects] = useState<Record<string, boolean>>({});
   const [savedProspectIds, setSavedProspectIds] = useState<string[]>([]);
+  const [matchingProspects, setMatchingProspects] = useState<Prospect[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return; // Prevent duplicate searches while loading
+
     const trimmed = searchZip.trim();
 
     if (!trimmed) {
       setError("Please enter a ZIP code.");
       setSearchedZip(null);
+      setMatchingProspects([]);
       setExpandedProspects({});
       return;
     }
@@ -27,13 +32,43 @@ export default function Home() {
     if (!normalized) {
       setError("Please enter a valid ZIP code.");
       setSearchedZip(null);
+      setMatchingProspects([]);
       setExpandedProspects({});
       return;
     }
 
     setError(null);
-    setSearchedZip(normalized);
+    setIsLoading(true);
     setExpandedProspects({});
+
+    try {
+      const response = await fetch(`/api/prospects/search?zip=${encodeURIComponent(trimmed)}`);
+      
+      if (!response.ok) {
+        let errMsg = "We could not complete the search right now. Please try again.";
+        try {
+          const errData = await response.json();
+          if (errData && errData.error) {
+            errMsg = errData.error;
+          }
+        } catch (e) {
+          // ignore parsing error
+        }
+        setError(errMsg);
+        setSearchedZip(null);
+        setMatchingProspects([]);
+      } else {
+        const data = await response.json();
+        setSearchedZip(normalized);
+        setMatchingProspects(data.results || []);
+      }
+    } catch (err) {
+      setError("We could not complete the search right now. Please try again.");
+      setSearchedZip(null);
+      setMatchingProspects([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const toggleExpand = (id: string) => {
@@ -48,10 +83,6 @@ export default function Home() {
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   };
-
-  const matchingProspects = searchedZip
-    ? matchProspectsByZip(SEED_PROSPECTS, searchedZip)
-    : [];
 
   return (
     <div className="app-wrapper">
@@ -82,9 +113,10 @@ export default function Home() {
                 setSearchZip(e.target.value);
                 if (error) setError(null);
               }}
+              disabled={isLoading}
             />
-            <button type="submit" className="search-button">
-              Search
+            <button type="submit" className="search-button" disabled={isLoading}>
+              {isLoading ? "Searching..." : "Search"}
             </button>
           </div>
           {error && <div className="search-error">{error}</div>}
@@ -92,7 +124,15 @@ export default function Home() {
       </main>
 
       <section className="results-section">
-        {searchedZip === null ? (
+        {isLoading ? (
+          <div className="placeholder-card">
+            <span className="placeholder-icon">⏳</span>
+            <h3 className="placeholder-title">Searching Database...</h3>
+            <p className="placeholder-desc">
+              Querying seeded prospect records for ZIP <strong>{normalizeZipCode(searchZip) || searchZip}</strong>.
+            </p>
+          </div>
+        ) : searchedZip === null ? (
           <div className="placeholder-card">
             <span className="placeholder-icon">🔍</span>
             <h3 className="placeholder-title">Ready for Search</h3>
@@ -112,7 +152,7 @@ export default function Home() {
                 )}
               </div>
               <p className="results-subtitle">
-                Currently showing manually curated sample prospect data.{" "}
+                Currently showing seeded demo prospect data from the database.{" "}
                 {savedProspectIds.length > 0 && (
                   <span className="saved-helper-text">Saved for this browser session only.</span>
                 )}
@@ -145,4 +185,5 @@ export default function Home() {
     </div>
   );
 }
+
 

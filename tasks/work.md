@@ -1727,4 +1727,206 @@ Reviewed the generated migration SQL file and verified:
 
 ### Next Recommended Step
 
-Phase 5.3: Implement Database Seeding (write and run a seed script to load mockup data into the new Postgres database structure).
+Phase 5.4 — Controlled Prisma Firm Seed Script (write and configure a seed script to load mockup data into the new Postgres database structure).
+
+---
+
+## 2026-06-17 — Phase 5.4 — Controlled Prisma Firm Seed Script
+
+### Task Summary
+
+Create a safe, repeatable, and idempotent seed script that maps the existing fictional demo prospects to the `Firm` table in Neon Postgres database.
+
+### Files Created
+
+- `prisma/seed.ts` — Idempotent seeding script utilizing the Prisma Client configured with `@prisma/adapter-neon` and `@neondatabase/serverless` to map and upsert sample prospects.
+
+### Files Changed
+
+- `package.json` — Wired `db:seed` script and `prisma.seed` settings to support the tsx-run TypeScript seed file.
+- `prisma/seed.ts` — Integrated Neon serverless driver adapter and connection pooling to comply with Prisma 7 runtime client requirements.
+- `tasks/work.md` — Logged the seed script creation, package script wiring, and driver adapter configuration.
+
+### What Changed
+
+- Created a database seed file `prisma/seed.ts` that loads environment variables, initializes `PrismaNeon` from `@prisma/adapter-neon` with the connection config object directly (using `DIRECT_URL`, falling back to `DATABASE_URL`), and passes the factory adapter to the `PrismaClient` constructor.
+- Iterated over `SEED_PROSPECTS` (from `src/data/prospects.ts`), mapped their fields (including array parsing and parsing string dates like `lastCheckedDate`), and performed an `upsert` using the stable prospect ID.
+- Configured `"db:seed": "prisma db seed"` in package scripts and configured Prisma's custom `"seed"` script to use `"tsx prisma/seed.ts"`.
+- Did not run the seed script or execute any CLI/database/git commands directly.
+
+### Why It Changed
+
+To establish a safe database seeding pipeline, allowing the human to load sample seed prospects into the Postgres database. In Prisma 7, the default TCP engine inside the client runtime is removed, so instantiating `new PrismaClient()` with no arguments throws an error when no database URL is set in the schema file itself. We resolved this by passing the `@prisma/adapter-neon` driver adapter factory directly to the client constructor, letting Prisma manage the internal pool lifecycle. The upsert logic ensures that repeating the seeding process updates fields instead of generating duplicates, preventing dataset drift during developer testing.
+
+### Commands Suggested
+
+The human may run these commands:
+
+```bash
+npm run test
+npm run build
+npm run db:seed
+```
+
+### Commands Run by Human
+
+`No commands run.`
+
+### Results Pasted by Human
+
+`No results pasted.`
+
+### Verification
+
+The human can verify:
+1. `prisma/seed.ts` exists and is formatted correctly.
+2. `package.json` contains the `db:seed` script and `"prisma": { "seed": "tsx prisma/seed.ts" }` configuration.
+3. The human runs `npm run db:seed` and verifies that the database is seeded correctly with the 4 demo prospects without errors.
+4. The human runs `npm run test` and `npm run build` to ensure no build or test compilation regressions.
+
+### Known Risks
+
+- In the Prisma client, `lastCheckedDate` is mapped to a standard JavaScript `Date` constructor (`new Date()`). If invalid date strings are introduced in sample prospects in the future, the date constructor could produce an `Invalid Date` object that fails Postgres database constraints. The demo dataset current dates are valid, so this is resolved.
+
+### Next Recommended Step
+
+Phase 5.5: Connect the Search UI to the database (write a Next.js API route to fetch matching prospects from Postgres and integrate search queries).
+
+---
+
+## 2026-06-17 — Phase 5.6 — Create DB-Backed ZIP-Code Search API Route
+
+### Task Summary
+
+Create a server-side Next.js API route `/api/prospects/search` that queries the Postgres database `Firm` table by ZIP code and returns prospect-compatible JSON. Avoid changing any UI behavior, auth, or schemas, and keep the Prisma client helper server-only.
+
+### Files Created
+
+- `src/lib/prisma.ts` — Server-only helper file containing the singleton initialization for the Prisma Client with Neon database adapter.
+- `src/app/api/prospects/search/route.ts` — The GET API route that receives, normalizes, and validates the `zip` parameter, queries the database, maps rows to the `Prospect` type, and returns JSON.
+- `src/app/api/prospects/search/route.test.ts` — Comprehensive unit tests for validation, querying, sorting, mapping, empty states, and errors, using mocked Prisma Client.
+
+### Files Changed
+
+- `tasks/work.md` — Logged the implementation details, files created, verification instructions, and next steps for Phase 5.6.
+
+### What Changed
+
+- Implemented `src/lib/prisma.ts` as a server-only helper (using Next.js `server-only` package) that instantiates the Prisma client. It throws an error if connection URL env variables are missing rather than using `process.exit()`.
+- Implemented `/api/prospects/search` API route returning a structured query and search result JSON.
+- Standardized the API error messages and HTTP status codes (e.g. `400` for missing or invalid parameters, `500` for server exceptions, `200` with empty array for unsupported/non-matching ZIPs).
+- Added Vitest unit tests to mock and test the API endpoint's query/error flow.
+
+### Why It Changed
+
+- To set up the API-level database query backend layer before wiring the frontend UI (which remains on static mock data to avoid bundle regressions).
+- To conform to Next.js server-only safety rules and ensure hot-reloads in local development do not leak client instances or trigger connection pool overflow.
+
+### Commands Suggested
+
+The human may run these commands:
+
+```bash
+npm run test
+npm run build
+npm run dev
+```
+
+And optional manual testing commands once dev server is running:
+
+```bash
+curl "http://localhost:3000/api/prospects/search?zip=19103"
+curl "http://localhost:3000/api/prospects/search?zip=19103-1234"
+curl "http://localhost:3000/api/prospects/search?zip=90210"
+curl "http://localhost:3000/api/prospects/search?zip=abc"
+```
+
+### Commands Run by Human
+
+`No commands run.`
+
+### Results Pasted by Human
+
+`No results pasted.`
+
+### Verification
+
+The human should verify:
+1. `src/lib/prisma.ts` exists and enforces `"server-only"`.
+2. `src/app/api/prospects/search/route.ts` and `src/app/api/prospects/search/route.test.ts` exist.
+3. The human runs `npm run test` and verifies all tests (including the new API tests and old matcher tests) pass.
+4. The human runs `npm run build` and verifies the project compiles cleanly without type errors.
+5. The human runs `npm run dev` and curls the local API endpoints to verify the response shapes and status codes.
+
+### Known Risks
+
+- None. No schema modifications, database migrations, or UI changes were made.
+
+### Next Recommended Step
+
+Phase 5.7: Wire UI to DB-backed search while preserving current behavior.
+
+---
+
+## 2026-06-17 — Phase 5.7 — Wire Homepage Search UI to DB-Backed API
+
+### Task Summary
+
+Connect the homepage ZIP-code search UI to the DB-backed API route `/api/prospects/search?zip=<zip>`.
+
+### Files Created
+
+None.
+
+### Files Changed
+
+- `src/app/page.tsx` — Wired search form submission to call the dynamic search API, added loading states and duplicate submission prevention, and adjusted copy to match seeded DB results context.
+- `tasks/work.md` — Logged the implementation work.
+
+### What Changed
+
+- Replaced local frontend-only static filtration (`matchProspectsByZip(SEED_PROSPECTS, searchedZip)`) with an asynchronous search fetch targeting `/api/prospects/search?zip=${encodeURIComponent(trimmed)}`.
+- Added an `isLoading` boolean state to track active searches, disabling form controls (input and submit button) while fetching to prevent duplicate search requests.
+- Integrated a loading state card UI component within the search results section displaying a spinner visual block.
+- Maintained exact local/in-memory client behaviors including toggling card details, saving prospect IDs, badge styles, validation rules, and empty search results.
+- Updated user copy to clearly specify: "Currently showing seeded demo prospect data from the database."
+
+### Why It Changed
+
+To successfully link the user-facing search frontend to the real database query backend endpoint, completing the dynamic search loop on seeded postgres database tables.
+
+### Commands Suggested
+
+The human may run these commands:
+
+```bash
+npm run test
+npm run build
+npm run dev
+```
+
+### Commands Run by Human
+
+`No commands run.`
+
+### Results Pasted by Human
+
+`No results pasted.`
+
+### Verification
+
+The human can verify:
+1. Running `npm run test` passes all tests cleanly.
+2. Running `npm run build` generates a clean Next.js build compilation.
+3. Running `npm run dev` and searching for `19103` loads the four seeded database results.
+4. Active searching displays "Searching..." and disables input elements.
+5. Searching `90210` displays empty results properly.
+6. Searching `abc` displays frontend validation errors.
+
+### Known Risks
+
+No known risks. Scope was strictly restricted to `src/app/page.tsx` search integration.
+
+### Next Recommended Step
+
+Phase 5.8: Implement customizable user/session-specific prospect notes and database testing.

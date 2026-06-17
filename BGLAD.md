@@ -1,14 +1,14 @@
-# BGlad Continuation Handoff — First Public MVP Deployed, Real Data Phase Next
+# BGlad Continuation Handoff — Real Data Plan Complete, Prisma/Neon Foundation Started
 
-Date: 2026-06-16
+Date: 2026-06-17
 
-Purpose: Handoff for the next BGlad session so the project can continue from the current deployed MVP state without losing scope control, command discipline, roadmap context, or the real product objective.
+Purpose: Handoff for the next BGlad session so the Legal Prospector project can continue from the current Prisma/Neon database foundation state without losing scope control, command discipline, phase numbering clarity, or the product objective.
 
 ---
 
-## 1. Current Status
+## 1. Current Project Status
 
-The project has moved beyond the prior local working state.
+The project has advanced significantly beyond the prior handoff.
 
 Current status is now:
 
@@ -17,12 +17,79 @@ Phase 0: Control and Planning — complete
 Phase 1: Basic App Shell — complete
 Phase 2: ZIP-code Prospect Search Shell — complete
 Phase 2.5: First Public Deployment — complete / deployed
-Next phase: Phase 3: Real Data Acquisition Plan
+Phase 3: Real Data Acquisition Plan — complete
+Phase 3.1: Prospect Data Model Gap Analysis — complete
+Phase 3.2: Frontend Prospect Model Alignment — complete
+
+Phase 4: Database Planning and Stack Decision — complete
+Phase 4.1: Prisma + Neon Database Plan — complete
+Phase 4.2: Product Ownership Model Clarified — complete
+
+Phase 5: Clean Database Foundation — in progress
+Phase 5.1: Human Prisma/Neon setup — complete
+Phase 5.2: Minimal Prisma Firm model — complete
+Phase 5.3: Initial Firm migration — complete / pushed
+Next safe task: Phase 5.4: Controlled Firm seed script
 ```
 
-Important wording correction:
+Important phase-number cleanup:
 
-Do not say “local ZIP” anymore.
+The previous conversation temporarily jumped from Phase 3.x to Phase 5.x, which made it look like Phase 4 was skipped. The correct interpretation is:
+
+```text
+Phase 4 = Database planning / stack decision / ownership model clarification.
+Phase 5 = Actual database foundation implementation.
+```
+
+Do not continue the confusing numbering.
+
+---
+
+## 2. Public Deployment
+
+The site remains publicly reachable at:
+
+```text
+https://legal-prospect.vercel.app
+```
+
+Use this clean production URL in future docs.
+
+Avoid referencing older protected/specific deployment URLs.
+
+---
+
+## 3. Correct Product Objective
+
+The product objective remains:
+
+```text
+A user or sales rep enters a postal ZIP code → the site finds real small/boutique law firm prospects in or near that ZIP → the user reviews useful firm details → the user can eventually save and work those leads.
+```
+
+The current app is the deployed shell plus an early database foundation for that idea.
+
+The objective is not:
+
+```text
+show sample prospects forever
+```
+
+The objective is:
+
+```text
+find, enrich, verify, store, and use real law firm prospect data by ZIP code.
+```
+
+---
+
+## 4. Important Wording Rule
+
+Do not say:
+
+```text
+local ZIP
+```
 
 Use:
 
@@ -31,140 +98,14 @@ ZIP-code search
 ZIP-code prospect search
 seed-data ZIP-code search
 real-data ZIP-code search
+DB-backed ZIP-code search
 ```
 
-Reason: “local ZIP” sounded like a ZIP file or something on the local machine. The product is about postal ZIP codes.
+Reason: “local ZIP” sounds like a ZIP file or local machine artifact. The product is about postal ZIP codes.
 
 ---
 
-## 2. Public Deployment
-
-The site is deployed and publicly reachable at:
-
-```text
-https://legal-prospect.vercel.app
-```
-
-Earlier, a protected Vercel deployment URL was documented:
-
-```text
-https://legal-prospect-5wqeib9g3-philay3s-projects.vercel.app
-```
-
-That URL appeared to require Vercel verification/login.
-
-The clean production URL is:
-
-```text
-https://legal-prospect.vercel.app
-```
-
-If project docs still reference the protected/specific deployment URL, update them to the clean public URL.
-
-Likely docs to check:
-
-```text
-docs/planning/11-first-deploy-checklist.md
-tasks/work.md
-tasks/current-task.md
-README.md
-```
-
-Recommended commit if this doc correction is not already committed:
-
-```bash
-git status
-git diff
-git add docs/planning/11-first-deploy-checklist.md tasks/work.md tasks/current-task.md README.md
-git commit -m "Document public production deployment URL"
-git push
-```
-
-Only the human should run these commands.
-
----
-
-## 3. GitHub / Remote Status
-
-The local repo was connected to GitHub at:
-
-```text
-https://github.com/philay3/Legal-prospect.git
-```
-
-A remote conflict happened because the GitHub repo already had content.
-
-The conflict was in:
-
-```text
-.DS_Store
-```
-
-Resolution used:
-
-```bash
-git rm -f .DS_Store
-printf "\n# macOS\n.DS_Store\n" >> .gitignore
-git add .gitignore
-git commit -m "Merge GitHub remote into local project"
-git push -u origin main
-```
-
-After this, the project was pushed successfully.
-
-Going forward, normal pushes should be:
-
-```bash
-git push
-```
-
-Keep `.DS_Store` ignored.
-
----
-
-## 4. Actual Current Repo Shape
-
-Use actual repo paths, not older idealized paths.
-
-Current project shape is approximately:
-
-```text
-legal-prospecting-planning-docs-starter/
-├── agents.md
-├── README.md
-├── package.json
-├── src/
-│   ├── app/
-│   │   ├── page.tsx
-│   │   ├── globals.css
-│   │   └── layout.tsx
-│   ├── components/
-│   │   └── ProspectCard.tsx
-│   ├── data/
-│   │   └── prospects.ts
-│   ├── types/
-│   │   └── prospect.ts
-│   └── utils/
-│       ├── prospectMatcher.ts
-│       └── prospectMatcher.test.ts
-├── tasks/
-│   ├── current-task.md
-│   └── work.md
-└── docs/
-    └── planning/
-        ├── -START-HERE.md
-        ├── 07-testing-guide.md
-        ├── 08-coding-agent-rules.md
-        ├── 09-roadmap.md
-        ├── 10-spawned-agent.md
-        └── 11-first-deploy-checklist.md
-```
-
-The project started as planning docs, then became a working Next.js app inside the same repo.
-
----
-
-## 5. What the App Currently Does
+## 5. Current App Behavior
 
 Current public MVP flow:
 
@@ -186,8 +127,7 @@ Current supported user-visible behavior:
 - in-memory save/unsave state
 - saved count
 - browser refresh clears saved state
-- public-facing copy is cleaner than earlier internal “Phase 2” wording
-- site copy remains honest that data is manually curated sample prospect data
+- public-facing copy remains honest that the data is manually curated sample prospect data
 
 Current deployed public copy includes:
 
@@ -203,7 +143,7 @@ Current metadata title:
 Legal Prospector - Find Boutique Law Firms
 ```
 
-Current data disclaimer language should stay honest, along the lines of:
+The data disclaimer should remain honest, along the lines of:
 
 ```text
 Currently showing manually curated sample prospect data.
@@ -211,96 +151,403 @@ Currently showing manually curated sample prospect data.
 
 ---
 
-## 6. What Has Been Completed Since the Previous Handoff
+## 6. Major Work Completed Since Prior Handoff
 
-Since the previous handoff, these tasks were completed.
-
-### Local-only save/unsave UI
-
-Completed:
-
-- added in-memory saved prospect state
-- Save/Unsave button per prospect
-- visual saved state
-- saved count
-- no persistence
-- no localStorage/sessionStorage/cookies
-- no DB/auth/API routes
-
-### ZIP+4 regression tests
-
-Completed:
-
-- added/expanded Vitest coverage
-- ZIP+4 support tested
-- `19103-1234` normalizes to `19103`
-- invalid ZIP+4 formats rejected
-- search using ZIP+4 returns same matches as base ZIP
-
-Known human-run test status after that step:
-
-```text
-All tests passed.
-```
-
-### ProspectCard extraction
-
-Completed:
-
-- extracted result card markup into:
-
-```text
-src/components/ProspectCard.tsx
-```
-
-- kept behavior unchanged
-- improved maintainability
-- no new feature added
-
-### ProspectCard accessibility hardening
-
-Completed:
-
-- added `aria-expanded` for expand/collapse
-- added accessible labels for expand/collapse
-- added `aria-pressed` for save/unsave
-- used type-only import for `Prospect`
-
-### Public deployment readiness
+### Phase 3 — Real Data Acquisition Plan
 
 Completed and committed:
 
-- replaced internal/developer-centric page labels
-- improved public-facing wording
-- kept sample-data disclaimer honest
-- improved app metadata
-- added first deploy checklist
-- confirmed no env vars required for current app
-- no app behavior changes intended
+```text
+docs/planning/03-data-fetching-plan.md
+tasks/work.md
+```
 
-Important copy corrections made before commit:
+The plan defines:
 
-- metadata description no longer implies persistent saved leads
-- “demo session” wording changed to “browser session”
+- what counts as a real prospect
+- required and optional prospect fields
+- source types and source-quality levels
+- confidence rules
+- ZIP/geographic matching
+- duplicate handling
+- freshness and last-checked rules
+- manual first-pass workflow
+- future automation options
+- risks and constraints
+- what must be true before persistence
 
-### First public deployment
+Important correction made during review:
 
-Completed:
+The first version overclaimed that example real firms were verified. It was revised so any real firm examples are candidate records pending verification, not high-confidence verified records.
 
-- GitHub remote connected
-- project pushed
-- Vercel deployment created
-- production URL confirmed:
+Important confidence/status distinction:
 
 ```text
-https://legal-prospect.vercel.app
+confidenceLevel = how trustworthy the data is after review
+verificationStatus = where the record is in the research workflow
+```
+
+Recommended future values:
+
+```text
+confidenceLevel: HIGH | MEDIUM | LOW | UNKNOWN
+verificationStatus: CANDIDATE | PENDING_REVIEW | VERIFIED | REJECTED | STALE
 ```
 
 ---
 
-## 7. Testing State
+### Phase 3.1 — Prospect Data Model Gap Analysis
 
-Current automated test layer:
+Completed and committed:
+
+```text
+docs/planning/12-prospect-data-model-gap-analysis.md
+tasks/work.md
+```
+
+The gap analysis compared the current frontend `Prospect` type against the real-data acquisition plan.
+
+It clarified:
+
+- currently supported fields
+- missing real-data fields
+- fields that belong to global/canonical prospect data
+- fields that belong to private user workflow data
+- future model shape
+- confidence vs verification status
+
+Important outcome:
+
+The project now clearly separates objective firm data from private user workflow data.
+
+---
+
+### Phase 3.2 — Frontend Prospect Model Alignment
+
+Completed and pushed.
+
+Frontend model and demo data were updated so the app can represent planned real-data fields.
+
+Likely files changed:
+
+```text
+src/types/prospect.ts
+src/data/prospects.ts
+src/components/ProspectCard.tsx
+src/utils/prospectMatcher.test.ts
+tasks/work.md
+```
+
+Current frontend type direction includes:
+
+```ts
+ConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN'
+VerificationStatus = 'CANDIDATE' | 'PENDING_REVIEW' | 'VERIFIED' | 'REJECTED' | 'STALE'
+SourceType = 'BAR_DIRECTORY' | 'GOOGLE_MAPS' | 'WEB_SCRAPE' | 'MANUAL' | 'MANUAL_SEED'
+```
+
+Important review point:
+
+All demo seed records currently use:
+
+```text
+confidenceLevel: UNKNOWN
+verificationStatus: CANDIDATE
+sourceType: MANUAL_SEED
+```
+
+This is correct and honest because the current seed records are fictional/demo-safe, not verified real firms.
+
+Do not “improve” the demo records to HIGH/MEDIUM unless they are real, sourced, and verified.
+
+---
+
+## 7. Phase 4 — Database Planning and Ownership Model
+
+Completed and pushed:
+
+```text
+docs/planning/05-database-plan.md
+docs/planning/09-roadmap.md
+tasks/work.md
+```
+
+The chosen MVP/learning database stack is:
+
+```text
+Database hosting: Neon Postgres
+ORM/schema layer: Prisma
+```
+
+This stack is locked in for the MVP/learning phase because the human is currently learning it.
+
+Important framing:
+
+```text
+Use Prisma + Neon for the MVP/learning database phase.
+Do not treat it as the permanent final architecture forever.
+Revisit later if product, scale, cost, or performance needs require it.
+```
+
+### Ownership Model Clarification
+
+A key product-owner decision was made:
+
+Do not make every firm record fully user-specific.
+
+Do not make every user’s search workflow globally shared either.
+
+The correct model is:
+
+```text
+Shared/internal canonical data corpus
++
+private user/session workflow data
+```
+
+In plain English:
+
+```text
+The raw law-firm data library is shared internally.
+Each user’s search runs, saved leads, notes, statuses, reminders, and recent searches are private.
+```
+
+This solves the previous ownership problem without duplicating firm records per user.
+
+### Canonical/Internal Data
+
+Examples:
+
+- `Firm`
+- source metadata
+- confidence level
+- verification status
+- last checked date
+- global firm facts
+- future scrape/enrichment results
+
+### Private/User Workflow Data — Deferred
+
+Examples:
+
+- user search runs
+- displayed search results per user/session
+- saved leads
+- user notes
+- user-specific statuses
+- tasks
+- reminders
+- recent searches
+- follow-up workflow state
+
+Do not add private/user workflow tables yet.
+
+Auth and user ownership must be designed first.
+
+---
+
+## 8. Phase 5 — Database Foundation Current State
+
+The human completed the Prisma/Neon setup and first migration work.
+
+Known completed:
+
+- Prisma / Neon-related packages installed by the human
+- Prisma initialized
+- real Neon pooler/direct connection values added to local `.env` by the human
+- `.env` confirmed not staged
+- `.env.example` created with placeholders only
+- generated Prisma client output is ignored
+- minimal `Firm` model defined
+- initial Prisma migration generated by the human
+- migration SQL reviewed
+- migration committed and pushed
+
+### Important File/Ignore Notes
+
+The generated Prisma client output path is intended to be ignored.
+
+The project already had:
+
+```text
+src/generated/prisma/
+```
+
+in `.gitignore`.
+
+An unnecessary `/generated` ignore rule was removed because it was confusing and did not target the actual generated client path.
+
+Do not commit generated Prisma client files.
+
+Do not commit `.env`.
+
+Keep `.DS_Store` ignored and do not commit `docs/.DS_Store`.
+
+---
+
+## 9. Current Prisma Schema Direction
+
+The initial schema uses a minimal canonical `Firm` model only.
+
+Important constraints:
+
+- no `User`
+- no `SavedLead`
+- no `LeadNote`
+- no `LeadStatus`
+- no `SearchRun`
+- no `SearchResult`
+- no `RecentSearch`
+- no auth/session tables
+- no scraping/enrichment run tables
+- no billing/team/organization models
+
+The `website` field intentionally should **not** be unique yet.
+
+Reason:
+
+```text
+Some firms may have multiple offices sharing one domain.
+Forcing website uniqueness too early may create avoidable data problems.
+```
+
+The schema includes query indexes:
+
+```text
+@@index([zip])
+@@index([city, state])
+```
+
+The initial migration SQL was reviewed and reported clean:
+
+- creates enum types for `ConfidenceLevel`, `VerificationStatus`, `SourceType`
+- creates `Firm` table only
+- creates expected indexes
+- uses Postgres array columns for `practiceAreas` and `attorneys`
+- contains no destructive SQL
+- contains no user/auth/saved-lead/search-history/scraping tables
+- contains no secrets
+
+---
+
+## 10. Prisma 7 Config Note
+
+The project appears to be using Prisma 7 style config.
+
+Important review happened:
+
+The agent initially used an `as any` workaround in `prisma.config.ts` to include `directUrl`. This was rejected.
+
+Final direction:
+
+- no `as any` workaround
+- keep config typed
+- no secrets in code
+- `.env.example` has placeholders only
+- `.env` has real local values but must never be committed
+
+The exact final config should be checked in the repo if needed.
+
+Do not assume `directUrl` is wired unless confirmed in the actual file.
+
+If migration/direct connection behavior needs more work later, treat it as a separate human-reviewed workflow.
+
+---
+
+## 11. Current Recommended Next Task
+
+Next safe task:
+
+```text
+Phase 5.4: Controlled Firm seed script
+```
+
+Goal:
+
+```text
+Create a safe, repeatable Prisma seed script that loads the existing frontend demo prospects into the new Firm table.
+```
+
+This task should prepare seed code only.
+
+The human runs the seed.
+
+Do not connect the app UI to the database yet.
+
+Suggested current-task file was prepared in the previous session:
+
+```text
+current-task-controlled-prisma-seed-script.md
+```
+
+If the file has not been copied into the repo, recreate or paste it into:
+
+```text
+tasks/current-task.md
+```
+
+### Phase 5.4 Allowed
+
+- create `prisma/seed.ts` or equivalent
+- use existing `src/data/prospects.ts` demo records
+- seed only the `Firm` table
+- use idempotent upsert by stable `id`
+- add a package script such as `db:seed` if appropriate
+- update `tasks/work.md`
+
+### Phase 5.4 Forbidden
+
+- no agent-run terminal commands
+- no `.env` edits
+- no secret exposure
+- no running the seed by the agent
+- no new database models
+- no migrations
+- no API routes
+- no DB-backed app search yet
+- no auth
+- no saved leads
+- no recent ZIP persistence
+- no scraping/enrichment
+- no real firm records
+- no generated Prisma client files committed
+
+### Expected Seed Behavior
+
+The seed script should:
+
+1. create a `PrismaClient`
+2. read or import `SEED_PROSPECTS`
+3. map each prospect to the `Firm` model
+4. upsert by stable `id`
+5. update existing demo records on repeat runs instead of duplicating
+6. disconnect in a `finally` block
+7. print a small success summary when the human runs it
+8. exit non-zero on errors
+
+Do not rely on website uniqueness.
+
+---
+
+## 12. After Seed Script
+
+After Phase 5.4, likely next steps:
+
+```text
+Phase 5.5: Human runs controlled seed and verifies in Prisma Studio
+Phase 5.6: Create DB-backed ZIP search API route
+Phase 5.7: Wire UI to DB-backed search while preserving current behavior
+```
+
+Do not jump directly to DB-backed search until the seed script is reviewed and run successfully.
+
+Do not add saved leads/auth before user ownership is designed.
+
+---
+
+## 13. Testing State
+
+Current automated testing layer:
 
 ```text
 Vitest tests for ZIP normalization and prospect matching
@@ -324,25 +571,37 @@ Known behavior covered:
 - empty prospect array
 - search using ZIP+4 returns same results as base ZIP
 
-Testing philosophy going forward:
+Testing philosophy:
 
 - keep testing pure business logic first
 - do not jump to Playwright/Cypress yet
 - do not add React Testing Library until component complexity justifies it
-- human runs all test/build/dev commands
+- human runs all test/build/dev/database commands
 
-Recommended human verification commands after feature/doc tasks:
+Recommended human verification after code tasks:
 
 ```bash
 npm run test
 npm run build
 npm run dev
 git status
+git diff
 ```
+
+For database tasks, the human may also run:
+
+```bash
+npx prisma format
+npx prisma migrate dev --name <name>
+npx prisma studio
+npm run db:seed
+```
+
+Only when the relevant task explicitly calls for it.
 
 ---
 
-## 8. Human-Controlled Command Rule
+## 14. Human-Controlled Command Rule
 
 Coding agents must not run terminal commands.
 
@@ -353,6 +612,7 @@ cd
 ls
 pwd
 git status
+git diff
 git add
 git commit
 git push
@@ -362,6 +622,11 @@ npm run build
 npm run test
 npm run lint
 npx
+npx prisma format
+npx prisma generate
+npx prisma migrate dev
+npx prisma db push
+npx prisma migrate reset
 rm
 mv
 cp
@@ -378,11 +643,15 @@ Commands for human to run
 
 The human runs them.
 
-BGlad should keep enforcing this.
+Important nuance:
+
+Some logs may show commands at the top of a report. Clarify whether they were human-run commands or agent-run commands before assuming a violation.
+
+Terminal commands remain human-only.
 
 ---
 
-## 9. Absolutely Forbidden / High-Risk Commands
+## 15. Absolutely Forbidden / High-Risk Commands
 
 Continue treating these as forbidden unless the human makes an explicit, informed exception:
 
@@ -393,7 +662,7 @@ git reset --hard
 git clean -fd
 ```
 
-Also be cautious with any force push.
+Also be cautious with force pushes.
 
 If force push is suggested, prefer:
 
@@ -405,514 +674,57 @@ Only after the human confirms the remote does not contain work they need.
 
 ---
 
-## 10. Do Not Rush Into
-
-Still do not rush into:
-
-- Clerk
-- custom auth
-- Prisma
-- migrations
-- real database seeding
-- saved leads persistence
-- recent ZIP persistence
-- scraping
-- enrichment
-- external APIs
-- dashboard complexity
-- billing
-- teams
-- organizations
-- permissions
-- analytics packages
-
-These are later phases.
-
-Important: the next phase is not “database first.”
-
-The next phase should be:
-
-```text
-Phase 3: Real Data Acquisition Plan
-```
-
-A database may come after the real-data plan, but the project first needs clarity on what data is needed, where it comes from, how it is verified, and how it should be stored.
-
----
-
-## 11. Correct Product Objective
-
-The core product objective is:
-
-```text
-A user or sales rep enters a postal ZIP code → the site finds real small/boutique law firm prospects in or near that ZIP → the user reviews useful firm details → the user can eventually save and work those leads.
-```
-
-The current app is the deployed shell of that idea.
-
-The real objective is not:
-
-```text
-show sample prospects forever
-```
-
-The real objective is:
-
-```text
-find and use real law firm prospect data
-```
-
-A useful real prospect record probably needs:
-
-```text
-firm name
-website
-phone
-city/state/ZIP
-practice areas
-attorney count or size estimate
-source URL
-source type
-confidence level
-last checked date
-```
-
----
-
-## 12. Data Ownership Rule
+## 16. Data Ownership Guardrail
 
 This remains central.
 
-Global/shared data:
+### Shared/Internal Canonical Data
 
-- ZIP code research
 - firm records
-- attorney records
+- attorney names / attorney count where verified
 - practice areas
-- data source records
-- cached ZIP results
-
-Private/user-specific data:
-
-- saved leads
-- recent ZIP searches
-- notes
-- statuses
-- tasks
-- follow-up reminders
-
-Do not let the coding agent blur this line.
-
-This matters before adding persistence.
-
-Firm/prospect data can eventually be global/shared.
-
-Saved leads, notes, statuses, recent searches, tasks, and reminders are private user data and should not be persisted until auth/database/user ownership is designed.
-
----
-
-## 13. Current Real Data Direction
-
-The old approved data approach was:
-
-```text
-Manual/sample seed data only.
-```
-
-That is still true for the deployed Phase 2.5 app.
-
-But the next product phase is to move toward real data.
-
-Before implementing fetching, scraping, enrichment, provider use, or prompt-driven research, the project must document the data plan in:
-
-```text
-docs/planning/03-data-fetching-plan.md
-```
-
-The plan must define:
-
-- trigger
-- input
-- source
-- exact prompt/query/API request
-- pass number
-- output fields
-- confidence/source quality
-- save behavior
-- overwrite behavior
-- cost/rate-limit risk
-- legal/terms-of-use considerations
-- duplicate handling
-- freshness/last-checked rules
-
-The first real-data implementation should be deliberately small.
-
-Preferred approach:
-
-```text
-Hybrid:
-Start with a small, sourced, manually curated set of real firm records for one ZIP/area.
-Add source metadata and confidence fields.
-Then later automate discovery/refinement once the data shape is clear.
-```
-
-Do not build a giant scraper first.
-
-Do not add a database before defining the data and source plan.
-
----
-
-## 14. Recommended Next Phase
-
-Next phase:
-
-```text
-Phase 3: Real Data Acquisition Plan
-```
-
-Recommended next task title:
-
-```text
-Create real data acquisition plan for ZIP-code law firm prospecting
-```
-
-Goal:
-
-```text
-Define how the app will find, verify, structure, and eventually store real small/boutique law firm prospect data by ZIP code.
-```
-
-This should be a planning/doc task, not an app-code task.
-
-Likely output file:
-
-```text
-docs/planning/03-data-fetching-plan.md
-```
-
-Likely updates:
-
-```text
-docs/planning/09-roadmap.md
-tasks/work.md
-tasks/current-task.md
-README.md if needed
-```
-
-Do not add:
-
-- Prisma
-- database schema
-- migrations
-- auth
-- API routes
-- scraping code
-- external fetch code
-- new packages
-- saved leads persistence
-
-The data plan should answer:
-
-1. What counts as a prospect?
-2. What fields are required for a useful first record?
-3. Which fields are optional?
-4. What sources are acceptable?
-5. What sources are disallowed or risky?
-6. How does the app decide confidence?
-7. How are duplicates detected?
-8. What does “near this ZIP” mean?
-9. How will source URLs and last-checked dates be tracked?
-10. What is the first manual real-data experiment?
-11. What later automation paths are possible?
-12. What must be true before adding database persistence?
-
----
-
-## 15. Suggested Next `tasks/current-task.md`
-
-Use this as the next disposable task.
-
-```md
-# Current Task: Create real data acquisition plan for ZIP-code law firm prospecting
-
-## Status
-
-Ready for coding agent.
-
-## Goal
-
-Create a practical real-data acquisition plan for the Legal Prospector app.
-
-The goal is to define how the app will find, verify, structure, and eventually store real small/boutique law firm prospect data by postal ZIP code.
-
-This is a planning/documentation task only.
-
-Do not implement real fetching, scraping, database storage, auth, or API routes yet.
-
-## Current project state
-
-The app is publicly deployed at:
-
-https://legal-prospect.vercel.app
-
-The current app supports:
-
-- ZIP-code prospect search against manually curated sample data
-- ZIP+4 normalization
-- validation and empty states
-- prospect result cards
-- expandable/collapsible prospect details
-- browser-session save/unsave UI
-- accessible ProspectCard buttons
-- public-facing copy and metadata
-- first public deployment completed
-
-The current app does not yet use real data.
-
-## Product objective
-
-The real product objective is:
-
-A user or sales rep enters a postal ZIP code, and the site finds real small/boutique law firm prospects in or near that ZIP.
-
-Useful real prospect data should eventually include:
-
-- firm name
-- website
-- phone
-- city/state/ZIP
-- practice areas
-- attorney count or size estimate
-- source URL
+- source URLs
 - source type
 - confidence level
+- verification status
 - last checked date
-
-## Scope
-
-Allowed:
-
-- Create or update `docs/planning/03-data-fetching-plan.md`.
-- Review existing planning docs if needed.
-- Define real prospect data fields.
-- Define source criteria and source-quality levels.
-- Define confidence rules.
-- Define duplicate-handling rules.
-- Define freshness and last-checked rules.
-- Define what “near this ZIP” means for the first version.
-- Propose a small first manual real-data experiment.
-- Identify future automation paths.
-- Update `tasks/work.md` with a brief note.
-
-Explicitly forbidden:
-
-- No database.
-- No Prisma.
-- No migrations.
-- No auth.
-- No user accounts.
-- No backend API routes.
-- No scraping code.
-- No external fetch code.
-- No enrichment implementation.
-- No provider/API integration.
-- No saved leads persistence.
-- No dashboard.
-- No new dependencies.
-- No app source-code changes unless required only to fix documentation links, and ask first.
-- Do not run terminal commands.
-
-## Data ownership rule
-
-Keep this distinction clear:
-
-Global/shared data:
-
+- source/enrichment metadata
 - ZIP research
-- firm records
-- attorney records
-- practice areas
-- source records
-- cached ZIP results
+- cached ZIP results later
 
-Private/user-specific data:
+### Private/User-Specific Data
 
 - saved leads
-- notes
-- statuses
+- user notes
+- user-specific statuses
 - tasks
 - reminders
 - recent searches
+- search runs
+- search results seen by a user/session
+- follow-up workflow state
 
-This task is about global/shared prospect data only.
+Do not let coding agents blur this line.
 
-Do not design private saved-lead persistence yet.
+The canonical firm corpus may be shared internally.
 
-## Required sections for `docs/planning/03-data-fetching-plan.md`
-
-Include these sections:
-
-1. Purpose
-2. Current state
-3. Real-data objective
-4. Prospect record fields
-5. Source types and source-quality levels
-6. Confidence scoring
-7. ZIP and geographic matching rules
-8. Duplicate handling
-9. Freshness and last-checked rules
-10. Manual first-pass workflow
-11. Future automation options
-12. Risks and constraints
-13. What must be true before database persistence
-14. Explicit non-goals for now
-
-## Recommended first real-data experiment
-
-Define a small manual experiment such as:
-
-- choose one ZIP code, likely `19103`
-- manually identify 5–10 real small/boutique law firm prospects
-- record source URLs
-- record confidence level
-- record last checked date
-- compare fields against the existing `Prospect` type
-- decide what type changes will be needed later
-
-Do not add those records to the app in this task unless the human explicitly asks for a separate follow-up task.
-
-## Human-run verification commands
-
-No commands are required for a docs-only task.
-
-If the human wants to check the repo afterward, recommend:
-
-```bash
-git status
-git diff
-```
-
-If everything is good, the human may commit with:
-
-```bash
-git add docs/planning/03-data-fetching-plan.md tasks/work.md
-git commit -m "Create real data acquisition plan"
-git push
-```
-
-## Acceptance criteria
-
-This task is complete when:
-
-- `docs/planning/03-data-fetching-plan.md` exists or is updated.
-- The plan clearly defines the first real-data acquisition approach.
-- The plan does not jump straight to implementation.
-- The plan separates global prospect data from private user data.
-- The plan identifies the smallest safe first real-data experiment.
-- The plan names risks around source quality, freshness, duplicates, rate limits, cost, and terms of use.
-- No database/auth/API/scraping/fetching/dependency/app-code work was added.
-- `tasks/work.md` is updated.
-
-## Final report required from coding agent
-
-When finished, report:
-
-1. Files changed.
-2. Summary of the real-data plan.
-3. Proposed first manual real-data experiment.
-4. Key risks identified.
-5. Confirmation that no implementation/database/auth/API/scraping/dependency/app-code work was added.
-6. Suggested human review steps.
-```
+User workflow data should remain private and must wait for auth/user ownership design.
 
 ---
 
-## 16. BGlad Role Going Forward
+## 17. Real Data / Scraping Direction
 
-BGlad should continue acting as:
+The product is a data app.
 
-- product/technical planning partner
-- scope-control reviewer
-- coding-agent handoff writer
-- coding-agent final-report reviewer
-- risk checker
-- migration/data-loss guardrail
-- testing/process coach
-- plain-English explainer
-- product-owner support
-
-BGlad is not the coding agent.
-
-BGlad should not try to directly build the app unless the user specifically asks for markdown handoffs, review materials, or project documentation.
-
----
-
-## 17. Watchouts for Future Sessions
-
-### Watch for command-control drift
-
-If an agent says it ran commands, clarify whether those were:
-
-- actual terminal commands, or
-- file-browser/view/edit actions inside the coding tool
-
-Terminal commands remain human-only.
-
-### Watch for unreported changed files
-
-If the agent activity log says it edited files that are not in the final report, ask for clarification before commit.
-
-### Watch for “database first” drift
-
-The agent recently suggested:
+The likely future path is:
 
 ```text
-Phase 5: Clean Database Foundation
+seed demo data → DB-backed seed data → small verified real dataset → controlled scraping/enrichment → daily enrichment pipeline
 ```
 
-Do not accept that as the next step.
+But do not jump to scraping yet.
 
-Correct next step:
-
-```text
-Phase 3: Real Data Acquisition Plan
-```
-
-Database planning comes after the data acquisition plan is clear.
-
-### Watch for design scope creep
-
-Phrases like:
-
-```text
-premium
-beautiful
-advanced
-dashboard
-production-ready
-```
-
-should be narrowed to:
-
-```text
-simple
-readable
-public MVP
-controlled
-honest
-```
-
-### Watch for early persistence
-
-Saved leads, recent ZIPs, notes, and statuses are private user-workflow data.
-
-They should not be persisted until auth/data ownership/database plans are ready.
-
-### Watch for real-data shortcuts
-
-Do not let the agent jump straight into scraping or external API usage.
-
-First define:
+Before scraping/enrichment implementation, define:
 
 - source
 - terms/risk
@@ -921,10 +733,82 @@ First define:
 - duplicate handling
 - freshness
 - save/overwrite behavior
+- human review / verification process
+
+The project will likely build toward a 3k–5k firm canonical dataset, then worry more deeply about shared result scale, enrichment, and workflow layers.
 
 ---
 
-## 18. User Working Style Reminder
+## 18. Watchouts for Future Sessions
+
+### Watch for command-control drift
+
+If an agent says it ran commands, clarify whether those were:
+
+- actual terminal commands run by the agent
+- human-run commands included in the log
+- file-browser/view/edit actions inside the coding tool
+
+Terminal commands remain human-only.
+
+### Watch for unreported changed files
+
+If the activity log says files were edited but the final report omits them, ask for clarification before commit.
+
+Use `git status` as the source of truth.
+
+### Watch for generated files
+
+Do not commit generated Prisma client files.
+
+Expected generated path to ignore:
+
+```text
+src/generated/prisma/
+```
+
+### Watch for `.DS_Store`
+
+Do not commit:
+
+```text
+.DS_Store
+docs/.DS_Store
+```
+
+Restore/remove accidental `.DS_Store` changes before commit.
+
+### Watch for database scope creep
+
+Do not add:
+
+- auth
+- saved leads
+- recent ZIP persistence
+- user notes
+- statuses
+- search history
+- scraping/enrichment tables
+- dashboard complexity
+- teams/organizations/billing
+
+unless the current task explicitly covers that one slice.
+
+### Watch for “real data” overclaims
+
+Do not mark records as verified or high-confidence unless they are sourced and verified.
+
+Demo records should stay honest:
+
+```text
+sourceType: MANUAL_SEED
+confidenceLevel: UNKNOWN
+verificationStatus: CANDIDATE
+```
+
+---
+
+## 19. User Working Style Reminder
 
 The user prefers:
 
@@ -949,10 +833,12 @@ The user likes to discuss “why” in plain English, especially around:
 - whether to approve an agent plan
 - whether an agent’s report is trustworthy
 - how to split human tasks from coding-agent tasks
+- migration and data-loss guardrails
+- how to sequence database tasks safely
 
 ---
 
-## 19. Current Best Summary
+## 20. Current Best Summary
 
 The project has moved from:
 
@@ -963,13 +849,7 @@ planning docs only
 to:
 
 ```text
-a deployed public MVP shell for ZIP-code legal prospect search
-```
-
-The site is live at:
-
-```text
-https://legal-prospect.vercel.app
+a deployed public MVP shell with a committed Prisma/Neon Firm database foundation.
 ```
 
 What exists:
@@ -978,22 +858,36 @@ What exists:
 A public Next.js app where a user can search a postal ZIP code and see manually curated sample law firm prospects.
 ```
 
+What also now exists:
+
+```text
+A minimal Prisma/Neon database foundation with a canonical Firm model and an initial migration.
+```
+
 What comes next:
 
 ```text
-Create the real data acquisition plan.
+Create a controlled, idempotent seed script to load the existing demo prospects into the Firm table.
 ```
 
-The next phase should answer:
+Do not jump straight to:
 
 ```text
-How do we find real law firm prospects by ZIP code, verify them, source them, structure them, and prepare for storage later?
+DB-backed UI search
+auth
+saved leads
+recent ZIP persistence
+scraping
+real firm enrichment
+dashboard features
 ```
-
-Do not jump straight to Prisma, database, auth, scraping, or saved-lead persistence.
 
 Most likely next safe task:
 
 ```text
-Create real data acquisition plan for ZIP-code law firm prospecting.
+Phase 5.4: Create controlled Prisma seed script for demo Firm records.
 ```
+
+BGlad should continue acting as the product/technical planning partner, scope-control reviewer, coding-agent handoff writer, final-report reviewer, migration/data-loss guardrail, testing/process coach, and plain-English explainer.
+
+BGlad is not the coding agent.

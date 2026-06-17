@@ -1,401 +1,155 @@
-# Current Task: Create Prisma + Neon database planning document
-
-## Status
-
-Ready for coding agent.
+# Phase 5.8 — Production DB-Backed Search Deployment Readiness
 
 ## Goal
 
-Create a practical database planning document for the Legal Prospector app using the preferred learning/MVP stack:
+Safely prepare and verify the production deployment of the DB-backed ZIP-code prospect search now that the homepage UI calls the API route created in Phase 5.6.
 
-- Neon Postgres for the SQL database
-- Prisma as the ORM and schema modeling layer
+The product should continue to behave like the existing public MVP, but the search results should now come through the database-backed API rather than frontend-only static seed data.
 
-This is a planning/documentation task only.
+## User Review Required
 
-The goal is to define the future database shape, ownership boundaries, and sequencing before any database implementation begins.
+> [!IMPORTANT]
+> This task is primarily a verification/deployment-readiness checkpoint.
+>
+> Do not add new product features.
+> Do not add auth, saved-lead persistence, search history, scraping, enrichment, or real firm records.
+> Do not edit `.env` with real secrets in code or documentation.
+> Do not commit generated Prisma client files.
+> Human controls all terminal commands, Vercel settings, Neon settings, and deployment actions.
 
-Do not install Prisma, create a Prisma schema, connect to Neon, create migrations, add environment variables, add API routes, or implement persistence in this task.
+## Current Context
 
-## Current project state
+Completed immediately before this task:
 
-The app is publicly deployed at:
-
-https://legal-prospect.vercel.app
-
-Completed phases:
-
-- Phase 0: Control and Planning
-- Phase 1: Basic App Shell
-- Phase 2: ZIP-code Prospect Search Shell
-- Phase 2.5: First Public Deployment
-- Phase 3: Real Data Acquisition Plan
-- Phase 3.1: Prospect Data Model Gap Analysis
-- Phase 3.2: Frontend Prospect Model Alignment
-
-The current app supports:
-
-- ZIP-code prospect search against manually curated sample data
-- ZIP+4 normalization
-- validation and empty states
-- prospect result cards
-- expandable/collapsible prospect details
-- browser-session save/unsave UI
-- accessible ProspectCard buttons
-- public-facing copy and metadata
-- frontend `Prospect` type aligned with planned real-data fields
-
-The project still does not use a real database, API routes, auth, scraping, or persistence.
-
-## Important stack decision
-
-For the next database phase, assume this stack unless a later product or scaling need requires changing it:
-
-```text
-Database hosting: Neon Postgres
-ORM/schema layer: Prisma
-```
-
-Reason:
-
-```text
-This is the stack the human is currently learning and wants to use for the MVP database phase.
-```
-
-Important:
-
-- Treat Prisma + Neon as the chosen MVP/learning stack.
-- Do not frame it as the permanent final architecture forever.
-- Note that the stack can be revisited later if scale, cost, performance, or product needs require it.
-
-## Product objective
-
-The real product objective remains:
-
-A user or sales rep enters a postal ZIP code, and the site finds real small/boutique law firm prospects in or near that ZIP.
-
-Eventually, users should be able to save and work leads, but private user workflow persistence must wait until auth and ownership are designed.
-
-## Files to review first
-
-Review these files before writing:
-
-```text
-docs/planning/03-data-fetching-plan.md
-docs/planning/12-prospect-data-model-gap-analysis.md
-docs/planning/09-roadmap.md
-docs/planning/08-coding-agent-rules.md
-src/types/prospect.ts
-src/data/prospects.ts
-tasks/work.md
-```
-
-Also check whether this file already exists:
-
-```text
-docs/planning/05-database-plan.md
-```
-
-If it exists, update it. If it does not exist, create it.
+- Phase 5.6 created `GET /api/prospects/search?zip=<zip>`.
+- Phase 5.7 wired the homepage ZIP-code search UI to that API route.
+- Saved leads remain in-memory/client-side only.
+- The UI copy should remain honest that the app is currently showing seeded demo/sample prospect data from the database.
 
 ## Scope
 
-Allowed:
+### Allowed
 
-- Create or update `docs/planning/05-database-plan.md`.
-- Document Neon Postgres + Prisma as the preferred MVP/learning database stack.
-- Define planned database entities at a conceptual level.
-- Separate global/shared prospect data from private/user-specific data.
-- Propose table/model boundaries.
-- Identify what should be implemented first later.
-- Identify what should be deferred.
-- Identify environment variable needs conceptually, without adding them.
-- Identify migration and data-loss safety rules conceptually.
-- Update `docs/planning/09-roadmap.md` only if a small roadmap note is needed.
-- Update `tasks/work.md` with a brief task note.
+- Review production-readiness for DB-backed search.
+- Confirm required production environment variables are documented as placeholders only.
+- Confirm Vercel has the necessary Neon/Prisma environment variables configured by the human.
+- Confirm the deployed site still loads publicly.
+- Confirm production API responses are JSON, not HTML error pages.
+- Confirm `19103`, `19103-1234`, invalid ZIPs, and no-result ZIPs behave correctly in production.
+- Update `tasks/work.md` with a concise Phase 5.8 verification/deployment-readiness entry if appropriate.
+- Update `tasks/current-task.md` to the next recommended task only after this verification checkpoint is complete.
 
-Explicitly forbidden:
+### Forbidden
 
-- No `schema.prisma` changes.
-- No Prisma install.
-- No package installation.
-- No migrations.
-- No Neon connection setup.
-- No database URL or environment variable creation.
-- No `.env` edits.
-- No API routes.
-- No auth.
-- No user accounts.
-- No saved-lead persistence.
-- No scraping code.
-- No external fetching code.
-- No app behavior changes.
-- No new dependencies.
-- Do not run terminal commands.
+- No schema changes.
+- No migration files.
+- No seed-data changes.
+- No new database tables.
+- No auth/user/session work.
+- No saved leads persistence.
+- No recent-search persistence.
+- No scraping or enrichment.
+- No real firm records.
+- No dashboard expansion.
+- No `.env` edits containing real secrets.
+- No generated Prisma client files committed.
+- No terminal commands run by the agent.
 
-## Important command rule
+## Human Verification Commands
 
-Do not run terminal commands.
-
-This includes, but is not limited to:
+Run locally first:
 
 ```bash
-npm install
-npx prisma init
-npx prisma migrate dev
-npx prisma db push
 npm run test
 npm run build
 npm run dev
-git status
-git diff
-git add
-git commit
-git push
 ```
 
-You may recommend commands only under:
-
-```text
-Commands for human to run
-```
-
-The human runs all commands.
-
-## Absolutely forbidden commands
-
-Do not suggest or run these unless the human explicitly requests a future emergency/destructive workflow:
+Use the actual local port printed by Next.js:
 
 ```bash
-npx prisma db push --accept-data-loss
-npx prisma migrate reset
-git reset --hard
-git clean -fd
+curl -sS "http://localhost:<port>/api/prospects/search?zip=19103" | jq
+curl -sS "http://localhost:<port>/api/prospects/search?zip=19103-1234" | jq
+curl -sS "http://localhost:<port>/api/prospects/search?zip=90210" | jq
+curl -i "http://localhost:<port>/api/prospects/search?zip=abc"
 ```
 
-If a future task involves force pushing, prefer:
+Expected local behavior:
+
+- `19103` returns seeded demo prospects.
+- `19103-1234` normalizes and returns the same seeded demo prospects.
+- `90210` returns `200` with an empty `results` array.
+- `abc` returns `400` with JSON, not HTML.
+
+## Production Environment Checklist
+
+The human should confirm in Vercel project settings that production has the required DB variables configured.
+
+Likely required variables:
+
+```text
+DATABASE_URL=<Neon pooled connection string>
+DIRECT_URL=<Neon direct connection string, if required by current Prisma/Neon setup>
+```
+
+Use actual project conventions from `.env.example` and `prisma.config.ts`.
+
+Do not paste real values into chat, docs, commits, or task files.
+
+## Production Verification
+
+After deployment, test the public production URL:
 
 ```bash
-git push --force-with-lease
+curl -sS "https://legal-prospect.vercel.app/api/prospects/search?zip=19103" | jq
+curl -sS "https://legal-prospect.vercel.app/api/prospects/search?zip=19103-1234" | jq
+curl -sS "https://legal-prospect.vercel.app/api/prospects/search?zip=90210" | jq
+curl -i "https://legal-prospect.vercel.app/api/prospects/search?zip=abc"
 ```
 
-Only after the human confirms it is safe.
+Also verify in the browser:
 
-## Data ownership rule
+1. Open `https://legal-prospect.vercel.app`.
+2. Search `19103`.
+3. Search `19103-1234`.
+4. Search `90210`.
+5. Search invalid input like `abc`.
+6. Confirm expand/collapse still works.
+7. Confirm save/unsave still works during the browser session.
+8. Refresh and confirm saved state clears as expected.
+9. Confirm copy says the app is showing seeded demo/sample prospect data, not verified real firm records.
 
-Keep this distinction central.
+## Expected Completion Criteria
 
-Global/shared data:
+Phase 5.8 is complete when:
 
-- ZIP research
-- firm records
-- attorney records
-- practice areas
-- source records
-- cached ZIP results
-- source URLs
-- source type
-- confidence level
-- verification status
-- last checked date
+- Local tests pass.
+- Local build passes.
+- Local DB-backed UI behavior works.
+- Production deployment has required environment variables configured by the human.
+- Production API returns JSON responses for success and error cases.
+- Production homepage search uses DB-backed results successfully.
+- No secrets, generated files, schema changes, migrations, auth, saved-lead persistence, or scraping work were introduced.
 
-Private/user-specific data:
+## Next Recommended Task After Completion
 
-- saved leads
-- user notes
-- user-specific statuses
-- tasks
-- reminders
-- recent searches
-- follow-up workflow state
-- ownership of a lead by a user or team
-
-This task should plan both categories, but it must clearly mark private/user-specific persistence as a later phase that depends on auth/user ownership design.
-
-## Required sections for `docs/planning/05-database-plan.md`
-
-Include these sections:
-
-1. Purpose
-2. Current state
-3. Chosen MVP database stack
-4. Why Neon Postgres + Prisma for now
-5. What can be revisited later
-6. Data ownership boundaries
-7. Planned global/shared models
-8. Planned private/user-specific models
-9. Suggested first database slice
-10. Fields to defer
-11. Conceptual Prisma model sketch
-12. Environment variables and secrets plan
-13. Migration safety rules
-14. Data-loss guardrails
-15. Local development and human-run commands, conceptual only
-16. Risks and constraints
-17. Explicit non-goals for now
-18. Suggested follow-up tasks
-
-## Guidance for planned global/shared models
-
-At a conceptual level, consider models such as:
+After production DB-backed search is verified, the next safe product task is likely:
 
 ```text
-Firm
-Attorney
-PracticeArea
-FirmPracticeArea
-FirmAttorney
-DataSource
-ZipArea
-ZipSearchCache
+Phase 6.1 — Define the first small verified real-firm data intake workflow
 ```
 
-Do not overbuild. If a simpler MVP shape is better, explain why.
+This should be planning-first, not scraping-first.
 
-The most important global model is the future law firm/prospect record.
+It should define:
 
-## Guidance for private/user-specific models
+- target geography
+- allowed sources
+- verification rules
+- fields to capture
+- confidence/verification status handling
+- duplicate handling
+- human review process
+- what counts as a safe first real prospect record
 
-At a conceptual level, future private models may include:
-
-```text
-User
-SavedLead
-LeadNote
-LeadStatus
-Task
-Reminder
-RecentSearch
-```
-
-However:
-
-- Do not design full auth yet.
-- Do not implement private persistence yet.
-- Mark these as future/private models requiring auth and ownership decisions.
-
-## Suggested first database slice
-
-Recommend the smallest safe future implementation slice.
-
-Preferred direction:
-
-```text
-First future DB slice should store global/shared firm prospect records only.
-```
-
-It should not include private saved leads yet.
-
-The first slice should likely support:
-
-- creating/storing firm records
-- ZIP-based firm lookup
-- source metadata
-- confidence level
-- verification status
-- last checked date
-
-Do not implement it in this task.
-
-## Conceptual Prisma model sketch
-
-The document may include Prisma-like pseudocode, but it must be clearly labeled:
-
-```text
-Planning-only sketch. Do not implement in this task.
-```
-
-The sketch should be intentionally small and understandable.
-
-Avoid writing a production-ready `schema.prisma`.
-
-## Environment variables and secrets plan
-
-Document expected future environment variables conceptually, such as:
-
-```text
-DATABASE_URL
-DIRECT_URL
-```
-
-Important:
-
-- Do not add real values.
-- Do not edit `.env`.
-- Do not create `.env.example` unless explicitly requested in a separate future task.
-- Explain that secrets must not be committed.
-
-## Migration safety rules
-
-Include clear rules:
-
-- Prefer reviewed migrations over blind database pushes.
-- Never use destructive migration commands casually.
-- Never run data-loss commands without explicit human confirmation.
-- In this project, the human runs all database commands.
-- Production database changes require extra review.
-
-## Roadmap note
-
-If updating `docs/planning/09-roadmap.md`, keep it small.
-
-Suggested note:
-
-```text
-Future database phase assumes Neon Postgres + Prisma for the MVP/learning stack, subject to later review if product or scaling needs change.
-```
-
-Do not make roadmap changes broad or speculative.
-
-## Human-run verification commands
-
-No commands are required for a docs-only task.
-
-If the human wants to check the repo afterward, recommend:
-
-```bash
-git status
-git diff
-```
-
-If everything is good, the human may commit with:
-
-```bash
-git add docs/planning/05-database-plan.md docs/planning/09-roadmap.md tasks/work.md
-git commit -m "Document Prisma and Neon database plan"
-git push
-```
-
-Adjust the `git add` command if `docs/planning/09-roadmap.md` was not changed.
-
-Only the human should run these commands.
-
-## Acceptance criteria
-
-This task is complete when:
-
-- `docs/planning/05-database-plan.md` exists or is updated.
-- The document identifies Neon Postgres + Prisma as the preferred MVP/learning database stack.
-- The document clearly states this stack can be revisited later.
-- The document separates global/shared data from private/user-specific data.
-- The document recommends the first future database slice as global/shared firm prospect records only.
-- The document defers saved leads, notes, statuses, tasks, reminders, recent searches, and other private workflow data until auth/user ownership is designed.
-- The document includes migration and data-loss safety rules.
-- The document does not implement Prisma, Neon, migrations, API routes, auth, persistence, scraping, fetching, app behavior changes, dependencies, or environment variable changes.
-- `tasks/work.md` is updated.
-- No terminal commands were run.
-
-## Final report required from coding agent
-
-When finished, report:
-
-1. Files changed.
-2. Summary of the database plan.
-3. How Neon Postgres + Prisma were documented.
-4. What is recommended for the first future database slice.
-5. What private/user-specific data was deferred.
-6. Key migration/data-loss guardrails.
-7. Confirmation that no Prisma setup, Neon connection, migrations, API routes, auth, persistence, dependencies, `.env` changes, or app behavior changes were added.
-8. Confirmation that no terminal commands were run.
-9. Commands for the human to run.
-10. Suggested human review steps.
+Do not add real data until the intake workflow is approved.
