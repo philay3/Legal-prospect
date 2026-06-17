@@ -1,66 +1,94 @@
-# Current Task: Prepare app for first public deployment
+# Current Task: Document first public MVP deployment
 
 ## Status
 
-Ready for coding agent.
+Completed. Deployed URL has been recorded and verified.
+
 
 ## Goal
 
-Prepare the current Next.js app for a first public deployment.
+Support and document the first public deployment of the Legal Prospector Next.js app.
 
-This task should make the site deployment-ready without adding database, auth, persistence, external APIs, scraping, or new product features.
+The human will perform the actual GitHub/Vercel deployment steps. The coding agent should only inspect/update documentation and provide verification guidance.
 
-## Important correction
+## Current phase
 
-The goal is not to keep polishing a local-only demo forever.
-
-The goal is to get the website up and running publicly as a first MVP.
-
-The app may still use manual/local seed data for now, but the site should be clean, buildable, and ready for deployment.
+```text
+Phase 2.5: First Public Deployment
+```
 
 ## Current project state
 
 The app currently supports:
 
-- ZIP input
-- local/manual prospect search
+- ZIP-code prospect search against manually curated sample data
 - ZIP+4 normalization
 - validation and empty states
 - prospect result cards
-- extracted `ProspectCard` component
 - expandable/collapsible prospect details
-- local-only in-memory save/unsave UI state
-- accessible expand/collapse and save/unsave buttons
-- ZIP utility tests including ZIP+4 regression coverage
+- browser-session save/unsave UI
+- accessible `ProspectCard` buttons
+- public-facing copy and metadata
+- first-deploy checklist
+- passing tests and build from human-run verification
 
-The previous task improved `ProspectCard` accessibility.
+The previous task, `Prepare app for first public deployment`, has been committed.
 
-## User-facing deployment goal
+## Deployment split
 
-A visitor should be able to open the deployed website and:
+The human will handle:
 
-- see a clean landing/search page
-- search ZIP `19103`
-- view available seed prospects
-- expand prospect details
-- save/unsave prospects during the current browser session
-- understand that current saved state is session-only
+- terminal commands
+- git push
+- GitHub repository setup if needed
+- Vercel project import
+- deploy button clicks
+- production deployment checks
+- providing the deployed URL
+
+The coding agent will handle:
+
+- documentation updates
+- deployment checklist cleanup
+- recording the final deployment URL after the human provides it
+- final report
+
+## Human-controlled command rule
+
+The coding agent must not run terminal commands.
+
+This includes:
+
+```text
+git status
+git add
+git commit
+git push
+npm run test
+npm run build
+npm run dev
+vercel
+npx
+```
+
+Commands may be suggested under `Commands for human to run`, but not executed by the coding agent.
 
 ## Scope
 
 Allowed:
 
-- Review public-facing copy for deployment readiness.
-- Replace overly internal labels like `Phase 2` if they make the site feel unfinished.
-- Keep any seed-data/demo disclaimers honest if the underlying data is still manual or fictional.
-- Improve metadata in `src/app/layout.tsx` if needed.
-- Add or update basic deployment notes in `README.md` or a planning doc.
-- Add a simple first-deploy checklist if helpful.
-- Confirm there are no required environment variables for the current app.
-- Update `tasks/work.md` with a brief note about the completed work.
+- Inspect deployment-related files.
+- Confirm the app has no required environment variables based on current code/docs.
+- Confirm `package.json` has expected scripts if needed.
+- Update `docs/planning/11-first-deploy-checklist.md` with deployment result details after the human provides the URL.
+- Update `tasks/work.md` with a brief deployment task entry.
+- Optionally update `README.md` only if the deployment documentation is clearly incomplete.
+- Provide a post-deploy verification checklist.
 
 Explicitly forbidden:
 
+- No app feature changes.
+- No visual redesign.
 - No database.
 - No Prisma.
 - No migrations.
@@ -77,71 +105,62 @@ Explicitly forbidden:
 - No scraping.
 - No enrichment.
 - No new dependencies.
-- No large redesign.
-- No new product feature.
+- No Vercel analytics package.
+- No environment variables unless the human explicitly identifies a required one.
 - Do not run terminal commands.
 
-## Deployment-readiness guidance
+## Deployment URL
 
-The current app should remain simple.
+The human will provide the deployed URL.
 
-Focus on:
-
-- clean public-facing language
-- honest description of current data
-- no broken internal wording
-- no references that make the site look like a private coding exercise
-- no misleading claim that data is real/live if it is still seed/manual data
-- successful build readiness
-
-Possible copy improvements:
-
-Instead of:
+When the human provides it, document it in:
 
 ```text
-Phase 2: Seed Search
+docs/planning/11-first-deploy-checklist.md
+tasks/work.md
 ```
 
-Use something like:
+Use a clear format such as:
 
 ```text
-Legal Prospect Search
+Public deployment URL: https://example.vercel.app
+Deployment date: YYYY-MM-DD
+Deployment phase: Phase 2.5 first public MVP
 ```
 
-Instead of:
+## Post-deploy verification to document
 
-```text
-Manual/demo seed data for testing purposes.
-```
+Record whether the human verified:
 
-Use honest public-facing wording such as:
-
-```text
-Currently showing manually curated sample prospect data.
-```
-
-Do not claim live, complete, verified, or production-grade data unless that is already true.
+1. Home page loads.
+2. Browser tab title is correct.
+3. Header badge reads `Legal Prospect Search`.
+4. Search ZIP `19103`.
+5. Sample prospects appear.
+6. Expand/collapse works.
+7. Save/unsave works.
+8. Saved count updates.
+9. Invalid ZIP validation works.
+10. Unsupported ZIP empty state works.
+11. Refresh clears saved browser-session state.
+12. Public copy remains honest about manually curated sample data.
 
 ## Files likely involved
 
 Likely files:
 
-- `src/app/page.tsx`
-- `src/app/layout.tsx`
-- `README.md`
+- `docs/planning/11-first-deploy-checklist.md`
 - `tasks/work.md`
 
 Possibly involved:
 
-- `docs/planning/11-first-deploy-checklist.md`
+- `README.md`
 
-Do not touch ZIP utility files or tests unless there is a clear reason.
-
-Do not touch database/auth/API/persistence files.
+Do not touch app source files unless there is a clear deployment-blocking issue and the human approves it.
 
 ## Testing guidance
 
-No new tests are required for this task.
+No new tests are required.
 
 Preserve all existing tests.
 
@@ -152,62 +171,48 @@ Do not add:
 - Cypress
 - new test dependencies
 
-## Human-run verification commands
+## Commands for human to run
 
-The coding agent must not run terminal commands.
-
-After edits are complete, recommend that the human run:
+The human may run these before deployment:
 
 ```bash
+git status
 npm run test
 npm run build
-npm run dev
-git status
+git push
 ```
 
-If everything is good, the human may commit with:
+The human may run these after documentation updates:
 
 ```bash
+git status
+git diff
+npm run test
+npm run build
 git add .
-git commit -m "Prepare app for first public deployment"
+git commit -m "Document first public deployment"
+git push
 ```
-
-## Manual browser verification
-
-The human should verify locally:
-
-1. Open the app.
-2. Confirm the page looks appropriate for a first public MVP.
-3. Search ZIP `19103`.
-4. Confirm prospects appear.
-5. Expand and collapse details.
-6. Save and unsave a prospect.
-7. Confirm the copy is honest about the current data.
-8. Confirm there are no obvious internal-only labels or unfinished process labels.
 
 ## Acceptance criteria
 
 This task is complete when:
 
-- Public-facing copy is cleaner for a first deployed MVP.
-- The app still honestly describes manual/sample seed data.
-- The site does not imply live production data if that is not true.
-- Basic app metadata is reasonable.
-- Deployment notes or checklist exist.
-- Existing search behavior is unchanged.
-- Existing expand/collapse behavior is unchanged.
-- Existing save/unsave behavior is unchanged.
-- Existing tests still pass when the human runs them.
-- No persistence, auth, database, API route, dependency, dashboard, external data, or saved-leads architecture was added.
-- `tasks/work.md` is updated with a brief note.
+- The human has deployed the app to Vercel.
+- The human has provided the public deployment URL.
+- The deployment URL is documented.
+- Post-deploy verification is documented.
+- `tasks/work.md` is updated.
+- No app code changes were made unless explicitly approved by the human.
+- No persistence, auth, database, API route, dependency, analytics, dashboard, external data, scraping, or enrichment work was added.
 
 ## Final report required from coding agent
 
 When finished, report:
 
-1. Files changed.
-2. Public-facing copy or metadata updates made.
-3. Deployment notes/checklist added or updated.
-4. Confirmation that core app behavior was preserved.
-5. Confirmation that no persistence/auth/database/API/dependency/dashboard/external-data work was added.
-6. Human verification steps to run.
+1. Deployment URL documented.
+2. Files changed.
+3. Whether any deployment issue was found.
+4. Whether any app code changes were required.
+5. Confirmation that no persistence/auth/database/API/dependency/external-data work was added.
+6. Human post-deploy verification checklist.

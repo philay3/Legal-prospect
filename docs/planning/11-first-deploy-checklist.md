@@ -35,19 +35,19 @@ You can deploy this Next.js App Router application to platforms like **Vercel** 
 
 Before triggering a public git push or build, ensure the following commands run successfully on your local machine:
 
-- [ ] **Run Unit Tests**:
+- [x] **Run Unit Tests**:
   ```bash
   npm run test
   ```
   All tests in `src/utils/prospectMatcher.test.ts` should pass.
 
-- [ ] **Run Production Build**:
+- [x] **Run Production Build**:
   ```bash
   npm run build
   ```
   Ensure Next.js compilation completes without errors, and no TypeScript or ESLint warnings block the build.
 
-- [ ] **Check Client-side Functionality**:
+- [x] **Check Client-side Functionality**:
   ```bash
   npm run dev
   ```
@@ -56,3 +56,12 @@ Before triggering a public git push or build, ensure the following commands run 
   - Try saving/unsaving prospects (verify counter badge updates and emerald border renders).
   - Expand/collapse details (verify ARIA attributes update and UI toggles successfully).
   - Search an invalid/empty ZIP (verify error messaging renders properly).
+
+---
+
+## 4. Deployment Details
+
+- **Public deployment URL**: https://legal-prospect-5wqeib9g3-philay3s-projects.vercel.app
+- **Deployment date**: 2026-06-16
+- **Deployment phase**: Phase 2.5 first public MVP
+- **Status**: Successfully deployed by human and verified working.

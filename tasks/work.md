@@ -1134,3 +1134,59 @@ No known risks. The application operates entirely client-side with no state side
 ### Next Recommended Step
 
 Prepare the Prisma configuration and database structure plan.
+
+---
+
+## 2026-06-16 — First Public MVP Deployment Documented
+
+### Task Summary
+
+Documented the first public deployment details and URL for the Legal Prospector MVP app, and marked the verification checklist as completed.
+
+### Files Created
+
+No files created.
+
+### Files Changed
+
+- `docs/planning/11-first-deploy-checklist.md` — Marked verification tasks as complete and appended the actual deployment details (URL, date, phase, status).
+- `tasks/work.md` — Logged this deployment documentation session.
+
+### What Changed
+
+- Updated the pre-flight verification checkboxes to checked (`[x]`) to reflect successful human-led testing.
+- Added a new `Deployment Details` section to `docs/planning/11-first-deploy-checklist.md` recording the live Vercel URL provided by the user.
+- Updated this work log to record completion of Phase 2.5: First Public Deployment.
+
+### Why It Changed
+
+To capture the official launch of the MVP on Vercel and complete the documentation phase for this release, ensuring all subsequent phases can build on a verified, live baseline.
+
+### Commands Suggested
+
+No commands suggested.
+
+### Commands Run by Human
+
+No commands run.
+
+### Results Pasted by Human
+
+The human provided the public Vercel deployment URL:
+`https://legal-prospect-5wqeib9g3-philay3s-projects.vercel.app`
+And confirmed all features (search, save, expand/collapse, validation, empty states) function correctly on the live site.
+
+### Verification
+
+The human can check that:
+1. `docs/planning/11-first-deploy-checklist.md` contains the correct public deployment URL.
+2. The pre-flight checklist items are checked.
+3. No code file modifications were made during this phase.
+
+### Known Risks
+
+No known risks for this task. The deployment has been confirmed working on Vercel.
+
+### Next Recommended Step
+
+Prepare the Prisma configuration and database structure plan.
