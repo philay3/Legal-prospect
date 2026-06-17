@@ -1060,3 +1060,77 @@ No known risks for this task.
 ### Next Recommended Step
 
 Prepare the Prisma configuration and database structure plan.
+
+---
+
+## 2026-06-16 — Prepare App for First Public Deployment
+
+### Task Summary
+
+Prepared the legal prospecting Next.js MVP for its first public deployment by polishing copy, updating metadata, and adding a detailed deploy checklist.
+
+### Files Created
+
+- `docs/planning/11-first-deploy-checklist.md` — holds the first public deployment checklist and verification details.
+
+### Files Changed
+
+- `src/app/page.tsx` — removed internal roadmap tags ("Phase 2") and replaced with user-facing wording ("Legal Prospect Search"), adjusted search placeholder descriptions, and corrected results subheadings to reflect sample seed data status.
+- `src/app/layout.tsx` — updated the application title to "Legal Prospector - Find Boutique Law Firms" and improved the description for public release.
+- `README.md` — updated current phase to "First MVP Deployment Ready" and added links to the deployment checklist.
+- `tasks/work.md` — logged this session's work details.
+
+### What Changed
+
+- Replaced "Phase 2: Seed Search" with "Legal Prospect Search".
+- Replaced "Demo Prospects for ZIP" with "Sample Prospects for ZIP".
+- Replaced "Manual/demo seed data for testing purposes." with "Currently showing manually curated sample prospect data."
+- Modified placeholder text from "demo prospects" and "demo prospects are available" to "sample prospects" respectively.
+- Refined the title metadata inside RootLayout.
+- Wrote a new `docs/planning/11-first-deploy-checklist.md` documenting build targets, verification parameters, and confirming zero env-variable requirements.
+
+### Why It Changed
+
+To make the application polished and ready for a public staging/MVP launch. Internal tags or disclaimers that make the site feel unfinished were removed, while maintaining accurate, honest representation that the underlying dataset is comprised of manual seed records.
+
+### Commands Suggested
+
+1. Run the test suite:
+   ```bash
+   npm run test
+   ```
+2. Build verification:
+   ```bash
+   npm run build
+   ```
+3. Start dev server:
+   ```bash
+   npm run dev
+   ```
+4. Git status inspection:
+   ```bash
+   git status
+   ```
+
+### Commands Run by Human
+
+No commands run.
+
+### Results Pasted by Human
+
+No results pasted.
+
+### Verification
+
+The human can verify:
+1. `docs/planning/11-first-deploy-checklist.md` exists and contains deploy guidelines.
+2. The UI renders the updated copy properly.
+3. Production build (`npm run build`) and test suite (`npm run test`) pass cleanly.
+
+### Known Risks
+
+No known risks. The application operates entirely client-side with no state side-effects or external network integrations.
+
+### Next Recommended Step
+
+Prepare the Prisma configuration and database structure plan.

@@ -78,12 +78,10 @@ The first version should stay smaller than this long-term vision.
 Current phase:
 
 ```text
-Phase 0: Control and Planning
+First MVP Deployment Ready
 ```
 
-This phase creates the project operating system before coding features.
-
-The goal is to make future coding-agent work safe, scoped, and understandable.
+The application has been scaffolded and the client-side interactive search flow against sample seed data has been completed. The app is polished, validated, and prepared for its first public deployment.
 
 ---
 
@@ -431,31 +429,9 @@ Do not start with:
 
 ---
 
-## Next Recommended Task
+## Public Deployment
 
-After the planning docs are complete, the next recommended coding-agent task is:
-
-```text
-Create a basic app shell with a home/search page placeholder.
-```
-
-Before starting that task, update:
-
-```text
-task/current-task.md
-```
-
-The task should explicitly say:
-
-- create app shell
-- create home/search page placeholder
-- no auth
-- no database
-- no seed data unless explicitly included
-- no external fetching
-- no saved leads
-- no recent ZIPs
-- human runs commands
+The client-side search MVP is ready for public deployment. Refer to [11-first-deploy-checklist.md](file:///Users/phillipanthony/Desktop/Phase02/legal-prospecting-planning-docs-starter/docs/planning/11-first-deploy-checklist.md) for step-by-step instructions on deploying the application to platforms like Vercel or Netlify.
 
 ---
 

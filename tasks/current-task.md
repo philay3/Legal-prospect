@@ -1,4 +1,4 @@
-# Current Task: Improve ProspectCard button accessibility
+# Current Task: Prepare app for first public deployment
 
 ## Status
 
@@ -6,49 +6,61 @@ Ready for coding agent.
 
 ## Goal
 
-Improve the accessibility semantics of the `ProspectCard` action buttons without changing behavior or visual design.
+Prepare the current Next.js app for a first public deployment.
 
-This is a small hardening/refactor task only.
+This task should make the site deployment-ready without adding database, auth, persistence, external APIs, scraping, or new product features.
+
+## Important correction
+
+The goal is not to keep polishing a local-only demo forever.
+
+The goal is to get the website up and running publicly as a first MVP.
+
+The app may still use manual/local seed data for now, but the site should be clean, buildable, and ready for deployment.
 
 ## Current project state
 
 The app currently supports:
 
 - ZIP input
-- local/manual demo prospect search
+- local/manual prospect search
 - ZIP+4 normalization
 - validation and empty states
-- demo prospect result cards
+- prospect result cards
+- extracted `ProspectCard` component
 - expandable/collapsible prospect details
 - local-only in-memory save/unsave UI state
-- extracted `ProspectCard` component
+- accessible expand/collapse and save/unsave buttons
 - ZIP utility tests including ZIP+4 regression coverage
 
-The previous task extracted the prospect result card into `src/components/ProspectCard.tsx`.
+The previous task improved `ProspectCard` accessibility.
 
-## Why this task matters
+## User-facing deployment goal
 
-Now that the card UI is isolated, the expand/collapse and save/unsave buttons should expose their state clearly to assistive technologies.
+A visitor should be able to open the deployed website and:
 
-This improves quality without expanding product scope.
+- see a clean landing/search page
+- search ZIP `19103`
+- view available seed prospects
+- expand prospect details
+- save/unsave prospects during the current browser session
+- understand that current saved state is session-only
 
 ## Scope
 
 Allowed:
 
-- Add appropriate accessibility attributes to the expand/collapse button.
-- Add appropriate accessibility attributes to the save/unsave button.
-- Use firm-specific accessible labels if helpful.
-- Convert `Prospect` import in `ProspectCard.tsx` to a type-only import if appropriate.
-- Preserve the current UI and behavior exactly.
+- Review public-facing copy for deployment readiness.
+- Replace overly internal labels like `Phase 2` if they make the site feel unfinished.
+- Keep any seed-data/demo disclaimers honest if the underlying data is still manual or fictional.
+- Improve metadata in `src/app/layout.tsx` if needed.
+- Add or update basic deployment notes in `README.md` or a planning doc.
+- Add a simple first-deploy checklist if helpful.
+- Confirm there are no required environment variables for the current app.
 - Update `tasks/work.md` with a brief note about the completed work.
 
 Explicitly forbidden:
 
-- No new user-facing feature.
-- No visual redesign.
-- No CSS changes unless absolutely necessary.
-- No behavior changes.
 - No database.
 - No Prisma.
 - No migrations.
@@ -56,6 +68,8 @@ Explicitly forbidden:
 - No user accounts.
 - No dashboard.
 - No backend API routes.
+- No saved leads table.
+- No saved lead model.
 - No localStorage.
 - No sessionStorage.
 - No cookies.
@@ -63,45 +77,69 @@ Explicitly forbidden:
 - No scraping.
 - No enrichment.
 - No new dependencies.
+- No large redesign.
+- No new product feature.
 - Do not run terminal commands.
 
-## Implementation guidance
+## Deployment-readiness guidance
 
-In `src/components/ProspectCard.tsx`, consider adding:
+The current app should remain simple.
 
-```tsx
-aria-expanded={isExpanded}
-aria-label={isExpanded ? `Hide details for ${prospect.firmName}` : `Show details for ${prospect.firmName}`}
+Focus on:
 
-to the expand/collapse button.
+- clean public-facing language
+- honest description of current data
+- no broken internal wording
+- no references that make the site look like a private coding exercise
+- no misleading claim that data is real/live if it is still seed/manual data
+- successful build readiness
 
-For the save/unsave button, consider adding:
+Possible copy improvements:
 
-aria-pressed={isSaved}
-aria-label={isSaved ? `Unsave ${prospect.firmName}` : `Save ${prospect.firmName}`}
+Instead of:
 
-Also consider changing:
+```text
+Phase 2: Seed Search
+```
 
-import { Prospect } from "@/types/prospect";
+Use something like:
 
-to:
+```text
+Legal Prospect Search
+```
 
-import type { Prospect } from "@/types/prospect";
+Instead of:
 
-if that fits the project TypeScript setup.
+```text
+Manual/demo seed data for testing purposes.
+```
 
-Files likely involved
+Use honest public-facing wording such as:
+
+```text
+Currently showing manually curated sample prospect data.
+```
+
+Do not claim live, complete, verified, or production-grade data unless that is already true.
+
+## Files likely involved
 
 Likely files:
 
-src/components/ProspectCard.tsx
-tasks/work.md
+- `src/app/page.tsx`
+- `src/app/layout.tsx`
+- `README.md`
+- `tasks/work.md`
 
-Do not touch src/app/page.tsx unless there is a clear reason.
+Possibly involved:
 
-Do not touch ZIP utility files or tests.
+- `docs/planning/11-first-deploy-checklist.md`
 
-Testing guidance
+Do not touch ZIP utility files or tests unless there is a clear reason.
+
+Do not touch database/auth/API/persistence files.
+
+## Testing guidance
 
 No new tests are required for this task.
 
@@ -109,44 +147,67 @@ Preserve all existing tests.
 
 Do not add:
 
-React Testing Library
-Playwright
-Cypress
-new test dependencies
-Human-run verification commands
+- React Testing Library
+- Playwright
+- Cypress
+- new test dependencies
+
+## Human-run verification commands
 
 The coding agent must not run terminal commands.
 
 After edits are complete, recommend that the human run:
 
+```bash
 npm run test
 npm run build
 npm run dev
 git status
+```
 
 If everything is good, the human may commit with:
 
+```bash
 git add .
-git commit -m "Improve prospect card accessibility"
-Acceptance criteria
+git commit -m "Prepare app for first public deployment"
+```
+
+## Manual browser verification
+
+The human should verify locally:
+
+1. Open the app.
+2. Confirm the page looks appropriate for a first public MVP.
+3. Search ZIP `19103`.
+4. Confirm prospects appear.
+5. Expand and collapse details.
+6. Save and unsave a prospect.
+7. Confirm the copy is honest about the current data.
+8. Confirm there are no obvious internal-only labels or unfinished process labels.
+
+## Acceptance criteria
 
 This task is complete when:
 
-Expand/collapse button exposes its expanded/collapsed state.
-Save/unsave button exposes its pressed/saved state.
-Accessible labels clearly identify the prospect affected by each button.
-Existing UI behavior is unchanged.
-Existing visual design is unchanged.
-Existing tests still pass when the human runs them.
-No persistence, auth, database, API route, dependency, dashboard, or new feature work was added.
-tasks/work.md is updated with a brief note.
-Final report required from coding agent
+- Public-facing copy is cleaner for a first deployed MVP.
+- The app still honestly describes manual/sample seed data.
+- The site does not imply live production data if that is not true.
+- Basic app metadata is reasonable.
+- Deployment notes or checklist exist.
+- Existing search behavior is unchanged.
+- Existing expand/collapse behavior is unchanged.
+- Existing save/unsave behavior is unchanged.
+- Existing tests still pass when the human runs them.
+- No persistence, auth, database, API route, dependency, dashboard, external data, or saved-leads architecture was added.
+- `tasks/work.md` is updated with a brief note.
+
+## Final report required from coding agent
 
 When finished, report:
 
-Files changed.
-Accessibility attributes added.
-Whether any type-only import cleanup was made.
-Confirmation that behavior and visuals were preserved.
-Confirmation that no new feature/persistence/auth/database/API/dependency work was added.
-Human verification steps to run.
+1. Files changed.
+2. Public-facing copy or metadata updates made.
+3. Deployment notes/checklist added or updated.
+4. Confirmation that core app behavior was preserved.
+5. Confirmation that no persistence/auth/database/API/dependency/dashboard/external-data work was added.
+6. Human verification steps to run.

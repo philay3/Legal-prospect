@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Legal Prospecting App",
-  description: "Find small and boutique law firm prospects by ZIP code.",
+  title: "Legal Prospector - Find Boutique Law Firms",
+  description: "Find and save small and boutique law firm prospects by ZIP code.",
 };
 
 export default function RootLayout({

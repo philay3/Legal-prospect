@@ -58,7 +58,7 @@ export default function Home() {
       <header className="header">
         <div className="badge">
           <span className="pulse-dot"></span>
-          <span>Phase 2: Seed Search</span>
+          <span>Legal Prospect Search</span>
         </div>
         <h1 className="title">Legal Prospector</h1>
         <p className="subtitle">
@@ -97,14 +97,14 @@ export default function Home() {
             <span className="placeholder-icon">🔍</span>
             <h3 className="placeholder-title">Ready for Search</h3>
             <p className="placeholder-desc">
-              Enter a 5-digit ZIP code above (try <strong>19103</strong> to see demo prospects) to begin searching local boutique law firms.
+              Enter a 5-digit ZIP code above (try <strong>19103</strong> to see sample prospects) to begin searching local boutique law firms.
             </p>
           </div>
         ) : matchingProspects.length > 0 ? (
           <>
             <div className="results-header">
               <div className="results-header-main">
-                <h2 className="results-title">Demo Prospects for ZIP {searchedZip}</h2>
+                <h2 className="results-title">Sample Prospects for ZIP {searchedZip}</h2>
                 {savedProspectIds.length > 0 && (
                   <span className="saved-count-badge">
                     Saved this session: {savedProspectIds.length}
@@ -112,7 +112,7 @@ export default function Home() {
                 )}
               </div>
               <p className="results-subtitle">
-                Manual/demo seed data for testing purposes.{" "}
+                Currently showing manually curated sample prospect data.{" "}
                 {savedProspectIds.length > 0 && (
                   <span className="saved-helper-text">Saved for this demo session only.</span>
                 )}
@@ -135,7 +135,7 @@ export default function Home() {
         ) : (
           <div className="placeholder-card">
             <span className="placeholder-icon">⚠️</span>
-            <h3 className="placeholder-title">No demo prospects are available for this ZIP yet</h3>
+            <h3 className="placeholder-title">No sample prospects are available for this ZIP yet</h3>
             <p className="placeholder-desc">
               There are no manual seed records configured for ZIP <strong>{searchedZip}</strong>. Please search for ZIP <strong>19103</strong> to view fictional law firm leads.
             </p>
