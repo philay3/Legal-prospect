@@ -61,7 +61,7 @@ Before triggering a public git push or build, ensure the following commands run 
 
 ## 4. Deployment Details
 
-- **Public deployment URL**: https://legal-prospect-5wqeib9g3-philay3s-projects.vercel.app
+- **Public deployment URL**: https://legal-prospect.vercel.app
 - **Deployment date**: 2026-06-16
 - **Deployment phase**: Phase 2.5 first public MVP
 - **Status**: Successfully deployed by human and verified working.

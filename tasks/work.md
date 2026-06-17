@@ -1173,7 +1173,7 @@ No commands run.
 ### Results Pasted by Human
 
 The human provided the public Vercel deployment URL:
-`https://legal-prospect-5wqeib9g3-philay3s-projects.vercel.app`
+`https://legal-prospect.vercel.app`
 And confirmed all features (search, save, expand/collapse, validation, empty states) function correctly on the live site.
 
 ### Verification
