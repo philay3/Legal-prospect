@@ -2245,3 +2245,101 @@ No known risks. The sorting is done in-memory after Prisma fetches matching ZIP 
 ### Next Recommended Step
 
 Phase 6.5 — Post-Deployment Production Verification
+
+---
+
+## 2026-06-17 — Phase 6.6 — Align Homepage Copy with Mixed Pilot Data
+
+### Task Summary
+
+Update public-facing homepage copy to accurately and honestly describe the current mixed pilot dataset of seeded demo prospects and manually reviewed real-firm pilot records.
+
+### Files Created
+
+None.
+
+### Files Changed
+
+- `src/app/page.tsx` — Updated copy inside results-section, loading state, empty state, and welcome description to reflect the mixed pilot data state rather than demo-only data, adhering to all wording and verification status rules.
+- `tasks/work.md` — Logged the implementation details of this phase.
+- `tasks/current-task.md` — Prepared and transitioned active task tracking to Phase 6.7.
+
+### What Changed
+
+- Replaced:
+  `Currently showing seeded demo prospect data from the database.`
+  with the recommended copy:
+  `Currently showing a small pilot dataset: seeded demo prospects plus manually reviewed real-firm records pending final verification.`
+- Updated loading state descriptor from:
+  `Querying seeded prospect records for ZIP...`
+  to:
+  `Querying stored database records for ZIP...`
+- Updated home welcome descriptor from:
+  `try 19103 to see sample prospects`
+  to:
+  `try 19103 to see pilot prospects`
+- Changed search description from:
+  `begin searching local boutique law firms`
+  to:
+  `begin ZIP-code search for boutique law firms`
+- Updated result header from:
+  `Sample Prospects for ZIP...`
+  to:
+  `Pilot Prospects for ZIP...`
+- Updated empty state title and description to:
+  `No prospects found`
+  and:
+  `No prospects found for this ZIP code in the current pilot dataset. Please search for ZIP 19103 to view pilot prospect data.`
+
+### Why It Changed
+
+- Since manually reviewed real law firm pilot records were seeded and successfully queried in production, homepage copy implying database results are seeded demo/sample-only was no longer fully accurate.
+- To maintain honest, conservative copy that avoids describing pending real firms as verified while clearly outlining the pilot status.
+- To comply with strict wording rules prohibiting phrases like "verified real firms", "real verified", or "local ZIP".
+
+### Database / API / Roadmap Changes
+
+- No Prisma schema, migrations, or database changes were made.
+- No API route behaviors or sorting logics were changed.
+- Seeding data remains unchanged.
+- Roadmap updates were intentionally deferred and will be addressed in Phase 6.7.
+
+### Commands Suggested
+
+The human should run these commands to verify the build and tests:
+
+```bash
+npm run test
+npm run build
+npm run dev
+git status
+git diff
+```
+
+### Commands Run by Human
+
+`No commands run.`
+
+### Results Pasted by Human
+
+`No results pasted.`
+
+### Verification
+
+The human should verify:
+1. `npm run test` passes successfully.
+2. `npm run build` succeeds without type errors.
+3. Open `http://localhost:3000` (or `https://legal-prospect.vercel.app` once deployed):
+   - Welcome card says: "... try 19103 to see pilot prospects to begin ZIP-code search..."
+   - Searching a ZIP code like `19103` shows subtitle: "Currently showing a small pilot dataset: seeded demo prospects plus manually reviewed real-firm records pending final verification."
+   - Search result header says: "Pilot Prospects for ZIP 19103"
+   - Searching an empty/unseeded ZIP shows card: "No prospects found. No prospects found for this ZIP code in the current pilot dataset. Please search for ZIP 19103 to view pilot prospect data."
+   - Loading state shows: "Querying stored database records for ZIP..."
+
+### Known Risks
+
+No known risks. All changes are copy adjustments and have no logic impact.
+
+### Next Recommended Step
+
+Phase 6.7 — Update Roadmap to Reflect Controlled Real-Data Path

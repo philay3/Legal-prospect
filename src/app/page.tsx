@@ -129,7 +129,7 @@ export default function Home() {
             <span className="placeholder-icon">⏳</span>
             <h3 className="placeholder-title">Searching Database...</h3>
             <p className="placeholder-desc">
-              Querying seeded prospect records for ZIP <strong>{normalizeZipCode(searchZip) || searchZip}</strong>.
+              Querying stored database records for ZIP <strong>{normalizeZipCode(searchZip) || searchZip}</strong>.
             </p>
           </div>
         ) : searchedZip === null ? (
@@ -137,14 +137,14 @@ export default function Home() {
             <span className="placeholder-icon">🔍</span>
             <h3 className="placeholder-title">Ready for Search</h3>
             <p className="placeholder-desc">
-              Enter a 5-digit ZIP code above (try <strong>19103</strong> to see sample prospects) to begin searching local boutique law firms.
+              Enter a 5-digit ZIP code above (try <strong>19103</strong> to see pilot prospects) to begin ZIP-code search for boutique law firms.
             </p>
           </div>
         ) : matchingProspects.length > 0 ? (
           <>
             <div className="results-header">
               <div className="results-header-main">
-                <h2 className="results-title">Sample Prospects for ZIP {searchedZip}</h2>
+                <h2 className="results-title">Pilot Prospects for ZIP {searchedZip}</h2>
                 {savedProspectIds.length > 0 && (
                   <span className="saved-count-badge">
                     Saved this session: {savedProspectIds.length}
@@ -152,7 +152,7 @@ export default function Home() {
                 )}
               </div>
               <p className="results-subtitle">
-                Currently showing seeded demo prospect data from the database.{" "}
+                Currently showing a small pilot dataset: seeded demo prospects plus manually reviewed real-firm records pending final verification.{" "}
                 {savedProspectIds.length > 0 && (
                   <span className="saved-helper-text">Saved for this browser session only.</span>
                 )}
@@ -175,9 +175,9 @@ export default function Home() {
         ) : (
           <div className="placeholder-card">
             <span className="placeholder-icon">⚠️</span>
-            <h3 className="placeholder-title">No sample prospects are available for this ZIP yet</h3>
+            <h3 className="placeholder-title">No prospects found</h3>
             <p className="placeholder-desc">
-              There are no manual seed records configured for ZIP <strong>{searchedZip}</strong>. Please search for ZIP <strong>19103</strong> to view fictional law firm leads.
+              No prospects found for this ZIP code in the current pilot dataset. Please search for ZIP <strong>19103</strong> to view pilot prospect data.
             </p>
           </div>
         )}
