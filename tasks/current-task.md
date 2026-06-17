@@ -1,4 +1,4 @@
-# Current Task: Align frontend Prospect type and sample data with real-data fields
+# Current Task: Create Prisma + Neon database planning document
 
 ## Status
 
@@ -6,11 +6,16 @@ Ready for coding agent.
 
 ## Goal
 
-Update the frontend-only `Prospect` type, sample seed data, and result card display so the public MVP can represent the real-data fields identified in the prospect data model gap analysis.
+Create a practical database planning document for the Legal Prospector app using the preferred learning/MVP stack:
 
-This is a small controlled app-code task.
+- Neon Postgres for the SQL database
+- Prisma as the ORM and schema modeling layer
 
-The goal is not to add real data fetching or persistence. The goal is to make the current seed-data app shape ready for real prospect fields later.
+This is a planning/documentation task only.
+
+The goal is to define the future database shape, ownership boundaries, and sequencing before any database implementation begins.
+
+Do not install Prisma, create a Prisma schema, connect to Neon, create migrations, add environment variables, add API routes, or implement persistence in this task.
 
 ## Current project state
 
@@ -26,6 +31,7 @@ Completed phases:
 - Phase 2.5: First Public Deployment
 - Phase 3: Real Data Acquisition Plan
 - Phase 3.1: Prospect Data Model Gap Analysis
+- Phase 3.2: Frontend Prospect Model Alignment
 
 The current app supports:
 
@@ -37,9 +43,30 @@ The current app supports:
 - browser-session save/unsave UI
 - accessible ProspectCard buttons
 - public-facing copy and metadata
-- deployed public MVP shell
+- frontend `Prospect` type aligned with planned real-data fields
 
-The project now has planning docs for real-data acquisition and prospect model gaps.
+The project still does not use a real database, API routes, auth, scraping, or persistence.
+
+## Important stack decision
+
+For the next database phase, assume this stack unless a later product or scaling need requires changing it:
+
+```text
+Database hosting: Neon Postgres
+ORM/schema layer: Prisma
+```
+
+Reason:
+
+```text
+This is the stack the human is currently learning and wants to use for the MVP database phase.
+```
+
+Important:
+
+- Treat Prisma + Neon as the chosen MVP/learning stack.
+- Do not frame it as the permanent final architecture forever.
+- Note that the stack can be revisited later if scale, cost, performance, or product needs require it.
 
 ## Product objective
 
@@ -47,71 +74,63 @@ The real product objective remains:
 
 A user or sales rep enters a postal ZIP code, and the site finds real small/boutique law firm prospects in or near that ZIP.
 
-Useful real prospect data should eventually include:
-
-- firm name
-- website
-- phone
-- city/state/ZIP
-- street address
-- ZIP+4 extension, if available
-- practice areas
-- attorney count or size estimate
-- attorney names, if available and verified
-- source URL
-- source type
-- confidence level
-- verification status
-- last checked date
+Eventually, users should be able to save and work leads, but private user workflow persistence must wait until auth and ownership are designed.
 
 ## Files to review first
 
-Review these files before editing:
+Review these files before writing:
 
 ```text
-src/types/prospect.ts
-src/data/prospects.ts
-src/components/ProspectCard.tsx
-src/utils/prospectMatcher.ts
-src/utils/prospectMatcher.test.ts
 docs/planning/03-data-fetching-plan.md
 docs/planning/12-prospect-data-model-gap-analysis.md
+docs/planning/09-roadmap.md
+docs/planning/08-coding-agent-rules.md
+src/types/prospect.ts
+src/data/prospects.ts
 tasks/work.md
 ```
 
-Also review existing rules if needed:
+Also check whether this file already exists:
 
 ```text
-docs/planning/08-coding-agent-rules.md
+docs/planning/05-database-plan.md
 ```
+
+If it exists, update it. If it does not exist, create it.
 
 ## Scope
 
 Allowed:
 
-- Update `src/types/prospect.ts`.
-- Update `src/data/prospects.ts`.
-- Update `src/components/ProspectCard.tsx` to display the new frontend-safe fields.
-- Update tests only if existing type/data changes require test adjustments.
+- Create or update `docs/planning/05-database-plan.md`.
+- Document Neon Postgres + Prisma as the preferred MVP/learning database stack.
+- Define planned database entities at a conceptual level.
+- Separate global/shared prospect data from private/user-specific data.
+- Propose table/model boundaries.
+- Identify what should be implemented first later.
+- Identify what should be deferred.
+- Identify environment variable needs conceptually, without adding them.
+- Identify migration and data-loss safety rules conceptually.
+- Update `docs/planning/09-roadmap.md` only if a small roadmap note is needed.
 - Update `tasks/work.md` with a brief task note.
 
 Explicitly forbidden:
 
-- No database.
-- No Prisma.
+- No `schema.prisma` changes.
+- No Prisma install.
+- No package installation.
 - No migrations.
+- No Neon connection setup.
+- No database URL or environment variable creation.
+- No `.env` edits.
+- No API routes.
 - No auth.
 - No user accounts.
-- No backend API routes.
+- No saved-lead persistence.
 - No scraping code.
-- No external fetch code.
-- No enrichment implementation.
-- No provider/API integration.
-- No saved leads persistence.
-- No localStorage/sessionStorage/cookies.
-- No dashboard.
+- No external fetching code.
+- No app behavior changes.
 - No new dependencies.
-- No deployment changes.
 - Do not run terminal commands.
 
 ## Important command rule
@@ -121,6 +140,10 @@ Do not run terminal commands.
 This includes, but is not limited to:
 
 ```bash
+npm install
+npx prisma init
+npx prisma migrate dev
+npx prisma db push
 npm run test
 npm run build
 npm run dev
@@ -129,8 +152,6 @@ git diff
 git add
 git commit
 git push
-npm install
-npx
 ```
 
 You may recommend commands only under:
@@ -141,213 +162,240 @@ Commands for human to run
 
 The human runs all commands.
 
+## Absolutely forbidden commands
+
+Do not suggest or run these unless the human explicitly requests a future emergency/destructive workflow:
+
+```bash
+npx prisma db push --accept-data-loss
+npx prisma migrate reset
+git reset --hard
+git clean -fd
+```
+
+If a future task involves force pushing, prefer:
+
+```bash
+git push --force-with-lease
+```
+
+Only after the human confirms it is safe.
+
 ## Data ownership rule
 
-Keep this distinction clear:
+Keep this distinction central.
 
-Global/shared prospect data:
+Global/shared data:
 
+- ZIP research
 - firm records
 - attorney records
 - practice areas
+- source records
+- cached ZIP results
 - source URLs
 - source type
 - confidence level
 - verification status
 - last checked date
-- ZIP research
-- cached ZIP results
 
-Private/user-specific workflow data:
+Private/user-specific data:
 
 - saved leads
-- notes written by a user
+- user notes
 - user-specific statuses
 - tasks
 - reminders
 - recent searches
 - follow-up workflow state
+- ownership of a lead by a user or team
 
-This task may add frontend fields for global/shared prospect data only.
+This task should plan both categories, but it must clearly mark private/user-specific persistence as a later phase that depends on auth/user ownership design.
 
-Do not persist or model private saved-lead/user workflow data.
+## Required sections for `docs/planning/05-database-plan.md`
 
-## Required implementation
+Include these sections:
 
-### 1. Update `src/types/prospect.ts`
+1. Purpose
+2. Current state
+3. Chosen MVP database stack
+4. Why Neon Postgres + Prisma for now
+5. What can be revisited later
+6. Data ownership boundaries
+7. Planned global/shared models
+8. Planned private/user-specific models
+9. Suggested first database slice
+10. Fields to defer
+11. Conceptual Prisma model sketch
+12. Environment variables and secrets plan
+13. Migration safety rules
+14. Data-loss guardrails
+15. Local development and human-run commands, conceptual only
+16. Risks and constraints
+17. Explicit non-goals for now
+18. Suggested follow-up tasks
 
-Replace the loose current confidence/source strings with typed planning-safe fields.
+## Guidance for planned global/shared models
 
-Recommended shape:
+At a conceptual level, consider models such as:
 
-```ts
-export type ConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
-
-export type VerificationStatus =
-  | 'CANDIDATE'
-  | 'PENDING_REVIEW'
-  | 'VERIFIED'
-  | 'REJECTED'
-  | 'STALE';
-
-export type SourceType =
-  | 'BAR_DIRECTORY'
-  | 'GOOGLE_MAPS'
-  | 'WEB_SCRAPE'
-  | 'MANUAL'
-  | 'MANUAL_SEED';
-
-export interface Prospect {
-  id: string;
-  firmName: string;
-  zip: string;
-  zipExt?: string | null;
-  city: string;
-  state: string;
-  streetAddress?: string | null;
-  website: string | null;
-  phone: string | null;
-  email?: string | null;
-  practiceAreas: string[];
-  attorneyCountRange: string;
-  attorneys?: string[];
-  sourceType: SourceType;
-  sourceUrl?: string | null;
-  confidenceLevel: ConfidenceLevel;
-  verificationStatus: VerificationStatus;
-  lastCheckedDate?: string | null;
-  globalNotes: string | null;
-}
+```text
+Firm
+Attorney
+PracticeArea
+FirmPracticeArea
+FirmAttorney
+DataSource
+ZipArea
+ZipSearchCache
 ```
 
-Use this as guidance, but adapt carefully to the existing codebase.
+Do not overbuild. If a simpler MVP shape is better, explain why.
 
-### 2. Update `src/data/prospects.ts`
+The most important global model is the future law firm/prospect record.
 
-Update existing manually curated sample records to match the new type.
+## Guidance for private/user-specific models
+
+At a conceptual level, future private models may include:
+
+```text
+User
+SavedLead
+LeadNote
+LeadStatus
+Task
+Reminder
+RecentSearch
+```
+
+However:
+
+- Do not design full auth yet.
+- Do not implement private persistence yet.
+- Mark these as future/private models requiring auth and ownership decisions.
+
+## Suggested first database slice
+
+Recommend the smallest safe future implementation slice.
+
+Preferred direction:
+
+```text
+First future DB slice should store global/shared firm prospect records only.
+```
+
+It should not include private saved leads yet.
+
+The first slice should likely support:
+
+- creating/storing firm records
+- ZIP-based firm lookup
+- source metadata
+- confidence level
+- verification status
+- last checked date
+
+Do not implement it in this task.
+
+## Conceptual Prisma model sketch
+
+The document may include Prisma-like pseudocode, but it must be clearly labeled:
+
+```text
+Planning-only sketch. Do not implement in this task.
+```
+
+The sketch should be intentionally small and understandable.
+
+Avoid writing a production-ready `schema.prisma`.
+
+## Environment variables and secrets plan
+
+Document expected future environment variables conceptually, such as:
+
+```text
+DATABASE_URL
+DIRECT_URL
+```
 
 Important:
 
-- Keep the data honest as sample/seed data.
-- Do not replace the current sample data with real law firms in this task.
-- Do not add scraped or externally sourced records.
-- Use `sourceType: 'MANUAL_SEED'`.
-- Use `confidenceLevel: 'UNKNOWN'` or another honest value appropriate for sample data.
-- Use `verificationStatus: 'CANDIDATE'` or another honest value appropriate for sample/demo data.
-- Preserve ZIP `19103` behavior.
-- Preserve unsupported-ZIP empty state behavior.
-- Preserve ZIP+4 normalization behavior.
+- Do not add real values.
+- Do not edit `.env`.
+- Do not create `.env.example` unless explicitly requested in a separate future task.
+- Explain that secrets must not be committed.
 
-For fields that are not meaningful in sample data, use `null`, empty arrays, or clearly fake/demo-safe values.
+## Migration safety rules
 
-### 3. Update `src/components/ProspectCard.tsx`
+Include clear rules:
 
-Update the card to use the renamed/added fields.
+- Prefer reviewed migrations over blind database pushes.
+- Never use destructive migration commands casually.
+- Never run data-loss commands without explicit human confirmation.
+- In this project, the human runs all database commands.
+- Production database changes require extra review.
 
-Required display behavior:
+## Roadmap note
 
-- Preserve existing card layout and behavior.
-- Preserve expand/collapse behavior.
-- Preserve save/unsave behavior.
-- Preserve accessibility attributes already added.
-- Display `streetAddress` if present.
-- Display `sourceUrl` if present.
-- Display `confidenceLevel`.
-- Display `verificationStatus`.
-- Display `lastCheckedDate` if present.
-- Display attorney names if `attorneys` has values.
-- Use `globalNotes` instead of `notes`.
+If updating `docs/planning/09-roadmap.md`, keep it small.
 
-Important:
+Suggested note:
 
-- Do not add large UI redesign.
-- Do not add routing.
-- Do not add new components unless clearly necessary.
-- Do not make source links misleading. If sample data has no real source URL, do not show one.
+```text
+Future database phase assumes Neon Postgres + Prisma for the MVP/learning stack, subject to later review if product or scaling needs change.
+```
 
-### 4. Preserve behavior
+Do not make roadmap changes broad or speculative.
 
-Do not intentionally change:
+## Human-run verification commands
 
-- search input behavior
-- invalid ZIP validation
-- unsupported ZIP empty state
-- ZIP+4 normalization
-- matching logic
-- saved count
-- save/unsave state being browser-session only
-- public copy/disclaimer that data is manually curated sample data
+No commands are required for a docs-only task.
 
-### 5. Update tests only if needed
+If the human wants to check the repo afterward, recommend:
 
-If the type/data changes break existing tests, update tests minimally.
+```bash
+git status
+git diff
+```
 
-Do not add a new test framework.
+If everything is good, the human may commit with:
 
-Do not add Playwright/Cypress/React Testing Library.
+```bash
+git add docs/planning/05-database-plan.md docs/planning/09-roadmap.md tasks/work.md
+git commit -m "Document Prisma and Neon database plan"
+git push
+```
 
-Keep tests focused on existing pure business logic unless a tiny type/data update is required.
+Adjust the `git add` command if `docs/planning/09-roadmap.md` was not changed.
 
-### 6. Update `tasks/work.md`
-
-Add a brief log entry explaining:
-
-- frontend prospect type aligned with real-data planning fields
-- sample seed records updated to match new shape
-- ProspectCard updated to render new fields
-- no database/auth/API/scraping/persistence/dependency work added
-- no terminal commands run
+Only the human should run these commands.
 
 ## Acceptance criteria
 
 This task is complete when:
 
-- `src/types/prospect.ts` defines typed `ConfidenceLevel`, `VerificationStatus`, and `SourceType`.
-- `Prospect` uses `confidenceLevel` instead of loose `confidence`.
-- `Prospect` uses `globalNotes` instead of `notes`.
-- `src/data/prospects.ts` compiles conceptually against the new `Prospect` shape.
-- Sample data remains clearly manually curated seed/demo data.
-- `ProspectCard` renders the updated fields without changing the core interaction behavior.
-- ZIP `19103` sample search behavior is preserved.
-- ZIP+4 normalization behavior is preserved.
-- Save/unsave remains in-memory only.
-- No database/auth/API/scraping/fetching/dependency/persistence work is added.
+- `docs/planning/05-database-plan.md` exists or is updated.
+- The document identifies Neon Postgres + Prisma as the preferred MVP/learning database stack.
+- The document clearly states this stack can be revisited later.
+- The document separates global/shared data from private/user-specific data.
+- The document recommends the first future database slice as global/shared firm prospect records only.
+- The document defers saved leads, notes, statuses, tasks, reminders, recent searches, and other private workflow data until auth/user ownership is designed.
+- The document includes migration and data-loss safety rules.
+- The document does not implement Prisma, Neon, migrations, API routes, auth, persistence, scraping, fetching, app behavior changes, dependencies, or environment variable changes.
 - `tasks/work.md` is updated.
 - No terminal commands were run.
-
-## Commands for human to run
-
-After the agent finishes, the human may run:
-
-```bash
-npm run test
-npm run build
-npm run dev
-git status
-git diff
-```
-
-If everything looks good, the human may commit with:
-
-```bash
-git add src/types/prospect.ts src/data/prospects.ts src/components/ProspectCard.tsx src/utils/prospectMatcher.test.ts tasks/work.md
-git commit -m "Align frontend prospect model with real-data fields"
-git push
-```
-
-Adjust the `git add` command if no test file was changed.
 
 ## Final report required from coding agent
 
 When finished, report:
 
 1. Files changed.
-2. Summary of type changes.
-3. Summary of sample-data changes.
-4. Summary of ProspectCard display changes.
-5. Whether any tests were edited and why.
-6. Confirmation that search, ZIP+4 normalization, save/unsave, and empty states were intended to remain unchanged.
-7. Confirmation that no database, auth, API routes, scraping, external fetching, new dependencies, deployment changes, or persistence work was added.
+2. Summary of the database plan.
+3. How Neon Postgres + Prisma were documented.
+4. What is recommended for the first future database slice.
+5. What private/user-specific data was deferred.
+6. Key migration/data-loss guardrails.
+7. Confirmation that no Prisma setup, Neon connection, migrations, API routes, auth, persistence, dependencies, `.env` changes, or app behavior changes were added.
 8. Confirmation that no terminal commands were run.
 9. Commands for the human to run.
 10. Suggested human review steps.

@@ -1391,3 +1391,133 @@ The human should verify:
 ### Next Recommended Step
 
 Prepare the Prisma database schema and migration plan using Neon PostgreSQL.
+
+---
+
+## 2026-06-16 — Create Prisma + Neon database planning document
+
+### Task Summary
+
+Create a practical database planning document for the Legal Prospector app defining the future database shape, ownership boundaries, and rollout sequence. This task is strictly planning/documentation only.
+
+### Files Created
+
+None.
+
+### Files Changed
+
+- `docs/planning/05-database-plan.md` — Updated the database plan with 18 detailed sections outlining Neon Postgres + Prisma as the MVP/learning stack, conceptual models, global/private boundaries, migration rules, and execution slices.
+- `docs/planning/09-roadmap.md` — Added a small note under Phase 5 specifying Neon Postgres and Prisma as the preferred MVP/learning stack, subject to future review.
+- `tasks/work.md` — Logged this planning task session.
+
+### What Changed
+
+- Created/fully populated `docs/planning/05-database-plan.md` with all 18 required sections (Purpose, Current state, Chosen MVP database stack, Why Neon Postgres + Prisma for now, What can be revisited later, Data ownership boundaries, Planned global/shared models, Planned private/user-specific models, Suggested first database slice, Fields to defer, Conceptual Prisma model sketch, Environment variables and secrets plan, Migration safety rules, Data-loss guardrails, Local development and human-run commands, Risks and constraints, Explicit non-goals for now, Suggested follow-up tasks).
+- Stated Neon Postgres + Prisma as the chosen MVP/learning stack.
+- Divided entities into global/shared models (`Firm`, `DataSource`, `ZipCode`) and private/user-specific models (`User`, `SavedLead`, `UserFirmNote`, `UserRecentZip`).
+- Proposed that the first database slice should be global/shared firm prospect records only (search by ZIP), deferring all auth-dependent and private models.
+- Provided a conceptual Prisma model sketch labeled `// Planning-only sketch. Do not implement in this task.`
+- Outlined environment variables (`DATABASE_URL`, `DIRECT_URL`) conceptually.
+- Detailed migration safety rules, database initialization commands, and data-loss guardrails (forbidding `db push --accept-data-loss` and `migrate reset`).
+- Added a note to `docs/planning/09-roadmap.md` aligning the roadmap to the selected database stack.
+
+### Why It Changed
+
+To establish a clear database design, ownership boundary, and safety guidelines for the next development phase, preventing schema drift or accidental loss of data during implementation.
+
+### Commands Suggested
+
+No terminal commands were run by the agent. The following git commands are suggested for the human user to commit the changes:
+
+```bash
+git add docs/planning/05-database-plan.md docs/planning/09-roadmap.md tasks/work.md
+git commit -m "Document Prisma and Neon database plan"
+git push
+```
+
+### Commands Run by Human
+
+No commands run.
+
+### Results Pasted by Human
+
+No results pasted.
+
+### Verification
+
+The human should verify that:
+1. `docs/planning/05-database-plan.md` exists and contains all 18 required sections.
+2. `docs/planning/09-roadmap.md` contains the new Note under Phase 5.
+3. No Prisma client or packages were installed, no schema file was created in `prisma/`, and no code changes or migrations were executed.
+4. No terminal commands were run by the agent.
+
+### Known Risks
+
+- Connecting to Neon serverless DB may require configuring transaction connection pooling to avoid exhausting connection limits under scaling.
+- PostgreSQL string arrays (`String[]`) are used for practice areas and attorneys to keep the first slice simple, which requires connecting to a Postgres database (local or Neon branch) for local testing rather than SQLite.
+
+### Next Recommended StepCustom
+
+Phase 5.1: Initialize Prisma and configure the Neon Postgres connection once the database current-task is approved.
+
+---
+
+## 2026-06-16 — Revise Database Plan for Product Ownership and Scoping
+
+### Task Summary
+
+Revise the database plan to clarify data ownership, define canonical data vs user workflow data partitions, specify user-scoped search optimizations using SearchRuns/SearchResults referencing canonical records, and keep the first database slice focused on global firm directory listings.
+
+### Files Created
+
+None.
+
+### Files Changed
+
+- `docs/planning/05-database-plan.md` — Updated sections 1, 6, 7, 10, 11, and 12 to detail the shared internal canonical firm database, user/session-scoped workflow data partitions (Canonical vs Workflow Data tables), simple first slice, and post-authentication referencing strategy.
+- `tasks/work.md` — Logged the revision details in the session history.
+
+### What Changed
+
+- Clarified the **shared internal canonical firm database** acts as the internal source-of-truth corpus to support daily scraping and enrichment.
+- Clarified that user-facing search results, saved leads, notes, status, and history will be user/session-scoped and private.
+- Added a conceptual partitioning breakdown between **Canonical Data** (`Firm`, `DataSource` + metadata) and **User/Session Workflow Data** (`SearchRun`, `SearchResult`, `SavedLead`, `LeadNote`, `LeadStatus`, `RecentSearch`).
+- Refined the suggested first slice to focus on global canonical records only, searching by ZIP, with no saved leads or notes.
+- Added a referencing optimization section showing how, once auth exists, search results will use `SearchRuns` and `SearchResults` referencing canonical `Firm` records instead of duplicating firm tables per user.
+- Re-confirmed that Prisma + Neon is the preferred stack and that no implementation occurred.
+
+### Why It Changed
+
+To ensure the database plan properly reflects the data aggregation requirements of a daily-scraped data application while maintaining strict privacy boundaries and storage efficiency for user workflows.
+
+### Commands Suggested
+
+No terminal commands were run by the agent. The following git commands are suggested for the human user to commit the revisions:
+
+```bash
+git add docs/planning/05-database-plan.md tasks/work.md
+git commit -m "Revise database plan for product ownership model"
+git push
+```
+
+### Commands Run by Human
+
+No commands run.
+
+### Results Pasted by Human
+
+No results pasted.
+
+### Verification
+
+The human should verify that:
+1. `docs/planning/05-database-plan.md` outlines the canonical corpus, partitioning categories, and the search result referencing logic.
+2. No code files, package files, or terminal commands were run or changed.
+
+### Known Risks
+
+No new risks. The design remains documentation-only.
+
+### Next Recommended Step
+
+Wait for the human developer to approve the database plan before starting implementation tasks.

@@ -393,6 +393,8 @@ Phase 4 is complete when:
 
 Add persistence only when the app flow is clear enough to justify it.
 
+Note: Future database phase assumes Neon Postgres + Prisma for the MVP/learning stack, subject to later review if product or scaling needs change.
+
 ### Included
 
 Potentially:
