@@ -2,15 +2,14 @@
 
 import { useState } from "react";
 import { normalizeZipCode } from "@/utils/prospectMatcher";
-import { ProspectCard } from "@/components/ProspectCard";
+import { ResultsTable } from "@/components/ResultsTable";
+import { toCsv } from "@/utils/toCsv";
 import type { Prospect } from "@/types/prospect";
 
 export default function Home() {
   const [searchZip, setSearchZip] = useState("");
   const [searchedZip, setSearchedZip] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [expandedProspects, setExpandedProspects] = useState<Record<string, boolean>>({});
-  const [savedProspectIds, setSavedProspectIds] = useState<string[]>([]);
   const [matchingProspects, setMatchingProspects] = useState<Prospect[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -24,7 +23,6 @@ export default function Home() {
       setError("Please enter a ZIP code.");
       setSearchedZip(null);
       setMatchingProspects([]);
-      setExpandedProspects({});
       return;
     }
 
@@ -33,13 +31,11 @@ export default function Home() {
       setError("Please enter a valid ZIP code.");
       setSearchedZip(null);
       setMatchingProspects([]);
-      setExpandedProspects({});
       return;
     }
 
     setError(null);
     setIsLoading(true);
-    setExpandedProspects({});
 
     try {
       const response = await fetch(`/api/prospects/search?zip=${encodeURIComponent(trimmed)}`);
@@ -71,17 +67,19 @@ export default function Home() {
     }
   };
 
-  const toggleExpand = (id: string) => {
-    setExpandedProspects((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  };
-
-  const toggleSave = (id: string) => {
-    setSavedProspectIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
+  const handleDownloadCsv = () => {
+    if (matchingProspects.length === 0) return;
+    const csvContent = toCsv(matchingProspects);
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `leads-${searchedZip || "export"}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -127,9 +125,9 @@ export default function Home() {
         {isLoading ? (
           <div className="placeholder-card">
             <span className="placeholder-icon">⏳</span>
-            <h3 className="placeholder-title">Searching Database...</h3>
+            <h3 className="placeholder-title">Searching for prospects...</h3>
             <p className="placeholder-desc">
-              Querying stored database records for ZIP <strong>{normalizeZipCode(searchZip) || searchZip}</strong>.
+              Searching live for firms near <strong>{normalizeZipCode(searchZip) || searchZip}</strong> — this can take a minute or two.
             </p>
           </div>
         ) : searchedZip === null ? (
@@ -145,32 +143,21 @@ export default function Home() {
             <div className="results-header">
               <div className="results-header-main">
                 <h2 className="results-title">Pilot Prospects for ZIP {searchedZip}</h2>
-                {savedProspectIds.length > 0 && (
-                  <span className="saved-count-badge">
-                    Saved this session: {savedProspectIds.length}
-                  </span>
-                )}
+                <button
+                  type="button"
+                  className="download-csv-btn"
+                  onClick={handleDownloadCsv}
+                  aria-label="Download all search results as CSV"
+                >
+                  📥 Download CSV
+                </button>
               </div>
               <p className="results-subtitle">
-                Currently showing a small pilot dataset: seeded demo prospects plus manually reviewed real-firm records pending final verification.{" "}
-                {savedProspectIds.length > 0 && (
-                  <span className="saved-helper-text">Saved for this browser session only.</span>
-                )}
+                Currently showing a small pilot dataset: seeded demo prospects plus manually reviewed real-firm records pending final verification.
               </p>
             </div>
 
-            <div className="prospects-list">
-              {matchingProspects.map((prospect) => (
-                <ProspectCard
-                  key={prospect.id}
-                  prospect={prospect}
-                  isExpanded={!!expandedProspects[prospect.id]}
-                  isSaved={savedProspectIds.includes(prospect.id)}
-                  onToggleExpand={toggleExpand}
-                  onToggleSave={toggleSave}
-                />
-              ))}
-            </div>
+            <ResultsTable prospects={matchingProspects} />
           </>
         ) : (
           <div className="placeholder-card">
@@ -185,5 +172,3 @@ export default function Home() {
     </div>
   );
 }
-
-

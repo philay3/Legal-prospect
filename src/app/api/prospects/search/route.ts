@@ -2,11 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "../../../../lib/prisma";
 import { normalizeZipCode } from "../../../../utils/prospectMatcher";
 import type { Prospect } from "../../../../types/prospect";
+import { runLeadResearch } from "../../../../lib/research/runLeadResearch";
+import { saveResearchFirms } from "../../../../lib/db/saveResearchFirms";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const zip = searchParams.get("zip");
+    const refresh = searchParams.get("refresh") === "true";
 
     if (!zip) {
       return NextResponse.json(
@@ -24,7 +30,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Query Neon database via Prisma Client, ordering alphabetically by firmName ascending.
-    const firms = await prisma.firm.findMany({
+    let firms = await prisma.firm.findMany({
       where: {
         zip: normalizedZip,
       },
@@ -32,6 +38,35 @@ export async function GET(request: NextRequest) {
         firmName: "asc",
       },
     });
+
+    // Cache-first: if no records found or refresh is requested, run live research
+    if (firms.length === 0 || refresh) {
+      console.log(`[api/search] Cache miss or refresh for ZIP ${normalizedZip}. Running research.`);
+      try {
+        const researchResult = await runLeadResearch(normalizedZip, "thorough");
+        await saveResearchFirms(normalizedZip, researchResult.firms);
+
+        // Re-query database to fetch newly saved results
+        firms = await prisma.firm.findMany({
+          where: {
+            zip: normalizedZip,
+          },
+          orderBy: {
+            firmName: "asc",
+          },
+        });
+      } catch (researchError) {
+        console.error(`[api/search] Live research failed for ZIP ${normalizedZip}:`, researchError);
+        return NextResponse.json({
+          query: {
+            zip,
+            normalizedZip,
+          },
+          results: [],
+          warning: "Live research failed. Returning empty results.",
+        });
+      }
+    }
 
     // Map database rows to the frontend Prospect shape
     const results: Prospect[] = firms.map((firm) => ({

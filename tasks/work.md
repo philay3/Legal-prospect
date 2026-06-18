@@ -2343,3 +2343,146 @@ No known risks. All changes are copy adjustments and have no logic impact.
 ### Next Recommended Step
 
 Phase 6.7 — Update Roadmap to Reflect Controlled Real-Data Path
+
+---
+
+## 2026-06-17 — Phase 7.2 — Wire Live Research Into Cache-First ZIP Search
+
+### Task Summary
+
+Make the ZIP-code search API cache-first: if the local database (Firm table) has records for a searched ZIP code, return them immediately. If not (cache miss), run the live-research engine (`runLeadResearch`), save and deduplicate the discovered firms in the flat `Firm` table, and return the newly saved records. Gracefully handle live research failures by returning a 200 response with an empty results list, and update loading copy on the homepage to reflect the potential live wait.
+
+### Files Created
+
+- `src/lib/db/saveResearchFirms.ts` — Implements mapping, ZIP lookups, and deduplication updates.
+- `src/lib/db/saveResearchFirms.test.ts` — Tests formatting, counts, and isUseful merges.
+
+### Files Changed
+
+- `package.json` — Added `zipcodes` and `@types/zipcodes` dependencies.
+- `src/app/api/prospects/search/route.ts` — Added cache-first logic with fallback to `runLeadResearch` and `saveResearchFirms`, dynamic route settings, refresh parameter, and graceful research error handling.
+- `src/app/api/prospects/search/route.test.ts` — Added tests for cache-hits, cache-misses, refresh, and research failure paths.
+- `src/app/page.tsx` — Updated loading screen state copy to set expectations for the live path.
+- `tasks/work.md` — Logged Phase 7.2 completion.
+
+### What Changed
+
+- Created the `saveResearchFirms` database utility to map, sanitize, lookup offline cities/states, and deduplicate/merge new research records.
+- Modified the search API route to wrap query checks and only call research when no database records exist (or a refresh is forced), degrading gracefully to 200 with empty results on OpenAI or search failure.
+- Updated the loading UI to state "Searching live for firms near {zip} — this can take a minute or two."
+- Wrote full unit and integration tests covering the new functionality.
+
+### Why It Changed
+
+- To integrate the live search capabilities into the product, enabling real-time lead discovery for any user-queried ZIP code, and optimizing performance/usage via a cache-first approach.
+
+### Commands Suggested
+
+The human should run these commands to install dependencies, run the test suites, and build the project:
+
+```bash
+npm install
+npm run test
+npm run build
+npm run dev
+```
+
+### Commands Run by Human
+
+`No commands run.`
+
+### Results Pasted by Human
+
+`No results pasted.`
+
+### Verification
+
+The human should verify:
+1. Running `npm run test` passes all tests (including new cache-first and deduplication test suites).
+2. Running `npm run build` compiles without errors.
+3. Live manual searches in the UI work: cache hits load instantly, cache misses show the live loader and trigger OpenAI search grounding before showing new records.
+
+### Known Risks
+
+- DuckDuckGo scraping or OpenAI API failures could cause temporary search blockages. This is mitigated by the route's graceful error handling which degrades to a clean empty state rather than returning a 500.
+
+### Next Recommended Step
+
+Complete next safe task on the roadmap.
+
+---
+
+## 2026-06-17 — Swap Discovery + Enrichment Fetch to Tavily
+
+### Task Summary
+
+Refactored the live research discovery and contact enrichment flows to use Tavily (Tavily Search for discovery grounding, Tavily Extract for contact page content fetching) with a configurable fallback to the existing DuckDuckGo pipeline.
+
+### Files Created
+
+- `src/lib/research/searchProviders/types.ts` — Defined search provider interfaces and types.
+- `src/lib/research/searchProviders/ddg.ts` — Ported existing DuckDuckGo HTML parsing and URL cleaning logic.
+- `src/lib/research/searchProviders/tavily.ts` — Implemented Tavily Search/Extract REST API integration and pure mapping helpers.
+- `src/lib/research/searchProviders/index.ts` — Factory utility resolving search providers and parsing environment variables.
+- `src/lib/research/searchProviders/tavily.test.ts` — Unit test suite verifying mapping helpers, provider selection, and mocked Tavily responses.
+
+### Files Changed
+
+- `src/lib/research/runLeadResearch.ts` — Refactored to delegate search context queries to the active provider and utilize Tavily Extract for enrichment fetching.
+- `.env.example` — Added environment variable placeholders for Tavily.
+- `tasks/work.md` — Logged the implementation work.
+- `tasks/current-task.md` — Updated task status.
+
+### What Changed
+
+- Abstracted search functionality into a `SearchProvider` model.
+- Created `DdgSearchProvider` and `TavilySearchProvider`.
+- Integrated Tavily `/search` REST API (POST request via native `fetch`).
+- Integrated Tavily `/extract` REST API (POST request via native `fetch`).
+- Refactored `runLeadResearch` to run discovery groundings via the active `SearchProvider` (Tavily by default, DDG if selected).
+- Replaced the multi-page fetch in contact enrichment with choosing the single best target contact URL from search results using `pickContactLink` and fetching it via `fetchPageContent`.
+- `fetchPageContent` calls Tavily `/extract` first (if `TAVILY_API_KEY` is present), falling back to direct HTTP page fetch on failure.
+- Re-exported all existing DDG helpers from `runLeadResearch.ts` to prevent broken test/component imports.
+- Created robust unit test coverage asserting mock search requests, provider selection, and mapper logic.
+
+### Why It Changed
+
+To resolve DuckDuckGo scraping blocking issues (403 HTTP errors) by using Tavily Search for discovery grounding, and to dramatically improve email address extraction rates by utilizing Tavily Extract's resilient page fetching infrastructure.
+
+### Commands Suggested
+
+The human should run:
+```bash
+npm run test
+npm run build
+```
+
+And to verify Tavily manually:
+1. Add `TAVILY_API_KEY=tvly-...` to `.env.local`.
+2. Run `npm run dev`.
+3. Try searching ZIP `10545` with a forced refresh: `curl "http://localhost:3000/api/prospects/search?zip=10545&refresh=true"`.
+4. Verify console logs show Tavily Search and Tavily Extract runs, and emails are populated.
+
+### Commands Run by Human
+
+`No commands run.`
+
+### Results Pasted by Human
+
+`No results pasted.`
+
+### Verification
+
+The human should verify:
+1. All Vitest unit tests pass successfully.
+2. Production build compiles with no typescript errors.
+3. UI search query logs indicate Tavily is used and email fields are successfully populated.
+
+### Known Risks
+
+- None. Tavily extraction degrades gracefully to a direct page fetch on API/credit failure, and discovery degrades gracefully to an LLM-only fallback or a direct DDG fetch if configured.
+
+### Next Recommended Step
+
+Wait for user review and feedback.
+

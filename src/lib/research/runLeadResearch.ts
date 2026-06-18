@@ -1,100 +1,21 @@
 // src/lib/research/runLeadResearch.ts
-// Real LLM research worker that queries DuckDuckGo for live context,
+// Real LLM research worker that queries live search context,
 // calls OpenAI's models dynamically, and performs multi-pass discovery, validation, and contact enrichment.
 
 import { OpenAI } from "openai";
 import { buildResearchPrompt, buildEnrichmentPrompt } from "./buildResearchPrompt";
 import { parseResearchResponse, parseEnrichmentResponse, ValidatedResearchResponse } from "./parseResearchResponse";
-import { isUseful } from "./sanitize";
+import { isUseful, extractEmails, normalizeWebsite, pickContactLink } from "./sanitize";
+import { getSearchProvider } from "./searchProviders";
+import { fetchPageContent } from "./searchProviders/tavily";
+
+export type { SearchResult } from "./searchProviders/types";
+import { cleanDdgUrl, isDirectoryOrSocial, getLikelyOfficialWebsite } from "./searchProviders/ddg";
+export { cleanDdgUrl, isDirectoryOrSocial, getLikelyOfficialWebsite };
 
 // Configurable model defaults
 const DEFAULT_RESEARCH_MODEL = process.env.DEFAULT_RESEARCH_MODEL || "gpt-5.5";
 const QUICK_RESEARCH_MODEL = process.env.QUICK_RESEARCH_MODEL || "gpt-5.4-mini";
-
-export interface SearchResult {
-  title: string;
-  url: string;
-  snippet: string;
-}
-
-/**
- * Timeout helper for fetch requests.
- */
-async function fetchWithTimeout(
-  url: string,
-  options: RequestInit = {},
-  timeoutMs = 5000
-): Promise<Response> {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-    return response;
-  } finally {
-    clearTimeout(id);
-  }
-}
-
-/**
- * Clean DuckDuckGo redirect parameters from URLs.
- */
-export function cleanDdgUrl(url: string): string {
-  let target = url;
-  if (target.startsWith("//")) {
-    target = "https:" + target;
-  }
-  try {
-    const parsedUrl = new URL(target, "https://duckduckgo.com");
-    const uddg = parsedUrl.searchParams.get("uddg");
-    if (uddg) {
-      return decodeURIComponent(uddg);
-    }
-  } catch (e) {
-    // fallback if URL parsing fails
-  }
-  return target;
-}
-
-/**
- * Checks if a URL points to a common directory or social media page.
- */
-export function isDirectoryOrSocial(urlStr: string): boolean {
-  try {
-    const parsed = new URL(urlStr);
-    const hostname = parsed.hostname.toLowerCase();
-    const directories = [
-      "justia.com", "findlaw.com", "avvo.com", "superlawyers.com", "martindale.com",
-      "lawyers.com", "yelp.com", "facebook.com", "linkedin.com", "twitter.com",
-      "instagram.com", "mapquest.com", "yellowpages.com", "whitepages.com",
-      "zoominfo.com", "bbb.org", "chamberofcommerce.com", "opencorporates.com",
-      "dnb.com", "glassdoor.com", "indeed.com", "expertise.com", "expertisego.com",
-      "wikipedia.org", "youtube.com", "pinterest.com"
-    ];
-    return directories.some(dir => hostname === dir || hostname.endsWith("." + dir));
-  } catch (e) {
-    return true; // treat invalid URLs as directory
-  }
-}
-
-/**
- * Identifies the likely official website from a list of search results.
- */
-export function getLikelyOfficialWebsite(results: SearchResult[]): string | null {
-  for (const res of results) {
-    if (!isDirectoryOrSocial(res.url)) {
-      try {
-        const parsed = new URL(res.url);
-        return parsed.origin;
-      } catch (e) {
-        return res.url;
-      }
-    }
-  }
-  return null;
-}
 
 /**
  * Wrap a promise with a timeout.
@@ -145,97 +66,6 @@ async function runWithConcurrencyLimit<T, R>(
 }
 
 /**
- * Performs search queries on DuckDuckGo's HTML page to extract grounding snippets.
- * Generates queries dynamically based on research mode and includes broad practice areas.
- */
-async function getSearchContext(
-  zipCode: string,
-  mode: "quick" | "thorough"
-): Promise<{ queries: string[]; context: string; success: boolean; error?: string; resultCount: number }> {
-  try {
-    const queries: string[] = [];
-    if (mode === "quick") {
-      queries.push(`law firms in ZIP code ${zipCode}`);
-    } else {
-      queries.push(
-        `boutique law firms in ZIP ${zipCode}`,
-        `small law offices in ZIP ${zipCode}`,
-        `solo practitioner lawyers in ZIP ${zipCode}`,
-        `personal injury criminal defense family estate immigration lawyers ZIP ${zipCode}`,
-        `litigation bankruptcy employment real estate trial attorneys ZIP ${zipCode}`,
-        `local law firm contact information ZIP ${zipCode}`
-      );
-    }
-
-    const allSnippets = new Set<string>();
-    let lastError: string | undefined;
-
-    await Promise.all(
-      queries.map(async (query) => {
-        try {
-          const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-          const response = await fetchWithTimeout(url, {
-            headers: {
-              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-            }
-          }, 5000);
-
-          if (!response.ok) {
-            lastError = `HTTP error ${response.status}`;
-            return;
-          }
-
-          const html = await response.text();
-          const regex = /<a class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
-          let match;
-          let count = 0;
-
-          while ((match = regex.exec(html)) !== null && count < 8) {
-            const text = match[1]
-              .replace(/<[^>]*>/g, "") // remove HTML tags
-              .replace(/\s+/g, " ")    // normalize whitespace
-              .trim();
-            if (text) {
-              allSnippets.add(text);
-              count++;
-            }
-          }
-        } catch (err: any) {
-          lastError = err.message || "Scraping failed";
-        }
-      })
-    );
-
-    const snippets = Array.from(allSnippets);
-    if (snippets.length === 0) {
-      return {
-        queries,
-        context: "No web search results found for this query.",
-        success: false,
-        error: lastError || "No snippets matched in HTML response",
-        resultCount: 0
-      };
-    }
-
-    const context = snippets.map((s, i) => `[Result ${i + 1}]: ${s}`).join("\n\n");
-    return {
-      queries,
-      context,
-      success: true,
-      resultCount: snippets.length
-    };
-  } catch (error: any) {
-    return {
-      queries: [],
-      context: "Failed to retrieve web search context due to network/scraping error.",
-      success: false,
-      error: error.message || "Unknown error",
-      resultCount: 0
-    };
-  }
-}
-
-/**
  * Performs lead research for a given ZIP code:
  * 1. Obtains search context (single query for quick, multiple queries for thorough).
  * 2. Runs discovery pass via LLM (gpt-5.4-mini or gpt-5.5).
@@ -257,12 +87,14 @@ export async function runLeadResearch(
   }
 
   // 1. Gather web search context and track whether it succeeded
-  console.log("[research] Discovery source: DuckDuckGo HTML");
-  const searchContextResult = await getSearchContext(zipCode, mode);
+  const provider = getSearchProvider();
+  const providerName = provider.constructor.name === "TavilySearchProvider" ? "Tavily Search" : "DuckDuckGo HTML";
+  console.log(`[research] Discovery source: ${providerName}`);
+  const searchContextResult = await provider.getSearchContext(zipCode, mode);
 
   let useLLMFallback = false;
   if (!searchContextResult.success || searchContextResult.resultCount === 0) {
-    console.log(`[research] DuckDuckGo failed: ${searchContextResult.error || "No results returned"}`);
+    console.log(`[research] ${providerName} failed: ${searchContextResult.error || "No results returned"}`);
     console.log("[research] Discovery source: LLM-only fallback");
     console.log("[research] Web search unavailable; using temporary LLM-only fallback.");
     useLLMFallback = true;
@@ -361,8 +193,8 @@ ${searchContextResult.context}
   }
   const dedupedCandidates = Array.from(dedupedFirmsMap.values());
 
-  // 6. Contact enrichment pass for top 10 discovered firms
-  const firmsToEnrich = dedupedCandidates.slice(0, 10);
+  // 6. Contact enrichment pass for all discovered firms (capped at 20)
+  const firmsToEnrich = dedupedCandidates.slice(0, 20);
   console.log(`[enrichment] Starting enrichment for top ${firmsToEnrich.length} firms`);
 
   let Y = 0; // Succeeded
@@ -378,13 +210,38 @@ ${searchContextResult.context}
         (async () => {
           console.log(`[enrichment] Enriching firm: ${firm.firm_name}`);
           // Gather search context for this firm
-          const searchResults = await getFirmSearchContext(firm.firm_name, zipCode);
-          const likelyOfficialUrl = getLikelyOfficialWebsite(searchResults);
+          const searchProvider = getSearchProvider();
+          const searchResults = await searchProvider.getFirmSearchContext(firm.firm_name, zipCode);
+          
+          let urlToFetch = normalizeWebsite(firm.website);
+          if (!urlToFetch) {
+            urlToFetch = getLikelyOfficialWebsite(searchResults);
+          }
 
-          const contextObj = {
-            likely_official_website: likelyOfficialUrl,
+          let combinedText = "";
+
+          if (urlToFetch) {
+            try {
+              const candidateUrls = searchResults.map(r => r.url);
+              const targetUrl = pickContactLink(urlToFetch, candidateUrls) || urlToFetch;
+              
+              console.log(`[enrichment] Best contact/about URL chosen for ${firm.firm_name}: ${targetUrl}`);
+              const pageText = await fetchPageContent(targetUrl);
+              combinedText = `[Page Content (${targetUrl})]:\n${pageText}`;
+            } catch (e: any) {
+              console.log(`[enrichment] Page extraction failed for ${firm.firm_name}: ${e.message || e}`);
+            }
+          }
+
+          combinedText = combinedText.trim().slice(0, 6000);
+
+          const contextObj: any = {
+            likely_official_website: urlToFetch,
             results: searchResults,
           };
+          if (combinedText) {
+            contextObj.official_website_text = combinedText;
+          }
 
           // Build enrichment prompt specifically for this firm
           const prompt = buildEnrichmentPrompt(
@@ -401,7 +258,7 @@ ${searchContextResult.context}
             JSON.stringify(contextObj, null, 2)
           );
 
-          const enrichmentModel = mode === "thorough" ? DEFAULT_RESEARCH_MODEL : QUICK_RESEARCH_MODEL;
+          const enrichmentModel = QUICK_RESEARCH_MODEL;
           
           let response;
           try {
@@ -418,7 +275,7 @@ ${searchContextResult.context}
             });
           } catch (err: any) {
             if (err.message && (err.message.includes("model") || err.message.includes("404") || err.message.includes("400"))) {
-              const fallbackModel = mode === "thorough" ? "gpt-4o" : "gpt-4o-mini";
+              const fallbackModel = "gpt-4o-mini";
               response = await openai.chat.completions.create({
                 model: fallbackModel,
                 messages: [
@@ -446,12 +303,42 @@ ${searchContextResult.context}
             throw new Error("No enrichment result in parsed JSON");
           }
 
+          // Backstop email extraction
+          if (combinedText) {
+            const extracted = extractEmails(combinedText);
+            const websiteToUse = result.website || firm.website || urlToFetch;
+            let domain: string | null = null;
+            if (websiteToUse) {
+              try {
+                const url = websiteToUse.includes("://") ? websiteToUse : `https://${websiteToUse}`;
+                domain = new globalThis.URL(url).hostname.toLowerCase().replace(/^www\./, "");
+              } catch (e) {}
+            }
+
+            let backstopEmail: string | null = null;
+            if (extracted.length > 0) {
+              if (domain) {
+                backstopEmail = extracted.find(e => {
+                  const parts = e.split("@");
+                  return parts[1] && parts[1].toLowerCase() === domain!.toLowerCase();
+                }) || null;
+              }
+              if (!backstopEmail) {
+                backstopEmail = extracted[0];
+              }
+            }
+
+            if (!isUseful(result.email) && backstopEmail) {
+              result.email = backstopEmail;
+            }
+          }
+
           enrichedMap.set(key, result);
           Y++;
           console.log(`[enrichment] Firm enrichment completed: ${firm.firm_name}`);
         })(),
-        10000,
-        `Enrichment timed out after 10s`
+        40000,
+        `Enrichment timed out after 40s`
       );
     } catch (err: any) {
       Z++;
@@ -460,8 +347,8 @@ ${searchContextResult.context}
   };
 
   try {
-    // Run concurrently with a limit of 3 to prevent rate limits
-    await runWithConcurrencyLimit(firmsToEnrich, 3, enrichFirm);
+    // Run concurrently with a limit of 4 to prevent rate limits
+    await runWithConcurrencyLimit(firmsToEnrich, 4, enrichFirm);
   } catch (err: any) {
     console.error("[enrichment] Critical failure in enrichment orchestration:", err.message || err);
   }
@@ -547,69 +434,5 @@ ${searchContextResult.context}
   };
 }
 
-/**
- * Performs search queries for individual firms on DuckDuckGo's HTML page to extract structured results.
- */
-async function getFirmSearchContext(
-  firmName: string,
-  zipCode: string
-): Promise<SearchResult[]> {
-  const query = `${firmName} ${zipCode} law firm phone email attorneys website`;
-  const results: SearchResult[] = [];
-  try {
-    const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-    const response = await fetchWithTimeout(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-      }
-    }, 5000);
 
-    if (!response.ok) {
-      console.warn(`[research] No context found for ${firmName} due to HTTP error ${response.status}`);
-      return [];
-    }
-
-    const html = await response.text();
-    const regex = /<a[^>]*class="result__snippet"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
-    let match;
-    const matches: { url: string; text: string }[] = [];
-
-    while ((match = regex.exec(html)) !== null && matches.length < 15) {
-      const rawUrl = match[1];
-      const url = cleanDdgUrl(rawUrl);
-      const text = match[2]
-        .replace(/<[^>]*>/g, "") // remove HTML tags
-        .replace(/\s+/g, " ")    // normalize whitespace
-        .trim();
-      if (url && text) {
-        matches.push({ url, text });
-      }
-    }
-
-    const orderedUrls: string[] = [];
-    const urlToTexts: Record<string, string[]> = {};
-
-    for (const item of matches) {
-      if (!urlToTexts[item.url]) {
-        urlToTexts[item.url] = [];
-        orderedUrls.push(item.url);
-      }
-      urlToTexts[item.url].push(item.text);
-    }
-
-    for (const url of orderedUrls) {
-      const texts = urlToTexts[url];
-      results.push({
-        title: texts[0] || "",
-        url,
-        snippet: texts[1] || texts[0] || "",
-      });
-    }
-
-    return results.slice(0, 5); // limit to top 5 structured results
-  } catch (err: any) {
-    console.error(`[research] Search query failed for ${firmName}:`, err.message || err);
-    return [];
-  }
-}
 

@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "./route";
 import { NextRequest } from "next/server";
 import prisma from "../../../../lib/prisma";
+import { runLeadResearch } from "../../../../lib/research/runLeadResearch";
+import { saveResearchFirms } from "../../../../lib/db/saveResearchFirms";
 
 // Mock the prisma client helper
 vi.mock("../../../../lib/prisma", () => ({
@@ -12,9 +14,23 @@ vi.mock("../../../../lib/prisma", () => ({
   },
 }));
 
+// Mock the research and save helper functions
+vi.mock("../../../../lib/research/runLeadResearch", () => ({
+  runLeadResearch: vi.fn(),
+}));
+
+vi.mock("../../../../lib/db/saveResearchFirms", () => ({
+  saveResearchFirms: vi.fn(),
+}));
+
 describe("GET /api/prospects/search", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(runLeadResearch).mockResolvedValue({
+      zip_code: "19103",
+      firms: [],
+    });
+    vi.mocked(saveResearchFirms).mockResolvedValue(undefined);
   });
 
   it("should return 400 if zip query parameter is missing", async () => {
@@ -94,6 +110,7 @@ describe("GET /api/prospects/search", () => {
       where: { zip: "19103" },
       orderBy: { firmName: "asc" },
     });
+    expect(runLeadResearch).not.toHaveBeenCalled();
   });
 
   it("should support and normalize ZIP+4 format queries to the base 5 digits", async () => {
@@ -110,17 +127,6 @@ describe("GET /api/prospects/search", () => {
       where: { zip: "19103" },
       orderBy: { firmName: "asc" },
     });
-  });
-
-  it("should return an empty results array with status 200 if no firms match the ZIP", async () => {
-    vi.mocked(prisma.firm.findMany).mockResolvedValue([]);
-
-    const request = new NextRequest("http://localhost/api/prospects/search?zip=90210");
-    const response = await GET(request);
-    expect(response.status).toBe(200);
-
-    const data = await response.json();
-    expect(data.results).toEqual([]);
   });
 
   it("should return status 500 if the database query fails", async () => {
@@ -203,5 +209,108 @@ describe("GET /api/prospects/search", () => {
     expect(data.results[2].firmName).toBe("Beta Law");
     expect(data.results[3].firmName).toBe("Zeta Law");
     expect(data.results[4].firmName).toBe("Delta Law");
+  });
+
+  // NEW Phase 7.2 Cache-first / fallback path tests
+  it("should return instantly on a cache hit and make no OpenAI/research call", async () => {
+    const mockFirms = [
+      {
+        id: "firm-1",
+        firmName: "Alpha Law",
+        zip: "19103",
+        city: "Philadelphia",
+        state: "PA",
+        confidenceLevel: "HIGH",
+        verificationStatus: "VERIFIED",
+      },
+    ];
+    vi.mocked(prisma.firm.findMany).mockResolvedValue(mockFirms as any);
+
+    const request = new NextRequest("http://localhost/api/prospects/search?zip=19103");
+    const response = await GET(request);
+    expect(response.status).toBe(200);
+
+    const data = await response.json();
+    expect(data.results).toHaveLength(1);
+    expect(runLeadResearch).not.toHaveBeenCalled();
+  });
+
+  it("should trigger live research and save firms on a cache miss", async () => {
+    const mockDiscovered = [
+      {
+        id: "new-firm-1",
+        firmName: "Discovered Law",
+        zip: "90210",
+        city: "Beverly Hills",
+        state: "CA",
+        confidenceLevel: "UNKNOWN",
+        verificationStatus: "CANDIDATE",
+      },
+    ];
+
+    vi.mocked(prisma.firm.findMany)
+      .mockResolvedValueOnce([]) // Cache hit check
+      .mockResolvedValueOnce(mockDiscovered as any); // Re-query
+
+    vi.mocked(runLeadResearch).mockResolvedValue({
+      zip_code: "90210",
+      firms: [
+        {
+          firm_name: "Discovered Law",
+          address: "123 Beverly Blvd",
+          phone: "555-9020",
+          website: "https://discovered.com",
+          email: "info@discovered.com",
+          attorney_name: "John Smith",
+          attorneys: [{ name: "John Smith", email: null }],
+        },
+      ],
+    });
+
+    const request = new NextRequest("http://localhost/api/prospects/search?zip=90210");
+    const response = await GET(request);
+    expect(response.status).toBe(200);
+
+    const data = await response.json();
+    expect(data.results).toHaveLength(1);
+    expect(data.results[0].firmName).toBe("Discovered Law");
+    expect(runLeadResearch).toHaveBeenCalledWith("90210", "thorough");
+    expect(saveResearchFirms).toHaveBeenCalledWith("90210", expect.any(Array));
+  });
+
+  it("should run live research even with cache hit if refresh=true is passed", async () => {
+    const mockFirms = [
+      {
+        id: "firm-1",
+        firmName: "Alpha Law",
+        zip: "19103",
+        confidenceLevel: "HIGH",
+        verificationStatus: "VERIFIED",
+      },
+    ];
+
+    vi.mocked(prisma.firm.findMany)
+      .mockResolvedValueOnce(mockFirms as any) // Initial check
+      .mockResolvedValueOnce(mockFirms as any); // Re-query
+
+    const request = new NextRequest("http://localhost/api/prospects/search?zip=19103&refresh=true");
+    const response = await GET(request);
+    expect(response.status).toBe(200);
+
+    expect(runLeadResearch).toHaveBeenCalledWith("19103", "thorough");
+    expect(saveResearchFirms).toHaveBeenCalled();
+  });
+
+  it("should degrade gracefully returning 200 with empty results and warning if research throws", async () => {
+    vi.mocked(prisma.firm.findMany).mockResolvedValue([]);
+    vi.mocked(runLeadResearch).mockRejectedValue(new Error("OpenAI Rate Limit Exceeded"));
+
+    const request = new NextRequest("http://localhost/api/prospects/search?zip=10001");
+    const response = await GET(request);
+    expect(response.status).toBe(200);
+
+    const data = await response.json();
+    expect(data.results).toEqual([]);
+    expect(data.warning).toContain("Live research failed");
   });
 });
