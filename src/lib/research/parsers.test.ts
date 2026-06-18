@@ -14,6 +14,7 @@ describe("Research response parsers", () => {
             phone: "555-0101",
             website: "https://smithdoe.com",
             email: "john@smithdoe.com",
+            practice_areas: ["Family Law", "Personal Injury"],
           },
         ],
       });
@@ -22,6 +23,7 @@ describe("Research response parsers", () => {
       expect(parsed.zip_code).toBe("19103");
       expect(parsed.firms).toHaveLength(1);
       expect(parsed.firms[0].firm_name).toBe("Smith & Doe LLC");
+      expect(parsed.firms[0].practice_areas).toEqual(["Family Law", "Personal Injury"]);
     });
 
     it("should strip markdown code block fences if present", () => {
@@ -107,6 +109,7 @@ describe("Research response parsers", () => {
                 email: "john@smithdoe.com",
               },
             ],
+            practice_areas: ["Corporate Law"],
           },
         ],
       });
@@ -116,6 +119,7 @@ describe("Research response parsers", () => {
       expect(parsed.enrichment_results[0].firm_name).toBe("Smith & Doe LLC");
       expect(parsed.enrichment_results[0].attorneys).toHaveLength(1);
       expect(parsed.enrichment_results[0].attorneys?.[0].name).toBe("John Doe");
+      expect(parsed.enrichment_results[0].practice_areas).toEqual(["Corporate Law"]);
     });
 
     it("should sanitize placeholders like 'unknown', 'example@example.com' or fake phone numbers to null", () => {

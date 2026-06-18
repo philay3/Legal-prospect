@@ -54,7 +54,7 @@ Per the project rule that every fetching pass is documented (trigger, input, sou
 - **Input:** normalized 5-digit ZIP.
 - **Source:** Tavily Search (fallback: DuckDuckGo HTML → LLM-only).
 - **Request → model:** law-firm-by-ZIP search query → grounding passed to **gpt-5.5**, which returns candidate firms as JSON.
-- **Output fields:** `firmName`, `website`, optional `phone`/`address`/`attorneys[]`.
+- **Output fields:** `firmName`, `website`, optional `phone`/`address`/`attorneys[]`/`practice_areas[]`.
 - **Save / overwrite:** candidates saved; dedupe by `[zip, firmName]`, merge, never demote.
 - **Cost / limits:** ~1 Tavily search credit + one gpt-5.5 call per ZIP. Cache means once per ZIP.
 
@@ -63,7 +63,7 @@ Per the project rule that every fetching pass is documented (trigger, input, sou
 - **Input:** firm + its known website.
 - **Source:** Tavily Extract on the `pickContactLink` URL (fallback: direct fetch).
 - **Request → model:** cleaned page content → **gpt-5.4-mini** extracts phone/email/attorneys; regex `extractEmails` backstop prefers firm-domain addresses.
-- **Output fields:** `phone`, `email`, `attorneys[]` (and `practiceAreas[]` — currently not captured; see §13).
+- **Output fields:** `phone`, `email`, `attorneys[]`, `practice_areas[]`.
 - **Save / overwrite:** `sanitizeFirm` then merge into the `Firm` row.
 - **Cost / limits:** ~1 Tavily extract credit per 5 URLs + one gpt-5.4-mini call per firm; 40s per-firm timeout.
 
@@ -85,7 +85,7 @@ Per the project rule that every fetching pass is documented (trigger, input, sou
 - **Compliance:** prospecting contact data must respect CAN-SPAM / TCPA / GDPR; reps handle opt-outs.
 
 ## 13. Known Gaps (plan vs reality)
-- `practiceAreas` is not extracted yet (empty on every firm) — **next investigation**.
+- `practiceAreas` is now extracted and stored (resolved) — *Note: areas are captured but not yet canonicalized (casing/synonyms are later entity-resolution work, same call as attorney name variants).*
 - Dedup is `[zip, firmName]`, not canonical-domain.
 - No proximity/adjacent-ZIP expansion.
 - No human-review/verification step (everything stays CANDIDATE / UNKNOWN).

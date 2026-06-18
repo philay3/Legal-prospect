@@ -1,5 +1,5 @@
 import prisma from "../prisma";
-import { isUseful, sanitizeFirm, sanitizeText } from "../research/sanitize";
+import { isUseful, sanitizeFirm, sanitizeText, normalizePracticeAreas } from "../research/sanitize";
 import zipcodes from "zipcodes";
 
 export interface ResearchFirmInput {
@@ -10,6 +10,8 @@ export interface ResearchFirmInput {
   email: string | null;
   attorney_name?: string | null;
   attorneys?: { name: string; email: string | null }[] | null;
+  practiceAreas?: string[] | null;
+  practice_areas?: string[] | null;
 }
 
 /**
@@ -84,6 +86,11 @@ export async function saveResearchFirms(
           updateData.attorneyCountRange = attorneyCountRange;
         }
 
+        updateData.practiceAreas = normalizePracticeAreas([
+          ...(existing.practiceAreas ?? []),
+          ...(firm.practiceAreas ?? firm.practice_areas ?? []),
+        ]);
+
         await prisma.firm.update({
           where: { id: existing.id },
           data: updateData,
@@ -118,7 +125,7 @@ export async function saveResearchFirms(
             website,
             phone,
             email,
-            practiceAreas: [],
+            practiceAreas: normalizePracticeAreas(firm.practiceAreas || firm.practice_areas),
             attorneyCountRange,
             attorneys: mappedAttorneys,
             sourceType: "WEB_SCRAPE",

@@ -5,7 +5,7 @@
 import { OpenAI } from "openai";
 import { buildResearchPrompt, buildEnrichmentPrompt } from "./buildResearchPrompt";
 import { parseResearchResponse, parseEnrichmentResponse, ValidatedResearchResponse } from "./parseResearchResponse";
-import { isUseful, extractEmails, normalizeWebsite, pickContactLink } from "./sanitize";
+import { isUseful, extractEmails, normalizeWebsite, pickContactLink, normalizePracticeAreas } from "./sanitize";
 import { getSearchProvider } from "./searchProviders";
 import { fetchPageContent } from "./searchProviders/tavily";
 
@@ -369,9 +369,12 @@ ${searchContextResult.context}
           email: isUseful(candidate.email) ? candidate.email!.trim() : null,
         });
       }
+      const practiceAreas = normalizePracticeAreas(candidate.practice_areas ?? []);
       return {
         ...candidate,
         attorneys,
+        practice_areas: practiceAreas,
+        practiceAreas,
       };
     }
 
@@ -412,6 +415,11 @@ ${searchContextResult.context}
     // Keep email as general contact or first attorney email fallback
     const finalEmail = isUseful(email) ? email.trim() : (attorneys.length > 0 && isUseful(attorneys[0].email) ? attorneys[0].email : null);
 
+    const practiceAreas = normalizePracticeAreas([
+      ...(candidate.practice_areas ?? []),
+      ...(enriched.practice_areas ?? []),
+    ]);
+
     return {
       firm_name: candidate.firm_name,
       address,
@@ -420,6 +428,8 @@ ${searchContextResult.context}
       email: finalEmail,
       attorney_name: attorneys.length > 0 ? attorneys[0].name : candidate.attorney_name,
       attorneys,
+      practice_areas: practiceAreas,
+      practiceAreas,
     };
   });
 

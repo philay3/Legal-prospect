@@ -443,5 +443,90 @@ describe("saveResearchFirms", () => {
       });
     });
   });
+
+  describe("Practice areas database saves", () => {
+    it("should normalize practice areas on create", async () => {
+      vi.mocked(zipcodes.lookup).mockReturnValue({
+        zip: "19103",
+        city: "Philadelphia",
+        state: "PA",
+        latitude: 0,
+        longitude: 0,
+        country: "US",
+      });
+
+      vi.mocked(prisma.firm.findFirst).mockResolvedValue(null);
+
+      const mockFirms = [
+        {
+          firm_name: "Mock Law Firm",
+          address: "123 Market St",
+          phone: "555-1234",
+          website: "https://mocklaw.com",
+          email: "info@mocklaw.com",
+          practiceAreas: ["Family Law", "family law", "  IP    Law "],
+        },
+      ];
+
+      await saveResearchFirms("19103", mockFirms);
+
+      expect(prisma.firm.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          practiceAreas: ["Family Law", "IP Law"],
+        }),
+      });
+    });
+
+    it("should union new practice areas with existing practice areas on update", async () => {
+      vi.mocked(zipcodes.lookup).mockReturnValue({
+        zip: "19103",
+        city: "Philadelphia",
+        state: "PA",
+        latitude: 0,
+        longitude: 0,
+        country: "US",
+      });
+
+      const existingFirm = {
+        id: "existing-id",
+        firmName: "Mock Law Firm",
+        zip: "19103",
+        city: "Philadelphia",
+        state: "PA",
+        streetAddress: "123 Market St",
+        website: "https://mocklaw.com",
+        phone: "555-1234",
+        email: null,
+        practiceAreas: ["Estate Planning"],
+        attorneyCountRange: "Unknown",
+        attorneys: [],
+        sourceType: "WEB_SCRAPE",
+        confidenceLevel: "HIGH",
+        verificationStatus: "VERIFIED",
+      };
+
+      vi.mocked(prisma.firm.findFirst).mockResolvedValue(existingFirm as any);
+
+      const incomingFirms = [
+        {
+          firm_name: "Mock Law Firm",
+          address: null,
+          phone: null,
+          website: null,
+          email: null,
+          practice_areas: ["Family Law", "estate planning"],
+        },
+      ];
+
+      await saveResearchFirms("19103", incomingFirms);
+
+      expect(prisma.firm.update).toHaveBeenCalledWith({
+        where: { id: "existing-id" },
+        data: expect.objectContaining({
+          practiceAreas: ["Estate Planning", "Family Law"],
+        }),
+      });
+    });
+  });
 });
 

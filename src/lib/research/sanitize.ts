@@ -236,5 +236,28 @@ export function sanitizeFirm<T>(firm: T): T {
   return firm;
 }
 
-
-
+/**
+ * Normalizes an array of raw practice areas.
+ * - Collapses multiple whitespaces to single spaces.
+ * - Trims leading/trailing whitespace.
+ * - Filter out null, undefined, empty, or non-string values.
+ * - Strip Postgres-unfriendly C0 control characters and NUL bytes.
+ * - Case-insensitively deduplicate while preserving the casing of the first-seen item.
+ */
+export function normalizePracticeAreas(
+  raw: (string | null | undefined)[] | null | undefined,
+): string[] {
+  if (!raw) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== "string") continue;
+    const clean = sanitizeText(item).replace(/\s+/g, " ").trim();
+    if (!clean) continue;
+    const key = clean.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(clean);
+  }
+  return out;
+}

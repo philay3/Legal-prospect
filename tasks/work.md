@@ -2630,4 +2630,71 @@ The human should verify:
 
 Wait for user review and approval.
 
+---
 
+## 2026-06-18 — Populate `practiceAreas` end-to-end (fix empty practice-area extraction)
+
+### Task Summary
+
+Populated the `Firm.practiceAreas` field throughout the entire research pipeline: from discovery (gpt-5.5) and enrichment (gpt-5.4-mini) schemas, prompt schemas, merging discovery and enrichment results, to database inputs and create/update logic inside `saveResearchFirms`. Built a pure helper function `normalizePracticeAreas` to trim, collapse whitespace, strip control characters, and case-insensitively deduplicate practice areas.
+
+### Files Created
+
+- None.
+
+### Files Changed
+
+- `src/lib/research/sanitize.ts` — Added `normalizePracticeAreas` helper function.
+- `src/lib/research/sanitize.test.ts` — Added unit tests for `normalizePracticeAreas`.
+- `src/lib/research/parseResearchResponse.ts` — Added `practice_areas` array to `ResearchFirmSchema` and `EnrichmentResultSchema` and integrated value sanitization.
+- `src/lib/research/parsers.test.ts` — Added tests checking that the schemas parse and clean `practice_areas` properly.
+- `src/lib/research/buildResearchPrompt.ts` — Updated JSON schema instructions and textual guidance in the discovery and enrichment LLM prompts.
+- `src/lib/research/runLeadResearch.ts` — Modified to merge and union candidate and enrichment practice areas.
+- `src/lib/db/saveResearchFirms.ts` — Added `practiceAreas`/`practice_areas` fields to `ResearchFirmInput` and updated database creation and update merging logic.
+- `src/lib/db/saveResearchFirms.test.ts` — Added unit tests verifying `practiceAreas` are correctly populated on creation and unioned/merged on update.
+- `docs/planning/v1datafetchingplan.md` — Updated output fields documentation and marked the `practiceAreas` extraction gap resolved.
+- `tasks/work.md` — Logged the implementation work.
+
+### What Changed
+
+- Implemented `normalizePracticeAreas(raw)` which trims, collapses whitespace, filters empty strings/non-strings, strips NUL/C0 controls, and performs case-insensitive deduplication (retaining the first-seen casing).
+- Updated the LLM prompts to ask for `practice_areas` in JSON arrays.
+- Updated both `ResearchFirmSchema` and `EnrichmentResultSchema` zod models and parsers to validate and clean `practice_areas`.
+- Refactored `runLeadResearch` merging logic to merge `candidate.practice_areas` and `enriched.practice_areas` via `normalizePracticeAreas`.
+- Updated `saveResearchFirms` to save normalized practice areas on firm creation, and to perform a union merge with existing practice areas on firm update so already stored data is never lost.
+- Verified TypeScript builds successfully and Vitest tests pass cleanly.
+
+### Why It Changed
+
+To fix the extraction gap where `practiceAreas` was left as an empty array `[]` on every researched law firm because the pipeline omitted requesting, transferring, or storing the field.
+
+### Commands Suggested
+
+The human should run these commands to execute tests:
+
+```bash
+npx vitest run
+```
+
+### Commands Run by Human
+
+`No commands run.`
+
+### Results Pasted by Human
+
+`No results pasted.`
+
+### Verification
+
+The human should verify:
+1. `npx vitest run` executes successfully with all 108 test cases passing.
+2. `npx tsc --noEmit` compiles successfully with no errors.
+3. Live research on a fresh ZIP or with `refresh=true` (e.g. `curl "http://localhost:3000/api/prospects/search?zip=19103&refresh=true"`) populates the database `Firm.practiceAreas` list as verified via `npx prisma studio`.
+
+### Known Risks
+
+- None. Already-discovered practice areas are preserved via union-merge on update.
+
+### Next Recommended Step
+
+Wait for user review and approval.

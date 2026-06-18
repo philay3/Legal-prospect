@@ -16,6 +16,7 @@ export const ResearchFirmSchema = z.object({
     name: z.string(),
     email: z.string().nullable(),
   })).nullable().optional(),
+  practice_areas: z.array(z.string()).nullable().optional(),
 });
 
 // Zod schema for the entire research response wrapper
@@ -82,6 +83,15 @@ export function parseResearchResponse(rawResponse: string): ValidatedResearchRes
               return att;
             }).filter((att: any) => att && att.name !== "");
           }
+          let practice_areas = null;
+          if (Array.isArray(firm.practice_areas)) {
+            practice_areas = firm.practice_areas.map((pa: any) => {
+              if (typeof pa === 'string') {
+                return sanitizeValue(pa);
+              }
+              return pa;
+            }).filter((pa: any) => typeof pa === 'string' && pa.trim() !== "");
+          }
           return {
             ...firm,
             attorney_name: sanitizeValue(firm.attorney_name),
@@ -91,6 +101,7 @@ export function parseResearchResponse(rawResponse: string): ValidatedResearchRes
             website: sanitizeValue(firm.website),
             email: sanitizeValue(firm.email),
             attorneys: attorneys || undefined,
+            practice_areas: practice_areas || undefined,
           };
         }
         return firm;
@@ -184,6 +195,7 @@ export const EnrichmentResultSchema = z.object({
     name: z.string(),
     email: z.string().nullable(),
   })).nullable().optional(),
+  practice_areas: z.array(z.string()).nullable().optional(),
 });
 
 export const EnrichmentResponseSchema = z.object({
@@ -242,6 +254,16 @@ export function parseEnrichmentResponse(rawResponse: string): ValidatedEnrichmen
           }).filter((att: any) => att && att.name !== "");
         }
 
+        let practice_areas = null;
+        if (Array.isArray(item.practice_areas)) {
+          practice_areas = item.practice_areas.map((pa: any) => {
+            if (typeof pa === 'string') {
+              return sanitizeEnrichValue(pa);
+            }
+            return pa;
+          }).filter((pa: any) => typeof pa === 'string' && pa.trim() !== "");
+        }
+
         return {
           ...item,
           phone: sanitizeEnrichValue(item.phone),
@@ -249,6 +271,7 @@ export function parseEnrichmentResponse(rawResponse: string): ValidatedEnrichmen
           website: sanitizeEnrichValue(item.website),
           address: sanitizeEnrichValue(item.address),
           attorneys,
+          practice_areas,
         };
       }
       return item;

@@ -32,6 +32,7 @@ For each qualifying law firm found, collect the following fields:
 4. "phone": The phone number of the firm (use null if not found).
 5. "website": The official website URL of the firm (use null if not found).
 6. "email": The general contact email or attorney-specific email of the firm (use null if not found).
+7. "practice_areas": An array of the firm's practice areas / specialties (e.g. ["Family Law", "Personal Injury"]); use an empty array if not stated.
 
 ### Crucial Constraints
 - Do NOT invent, guess, or hallucinate any data. If a phone, website, email, address, or attorney name is not explicitly found, use null.
@@ -50,7 +51,8 @@ JSON Schema:
       "address": "string or null",
       "phone": "string or null",
       "website": "string or null",
-      "email": "string or null"
+      "email": "string or null",
+      "practice_areas": ["string"]
     }
   ]
 }
@@ -81,6 +83,7 @@ Reject a candidate ONLY if there is clear evidence of the following:
 ### Research Goals & Capacity
 - Discover as many candidate firms as possible (aim for up to 15 to 20 firms if they exist in the context).
 - For each firm, compile all details from the provided search context.
+- Include the firm's practice areas / specialties when evident from the results; use an empty array if not stated.
 - Do NOT invent, guess, or fabricate phone numbers, websites, email addresses, or attorney names. If unknown, use null.
 
 ### Output Format
@@ -96,7 +99,8 @@ JSON Schema:
       "address": "string or null",
       "phone": "string or null",
       "website": "string or null",
-      "email": "string or null"
+      "email": "string or null",
+      "practice_areas": ["string"]
     }
   ]
 }
@@ -185,6 +189,7 @@ For each firm in the candidate list, review the structured search context and ex
 5. "attorneys": An array of attorney objects associated with the firm found in the context. Each attorney object should have:
    - "name": The full name of the attorney.
    - "email": The direct email address for this attorney (use null if not found).
+6. "practice_areas": An array of the firm's practice areas / specialties (e.g. ["Family Law","Estate Planning"]); empty array if none stated on the page or in context.
 
 ### Data Source Prioritization Rules
 - **Official Website is Strongest**: Prioritize information extracted from the "likely_official_website" and its subpages (e.g. contact page, attorney/team profile pages).
@@ -214,7 +219,8 @@ JSON Schema:
           "name": "string",
           "email": "string or null"
         }
-      ]
+      ],
+      "practice_areas": ["string"]
     }
   ]
 }

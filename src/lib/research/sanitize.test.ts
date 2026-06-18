@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sanitizeText, sanitizeFirm } from "./sanitize";
+import { sanitizeText, sanitizeFirm, normalizePracticeAreas } from "./sanitize";
 
 describe("sanitizeText", () => {
   it("should strip NUL bytes", () => {
@@ -107,5 +107,37 @@ describe("sanitizeFirm", () => {
     };
 
     expect(sanitizeFirm(cleanFirm)).toEqual(cleanFirm);
+  });
+});
+
+describe("normalizePracticeAreas", () => {
+  it("should return an empty array if raw is null or undefined", () => {
+    expect(normalizePracticeAreas(null)).toEqual([]);
+    expect(normalizePracticeAreas(undefined)).toEqual([]);
+  });
+
+  it("should filter out non-string and empty values", () => {
+    expect(normalizePracticeAreas([null, undefined, "", "  ", 123 as any, "Law"])).toEqual(["Law"]);
+  });
+
+  it("should collapse multiple whitespaces and trim the strings", () => {
+    expect(normalizePracticeAreas(["  Intellectual    Property   ", "   Bankruptcy Law "])).toEqual([
+      "Intellectual Property",
+      "Bankruptcy Law",
+    ]);
+  });
+
+  it("should strip control characters and NUL bytes", () => {
+    expect(normalizePracticeAreas(["Family\u0000 Law", "Corporate\u0008 Law"])).toEqual([
+      "Family Law",
+      "Corporate Law",
+    ]);
+  });
+
+  it("should case-insensitively deduplicate and preserve the first-seen casing", () => {
+    expect(normalizePracticeAreas(["Family Law", "family law", "FAMILY LAW", "Tax Law", "tax law"])).toEqual([
+      "Family Law",
+      "Tax Law",
+    ]);
   });
 });
