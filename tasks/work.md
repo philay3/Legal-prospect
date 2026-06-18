@@ -2486,3 +2486,67 @@ The human should verify:
 
 Wait for user review and feedback.
 
+---
+
+## 2026-06-18 — Phase 7.6 — Strip NUL/control bytes before save (fixes Postgres 22021 crash)
+
+### Task Summary
+
+Implemented Phase 7.6 to strip NUL (`\u0000`) and other C0 control characters from scraped/extracted data prior to saving to Neon Postgres, and isolated individual database saves per-firm inside try-catch blocks to prevent any single record error from rolling back the entire batch.
+
+### Files Created
+
+- `src/lib/research/sanitize.test.ts` — Unit tests for the new `sanitizeText` and `sanitizeFirm` helpers.
+
+### Files Changed
+
+- `src/lib/research/sanitize.ts` — Added `sanitizeText` and `sanitizeFirm` functions.
+- `src/lib/db/saveResearchFirms.ts` — Applied sanitization and try-catch blocks on each firm in the save loop.
+- `src/lib/db/saveResearchFirms.test.ts` — Added tests for control character sanitization and error isolation in the database write loop.
+- `tasks/work.md` — Logged Phase 7.6 completion.
+
+### What Changed
+
+- Implemented `sanitizeText(v: string)` which filters out `\u0000` and C0 control characters except `\t`, `\n`, and `\r`.
+- Implemented `sanitizeFirm<T>(firm: T)` which recursively walked nested object/array structures to clean string values.
+- Integrated `sanitizeFirm` at the beginning of the `saveResearchFirms` loop, ensuring that all database-saved string fields and array values are fully clean.
+- Wrapped database upserts inside the loop with try-catch blocks to isolate errors per firm and continue processing the rest of the batch.
+- Added comprehensive unit tests in `sanitize.test.ts` and `saveResearchFirms.test.ts`.
+
+### Why It Changed
+
+To resolve Postgres database crashes (error code `22021`: `invalid byte sequence for encoding "UTF8": 0x00`) caused by NUL characters occurring in raw search scraped content, and to prevent a single bad record save from failing the entire batch and returning empty search results to the frontend.
+
+### Commands Suggested
+
+The human should run these commands to execute tests:
+
+```bash
+npx vitest run src/lib/research/sanitize.test.ts
+npx vitest run src/lib/db/saveResearchFirms.test.ts
+```
+
+### Commands Run by Human
+
+`No commands run.`
+
+### Results Pasted by Human
+
+`No results pasted.`
+
+### Verification
+
+The human should verify:
+1. `npx vitest run src/lib/research/sanitize.test.ts` passes.
+2. `npx vitest run src/lib/db/saveResearchFirms.test.ts` passes.
+3. Live research on the crashed ZIP 10962 succeeds and saves without UTF-8 database encoding exceptions.
+
+### Known Risks
+
+- None.
+
+### Next Recommended Step
+
+Wait for user review and approval.
+
+

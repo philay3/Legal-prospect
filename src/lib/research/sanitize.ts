@@ -205,4 +205,36 @@ export function pickContactLink(baseUrl: string, hrefs: string[]): string | null
   return candidates[0].url;
 }
 
+/**
+ * Removes NUL (mandatory — Postgres 22021) + other C0 controls except tab/newline/CR.
+ */
+export function sanitizeText(v: string): string {
+  return v.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "");
+}
+
+/**
+ * Deep-cleans a firm structure recursively. Sanitizes text on strings, maps over arrays,
+ * and recursively walks object properties.
+ */
+export function sanitizeFirm<T>(firm: T): T {
+  if (firm === null || firm === undefined) {
+    return firm;
+  }
+  if (typeof firm === "string") {
+    return sanitizeText(firm) as unknown as T;
+  }
+  if (Array.isArray(firm)) {
+    return firm.map(item => sanitizeFirm(item)) as unknown as T;
+  }
+  if (typeof firm === "object") {
+    const res: any = {};
+    for (const key of Object.keys(firm)) {
+      res[key] = sanitizeFirm((firm as any)[key]);
+    }
+    return res as T;
+  }
+  return firm;
+}
+
+
 

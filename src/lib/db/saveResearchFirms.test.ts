@@ -202,4 +202,83 @@ describe("saveResearchFirms", () => {
       });
     }
   });
+
+  it("should sanitize control and NUL characters in inputs before saving", async () => {
+    vi.mocked(zipcodes.lookup).mockReturnValue({
+      zip: "19103",
+      city: "Philadelphia",
+      state: "PA",
+      latitude: 0,
+      longitude: 0,
+      country: "US",
+    });
+
+    vi.mocked(prisma.firm.findFirst).mockResolvedValue(null);
+
+    const dirtyFirms = [
+      {
+        firm_name: "Dirty\u0000 Law Firm",
+        address: "123\u0001 Market St",
+        phone: "555-\u00001234",
+        website: "https://dirty\u0002law.com",
+        email: "info@dirty\u0000law.com",
+        attorney_name: "Jane\u0008 Doe",
+        attorneys: [
+          { name: "Jane\u0008 Doe", email: "jane@dirty\u0000law.com" },
+        ],
+      },
+    ];
+
+    await saveResearchFirms("19103", dirtyFirms);
+
+    expect(prisma.firm.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        firmName: "Dirty Law Firm",
+        zip: "19103",
+        streetAddress: "123 Market St",
+        website: "https://dirtylaw.com",
+        phone: "555-1234",
+        email: "info@dirtylaw.com",
+        attorneys: ["Jane Doe"],
+      }),
+    });
+  });
+
+  it("should isolate database errors and continue saving other firms in the batch", async () => {
+    vi.mocked(zipcodes.lookup).mockReturnValue(undefined);
+    vi.mocked(prisma.firm.findFirst).mockResolvedValue(null);
+
+    // Mock create to reject the first call but resolve the second
+    vi.mocked(prisma.firm.create)
+      .mockRejectedValueOnce(new Error("Database crash on first record"))
+      .mockResolvedValueOnce({} as any);
+
+    const batch = [
+      { firm_name: "Failing Firm", address: null, phone: null, website: null, email: null },
+      { firm_name: "Succeeding Firm", address: null, phone: null, website: null, email: null },
+    ];
+
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await saveResearchFirms("99999", batch);
+
+    // Verify both were processed: the first failed, but the second created was attempted and succeeded
+    expect(prisma.firm.create).toHaveBeenCalledTimes(2);
+    expect(prisma.firm.create).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        data: expect.objectContaining({ firmName: "Failing Firm" }),
+      })
+    );
+    expect(prisma.firm.create).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        data: expect.objectContaining({ firmName: "Succeeding Firm" }),
+      })
+    );
+
+    expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
 });
+
