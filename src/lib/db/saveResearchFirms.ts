@@ -1,5 +1,5 @@
 import prisma from "../prisma";
-import { isUseful, sanitizeFirm } from "../research/sanitize";
+import { isUseful, sanitizeFirm, sanitizeText } from "../research/sanitize";
 import zipcodes from "zipcodes";
 
 export interface ResearchFirmInput {
@@ -88,9 +88,27 @@ export async function saveResearchFirms(
           where: { id: existing.id },
           data: updateData,
         });
+
+        // Save attorneys (dual-write)
+        const attorneyInputs = buildAttorneyInputs(existing.id, mappedAttorneys);
+        for (const input of attorneyInputs) {
+          await prisma.attorney.upsert({
+            where: {
+              firmId_name: {
+                firmId: existing.id,
+                name: input.name,
+              },
+            },
+            create: {
+              firmId: existing.id,
+              name: input.name,
+            },
+            update: {},
+          });
+        }
       } else {
         // Create a new firm record
-        await prisma.firm.create({
+        const createdFirm = await prisma.firm.create({
           data: {
             firmName,
             zip,
@@ -111,9 +129,51 @@ export async function saveResearchFirms(
             globalNotes: "Discovered via live web research; pending review.",
           },
         });
+
+        // Save attorneys (dual-write)
+        const attorneyInputs = buildAttorneyInputs(createdFirm.id, mappedAttorneys);
+        for (const input of attorneyInputs) {
+          await prisma.attorney.upsert({
+            where: {
+              firmId_name: {
+                firmId: createdFirm.id,
+                name: input.name,
+              },
+            },
+            create: {
+              firmId: createdFirm.id,
+              name: input.name,
+            },
+            update: {},
+          });
+        }
       }
     } catch (error) {
       console.error(`Error saving research firm "${rawFirm.firm_name}":`, error);
     }
   }
+}
+
+/**
+ * Builds a list of cleaned, deduplicated attorney records for database save.
+ * Trims, ignores empty names, deduplicates within the firm, and as a backstop
+ * removes control/NUL characters.
+ */
+export function buildAttorneyInputs(
+  firmId: string,
+  names: string[]
+): { firmId: string; name: string }[] {
+  const seen = new Set<string>();
+  const inputs: { firmId: string; name: string }[] = [];
+
+  for (const name of names) {
+    if (!name) continue;
+    const cleanName = sanitizeText(name).trim();
+    if (!cleanName) continue;
+    if (seen.has(cleanName)) continue;
+    seen.add(cleanName);
+    inputs.push({ firmId, name: cleanName });
+  }
+
+  return inputs;
 }

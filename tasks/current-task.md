@@ -1,55 +1,50 @@
-# Task: Strip NUL/control bytes before save (fixes Postgres 22021 crash)
+# Coding Agent Task — INVESTIGATION ONLY (read-only, no changes, no commands)
 
-## Why
-A live DDG run on ZIP 10962 discovered and enriched 20 firms successfully, then the save threw:
-`invalid byte sequence for encoding "UTF8": 0x00` (Postgres code 22021) at `saveResearchFirms.ts:91`. Postgres text columns cannot store a NUL byte (`\u0000`); one slipped in from scraped/extracted text, and because the save isn't sanitized, the entire batch rolled back — all 20 firms lost, route returned empty (which is why the GUI showed the empty state). Tavily Extract masks this (it returns cleaned content), but it's a latent crash on any provider.
+> This is the "investigate empty practice-area extraction" step from `docs/03-data-fetching-plan.md` §13 and the roadmap. It must land **before** the `PracticeArea` / `FirmPracticeArea` migration. This session does NOT implement a fix — it only reports code so the planning AI can pinpoint the break.
 
-## Outcome / acceptance criteria
-1. Re-running the ZIP that crashed (`/api/prospects/search?zip=10962&refresh=true`, with `SEARCH_PROVIDER=ddg`) saves firms successfully — no 22021 error.
-2. Saved string fields contain no `\u0000` bytes; legitimate text (unicode, and `\t \n \r`) is preserved.
-3. Works regardless of discovery/extraction provider — the fix lives at the save boundary.
-4. Vitest passes; the sanitizer is covered by pure unit tests.
-5. No schema change, no migration.
+## Goal
+`Firm.practiceAreas` comes back empty (`[]`) on every firm. Find out why. The break is one of:
+1. the enrichment prompt/schema never asks for practice areas,
+2. they're asked for but dropped during parsing, or
+3. they're parsed but never mapped onto the firm object that `saveResearchFirms` writes.
 
-## Design
+Locate and report the exact code, verbatim, so we can confirm which.
 
-### Sanitizer (extend `src/lib/research/sanitize.ts`)
-Add a pure function that removes the bytes Postgres rejects plus other junk control chars, while preserving normal whitespace:
-```ts
-// Remove NUL (mandatory — Postgres 22021) + other C0 controls except tab/newline/CR
-export function sanitizeText(v: string): string {
-  return v.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "");
-}
+## Current Task Only
+Read the research + save pipeline and report the items under "What to report." Do not implement anything.
+
+## Do Not Touch
+- Do not edit any file (no code, schema, or doc changes).
+- Do not run any terminal command (no `npm` / `npx` / `prisma` / `git` / dev / test / build / `rm` / `mv` / `cp`).
+- Do not refactor, rename, reorder, or "clean up" anything.
+- Do not add practice-area extraction in this session — that's the next task, after this report.
+- Use your read-only file-read / file-search tools only (inspection is fine; shell commands are not).
+
+## What to report (paste each VERBATIM, with file path + line range)
+1. **Enrichment LLM call** (gpt-5.4-mini) — in `src/lib/research/runLeadResearch.ts` or the helper it calls: the full system + user prompt, the model + params, the `response_format`/JSON schema (if any), and the code that parses the model response into fields (phone / email / attorneys / …).
+2. **Discovery LLM call** (gpt-5.5): its prompt, its schema/`response_format`, and its parse step — in case practice areas are meant to come from discovery, not enrichment.
+3. **Engine firm type** — the TypeScript interface/type of the firm object the research engine produces and passes into `saveResearchFirms` (e.g. `ResearchFirm` / `LeadFirm` / whatever it's named). Show whether `practiceAreas` is declared on it, and its type.
+4. **Enrichment → firm merge** — the code where the enrichment result is attached back onto the firm object (where `phone` / `email` / `attorneys` get set). Show whether `practiceAreas` is set here or not.
+5. **Save mapping** — the part of `src/lib/db/saveResearchFirms.ts` that builds the Prisma `create` / `update` data, specifically the line that sets `practiceAreas` (and how the array is read off the engine firm).
+6. **Every reference to practice areas in the pipeline** — using your file-search tool, list every file + line where `practiceArea` or `practiceAreas` appears under `src/lib/research/` and `src/lib/db/`. If it appears in the type and the save mapping but NOT in either LLM prompt or schema, state that explicitly — that alone likely confirms cause (1).
+7. **Contact-page angle (secondary)** — `pickContactLink` and where its chosen URL is fetched (`fetchPageContent` or equivalent): just the signatures + the URL-selection logic, so we can judge whether the page being read would even contain practice areas (they usually live on a "Practice Areas" / "Services" page, not the contact page).
+
+## Output format
+For each item: a short heading, then a fenced block with the verbatim code, prefixed by path + line range. Example:
+
 ```
-And a helper that deep-cleans a firm before save — every string field and every string-array element (`attorneys[]`, `practiceAreas[]`, plus `firmName`, `streetAddress`, `website`, `phone`, `email`, `globalNotes`, etc.):
-```ts
-export function sanitizeFirm<T>(firm: T): T { /* walk values; sanitizeText on strings, map over string arrays */ }
+// src/lib/research/runLeadResearch.ts  L120-168  (enrichment prompt + parse)
+<verbatim code here, unedited>
 ```
-Prefer a small generic walk over the object's string / string-array values so no field is missed if the shape changes.
 
-### Apply at the save boundary
-In `src/lib/db/saveResearchFirms.ts`, call `sanitizeFirm(firm)` once per firm immediately before the create/update (and before building attorney inputs, once the Attorney task lands). This keeps the fix provider-agnostic.
+If an item lives in a different file than guessed, report it from wherever it actually is. If an item genuinely does not exist (e.g. there is no JSON schema), say "not present" rather than inventing it.
 
-### Optional hardening (only if cheap)
-Wrap each firm's save in try/catch and log+skip a failing record rather than letting one bad firm abort the whole batch. Today a single bad byte dropped all 20 firms; per-firm isolation would save 19 and log 1. Secondary to the sanitize fix — skip if it complicates the change.
+## Final Report Required
+1. The seven items above, verbatim, with paths + line numbers.
+2. A one-line hypothesis: which of causes (1) / (2) / (3) the evidence points to.
+3. Confirmation: no files changed, no commands run.
+4. Statement: "Stopping here and waiting for review."
 
-## Tests (Vitest)
-- `sanitizeText`: strips `\u0000` and other C0 controls; keeps `\t \n \r`, ASCII, and unicode (e.g. accented names); idempotent.
-- `sanitizeFirm`: cleans nested string fields and array elements (`attorneys`, `practiceAreas`); leaves an already-clean firm unchanged.
-
-## Out of scope
-- The "search ZIP 19103 / pilot dataset" empty-state copy in the frontend — separate trivial change, not here.
-- No discovery/extraction changes, no Attorney table work (that's the next task), no schema change.
-
-## Commands for Human to Run
-(Agent: list only.)
-- `npx vitest run`
-- With `SEARCH_PROVIDER=ddg` in local `.env`: `npm run dev`, then `curl "http://localhost:3000/api/prospects/search?zip=10962&refresh=true"` — confirm firms return and no 22021 in the logs.
-- `npx prisma studio` to confirm rows saved.
-- Commit + `git push`. (No migration needed.)
-
-## Guardrails
-- Canonical root only; ignore iCloud `" 2"` conflict files.
-- No destructive commands.
-- Pure code change — no schema/migration.
-- Small commit: sanitizer + save change + tests together.
+## Commands for Human to Run (optional — only if the agent can't search files)
+(Agent: list only, never run.)
+- `grep -rni "practicearea" src/lib/research src/lib/db` — every reference, to gather item 6 by hand.

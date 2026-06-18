@@ -2549,4 +2549,85 @@ The human should verify:
 
 Wait for user review and approval.
 
+---
+
+## 2026-06-18 — Phase 7.7 — Add Attorney table (one-to-many off Firm) — dual-write, keep arrays
+
+### Task Summary
+
+Added the relational `Attorney` table linked via a one-to-many relation to `Firm`. Built and integrated a pure helper `buildAttorneyInputs(firmId, names)` to sanitize (backstop), trim, and deduplicate attorneys. Modified `saveResearchFirms` to dual-write to the new `Attorney` table using Prisma upsert on create and update paths. Added unit tests for both the helper and the database saving logic.
+
+### Files Created
+
+- None.
+
+### Files Changed
+
+- `prisma/schema.prisma` — Added `Attorney` model and relation field `attorneyList` on `Firm`.
+- `src/lib/db/saveResearchFirms.ts` — Added `buildAttorneyInputs` helper and integrated `prisma.attorney.upsert` dual-writes.
+- `src/lib/db/saveResearchFirms.test.ts` — Updated mocks, added helper unit tests, and added dual-write test cases.
+- `tasks/work.md` — Logged Phase 7.7 completion.
+
+### What Changed
+
+- Defined the `Attorney` model with `id` (UUID), `firmId` (Relation to Firm with cascade delete), `name` (String), `email` (String?), `title` (String?), and timestamps.
+- Added `@@unique([firmId, name])` and `@@index([firmId])` to `Attorney`.
+- Implemented `buildAttorneyInputs` to sanitize (backstop via `sanitizeText`), trim, and filter/deduplicate names.
+- Updated the update and create paths in `saveResearchFirms` to fetch the firm ID and trigger sequential upserts to `prisma.attorney` for each unique attorney.
+- Updated Prisma mocks and test suites in `saveResearchFirms.test.ts` to assert that correct upsert payloads are constructed and run.
+
+### Why It Changed
+
+To normalize the database schema by migrating from flat string array representations of attorneys to structured relational models, enabling rich attorney-level metadata extraction and queries in future phases, while preserving current reads and the flat array field to keep current UI/CSV output unchanged during transition.
+
+### Commands Suggested
+
+The human should run these commands:
+
+1. Create and apply the additive migration:
+   ```bash
+   npx prisma migrate dev --name add_attorney_table
+   ```
+   *Verify that this executes successfully on the target Neon Postgres database.*
+
+2. Regenerate the Prisma client:
+   ```bash
+   npx prisma generate
+   ```
+
+3. Run the Vitest unit tests:
+   ```bash
+   npx vitest run src/lib/db/saveResearchFirms.test.ts
+   ```
+   *Confirm all 8 test cases pass.*
+
+4. Run the Next.js development server:
+   ```bash
+   npm run dev
+   ```
+   *Search for a ZIP (e.g. 19103) with refresh=true, then check the db (via npx prisma studio) to verify Firm.attorneys is still populated and the Attorney table contains corresponding mapped rows.*
+
+### Commands Run by Human
+
+`No commands run.`
+
+### Results Pasted by Human
+
+`No results pasted.`
+
+### Verification
+
+The human should verify:
+1. Prisma migration completes successfully.
+2. `npx vitest run src/lib/db/saveResearchFirms.test.ts` passes.
+3. Live research runs successfully, and results are written to both `Firm` (as arrays) and the `Attorney` table (idempotently).
+
+### Known Risks
+
+- Sequentially executing upsert queries inside the save loop for attorneys adds database roundtrips. However, since the database runs on Neon/Postgres and batches are typically small (usually < 20 firms, 1-3 attorneys per firm), performance remains acceptable.
+
+### Next Recommended Step
+
+Wait for user review and approval.
+
 

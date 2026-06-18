@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { saveResearchFirms } from "./saveResearchFirms";
+import { saveResearchFirms, buildAttorneyInputs } from "./saveResearchFirms";
 import prisma from "../prisma";
 import zipcodes from "zipcodes";
 
@@ -9,6 +9,9 @@ vi.mock("../prisma", () => ({
       findFirst: vi.fn(),
       update: vi.fn(),
       create: vi.fn(),
+    },
+    attorney: {
+      upsert: vi.fn(),
     },
   },
 }));
@@ -22,6 +25,9 @@ vi.mock("zipcodes", () => ({
 describe("saveResearchFirms", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(prisma.firm.create).mockResolvedValue({ id: "mock-firm-id" } as any);
+    vi.mocked(prisma.firm.update).mockResolvedValue({ id: "mock-firm-id" } as any);
+    vi.mocked(prisma.attorney.upsert).mockResolvedValue({} as any);
   });
 
   it("should create a new firm if it does not exist", async () => {
@@ -279,6 +285,163 @@ describe("saveResearchFirms", () => {
 
     expect(consoleSpy).toHaveBeenCalled();
     consoleSpy.mockRestore();
+  });
+
+  describe("buildAttorneyInputs", () => {
+    it("should return trimmed, de-duplicated attorney records and strip NUL bytes", () => {
+      const firmId = "firm-123";
+      const names = [
+        "Jane Doe",
+        "  Bob Smith  ",
+        "Jane Doe", // exact dupe
+        "", // empty
+        "   ", // whitespace
+        "Dirty\u0000 Name", // NUL character
+      ];
+
+      const result = buildAttorneyInputs(firmId, names);
+
+      expect(result).toEqual([
+        { firmId: "firm-123", name: "Jane Doe" },
+        { firmId: "firm-123", name: "Bob Smith" },
+        { firmId: "firm-123", name: "Dirty Name" },
+      ]);
+    });
+
+    it("should handle empty names list", () => {
+      expect(buildAttorneyInputs("firm-123", [])).toEqual([]);
+    });
+  });
+
+  describe("Attorney dual-write database saves", () => {
+    it("should call attorney upsert once per unique name on create", async () => {
+      vi.mocked(zipcodes.lookup).mockReturnValue({
+        zip: "19103",
+        city: "Philadelphia",
+        state: "PA",
+        latitude: 0,
+        longitude: 0,
+        country: "US",
+      });
+
+      vi.mocked(prisma.firm.findFirst).mockResolvedValue(null);
+
+      const mockFirms = [
+        {
+          firm_name: "Mock Law Firm",
+          address: "123 Market St",
+          phone: "555-1234",
+          website: "https://mocklaw.com",
+          email: "info@mocklaw.com",
+          attorney_name: "Jane Doe",
+          attorneys: [
+            { name: "Jane Doe", email: "jane@mocklaw.com" },
+            { name: "Bob Smith", email: "bob@mocklaw.com" },
+          ],
+        },
+      ];
+
+      await saveResearchFirms("19103", mockFirms);
+
+      // Verify firm was created
+      expect(prisma.firm.create).toHaveBeenCalled();
+
+      // Verify attorney upsert called for each unique attorney name
+      expect(prisma.attorney.upsert).toHaveBeenCalledTimes(2);
+      expect(prisma.attorney.upsert).toHaveBeenCalledWith({
+        where: {
+          firmId_name: { firmId: "mock-firm-id", name: "Jane Doe" },
+        },
+        create: {
+          firmId: "mock-firm-id",
+          name: "Jane Doe",
+        },
+        update: {},
+      });
+      expect(prisma.attorney.upsert).toHaveBeenCalledWith({
+        where: {
+          firmId_name: { firmId: "mock-firm-id", name: "Bob Smith" },
+        },
+        create: {
+          firmId: "mock-firm-id",
+          name: "Bob Smith",
+        },
+        update: {},
+      });
+    });
+
+    it("should call attorney upsert once per unique name on update", async () => {
+      vi.mocked(zipcodes.lookup).mockReturnValue({
+        zip: "19103",
+        city: "Philadelphia",
+        state: "PA",
+        latitude: 0,
+        longitude: 0,
+        country: "US",
+      });
+
+      const existingFirm = {
+        id: "existing-id",
+        firmName: "Mock Law Firm",
+        zip: "19103",
+        city: "Philadelphia",
+        state: "PA",
+        streetAddress: "123 Market St",
+        website: "https://mocklaw.com",
+        phone: "555-1234",
+        email: null,
+        practiceAreas: [],
+        attorneyCountRange: "1",
+        attorneys: ["Jane Doe"],
+        sourceType: "WEB_SCRAPE",
+        confidenceLevel: "HIGH",
+        verificationStatus: "VERIFIED",
+      };
+
+      vi.mocked(prisma.firm.findFirst).mockResolvedValue(existingFirm as any);
+
+      const incomingFirms = [
+        {
+          firm_name: "Mock Law Firm",
+          address: null,
+          phone: null,
+          website: null,
+          email: null,
+          attorneys: [
+            { name: "Jane Doe", email: null },
+            { name: "Bob Smith", email: null },
+          ],
+        },
+      ];
+
+      await saveResearchFirms("19103", incomingFirms);
+
+      // Verify firm was updated
+      expect(prisma.firm.update).toHaveBeenCalled();
+
+      // Verify attorney upsert called for each unique name
+      expect(prisma.attorney.upsert).toHaveBeenCalledTimes(2);
+      expect(prisma.attorney.upsert).toHaveBeenCalledWith({
+        where: {
+          firmId_name: { firmId: "existing-id", name: "Jane Doe" },
+        },
+        create: {
+          firmId: "existing-id",
+          name: "Jane Doe",
+        },
+        update: {},
+      });
+      expect(prisma.attorney.upsert).toHaveBeenCalledWith({
+        where: {
+          firmId_name: { firmId: "existing-id", name: "Bob Smith" },
+        },
+        create: {
+          firmId: "existing-id",
+          name: "Bob Smith",
+        },
+        update: {},
+      });
+    });
   });
 });
 

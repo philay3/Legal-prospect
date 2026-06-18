@@ -47,6 +47,7 @@ model Firm {
   practiceAreas      String[]
   attorneyCountRange String
   attorneys          String[]
+  attorneyList       Attorney[]
   sourceType         SourceType
   sourceUrl          String?
   confidenceLevel    ConfidenceLevel    @default(UNKNOWN)
@@ -59,3 +60,18 @@ model Firm {
   @@index([zip])
   @@index([city, state])
 }
+
+model Attorney {
+  id        String   @id @default(uuid())
+  firmId    String
+  firm      Firm     @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  name      String
+  email     String?
+  title     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([firmId, name])
+  @@index([firmId])
+}
+

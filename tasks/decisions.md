@@ -443,3 +443,87 @@ This is necessary to avoid another uncontrolled build.
 ### Revisit If
 
 Revisit after the app shell, seed data, database plan, and first search flow are stable.
+
+# Decisions Log — additions (2026-06-18)
+
+> Paste these **below** the existing entries in `decisions.md`. Do not replace the originals — the log rule is to keep old decisions and add new ones.
+
+---
+
+## 2026-06-18 — Engine-First Build Order (Revised the Documented Sequence)
+
+### Decision
+Built the live research/enrichment engine first, ahead of auth, saved leads, and recent ZIPs — reversing the original roadmap, which sequenced external data fetching last and said not to start with scraping/enrichment.
+
+### Reason
+Bootcamp Phase 2 with a Friday deadline required a working, deployed demo that produces real data. The core value and the riskiest unknowns (discovery, enrichment, email extraction) live in the data pipeline, so proving that first de-risked the project and gave us something real to show.
+
+### Tradeoffs / Risks
+Auth, saved leads, and recent ZIPs are deferred. The app is live without accounts, so the URL must stay private (open searches cost money). Traded the foundation-first safety net for speed-to-demo.
+
+### Revisit If
+Documented here per the roadmap change rule. Future sequencing should still avoid batching unrelated features into one session.
+
+---
+
+## 2026-06-18 — Live Search via Tavily; DuckDuckGo Retained as Fallback
+
+### Decision
+Use Tavily as the data source: Tavily Search for discovery and Tavily Extract for enrichment page fetching. DuckDuckGo scraping is retained as a fallback behind a `SEARCH_PROVIDER` env flag (default `tavily`). Google Places was considered and declined for now.
+
+### Reason
+DDG HTML scraping 403'd constantly, dropping into an LLM-only fallback that invents dead URLs. Tavily Search is reliable; Tavily Extract does the page fetch on its own infra and returns cleaned content, which is what actually unlocked email extraction. Google Places gives clean firm identity but has no email field and needs Google Cloud billing, and wouldn't fix the fetch bottleneck. Also satisfies the instructor's "real external API with a key" requirement.
+
+### Tradeoffs / Risks
+Dependency on a paid third party (free tier covers demo volume; the cache means each ZIP spends credits only once). Tavily was acquired by Nebius (Feb 2026), so pricing could shift. The DDG/LLM-fallback path is lower quality and is a backstop only.
+
+### Revisit If
+Tavily pricing/terms change unfavorably, or we want best-in-class firm identity — then add Google Places as a hybrid (Places for identity, Tavily Extract for email).
+
+---
+
+## 2026-06-18 — Deploy Early and Validate With a Trusted User
+
+### Decision
+Deploy the working app to Vercel before auth exists, and let one trusted external user try it for feedback.
+
+### Reason
+Real usage and validation early is worth more than waiting for the full foundation. The external user confirmed the output is good.
+
+### Tradeoffs / Risks
+No auth or rate-limiting yet, so the URL stays private and is not shared publicly (open searches cost OpenAI + Tavily). Local and prod share one Neon database.
+
+### Revisit If
+We need wider or public access — then auth + rate-limiting must land first.
+
+---
+
+## 2026-06-18 — Normalize the Schema Incrementally (Attorney First, Then Practice Areas)
+
+### Decision
+Evolve from the single flat `Firm` table toward a normalized model, additively: `Attorney` (one-to-many) first, then `PracticeArea` + `FirmPracticeArea` (many-to-many) once practice-area extraction works. Keep the `String[]` columns during the transition and dual-write (expand/contract), then drop them later.
+
+### Reason
+A flat table was a fine MVP, but per-attorney data (emails, titles), attorney-level queries, and clean practice-area filtering need real tables. Doing it additively keeps the live app working throughout.
+
+### Tradeoffs / Risks
+Temporary duplication (arrays + tables). Attorney name variants aren't deduped yet (entity resolution deferred). Migrations hit the shared Neon DB immediately, so they are kept strictly additive — never destructive.
+
+### Revisit If
+Data volume or query needs change the priority order. Full table plan: `docs/schema.md` and `docs/05-database-plan.md`.
+
+---
+
+## 2026-06-18 — Sanitize Scraped Text Before Database Writes
+
+### Decision
+Strip NUL (`\u0000`) and other C0 control characters from all strings and arrays before saving (`sanitizeFirm` at the save boundary), and isolate each firm's write in try/catch so one bad record can't abort the batch.
+
+### Reason
+A NUL byte from scraped/LLM text caused Postgres error 22021 and rolled back an entire 20-firm save. Postgres text columns can't hold NUL. Sanitizing at the boundary makes it provider-agnostic.
+
+### Tradeoffs / Risks
+A firm that still fails to save is now logged-and-skipped rather than loud — watch the logs for a "succeeded: N" count lower than expected.
+
+### Revisit If
+We add new save paths (e.g. the Attorney insert) — apply the same sanitization there (already accounted for in the Attorney task).
