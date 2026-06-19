@@ -7,7 +7,7 @@ import { buildResearchPrompt, buildEnrichmentPrompt } from "./buildResearchPromp
 import { parseResearchResponse, parseEnrichmentResponse, ValidatedResearchResponse } from "./parseResearchResponse";
 import { isUseful, extractEmails, normalizeWebsite, pickContactLink, normalizePracticeAreas, isInSearchedState, getFirmsToEnrich } from "./sanitize";
 import { getSearchProvider } from "./searchProviders";
-import { fetchPageContent } from "./searchProviders/tavily";
+import { extractPageContent } from "./extract";
 import zipcodes from "zipcodes";
 
 import { SearchResult } from "./searchProviders/types";
@@ -273,7 +273,7 @@ ${searchContextResult.context}
               }
               
               console.log(`[enrichment] Best contact/about URL chosen for ${firm.firm_name}: ${targetUrl}`);
-              const pageText = await fetchPageContent(targetUrl);
+              const pageText = await extractPageContent(targetUrl);
               combinedText = `[Page Content (${targetUrl})]:\n${pageText}`;
             } catch (e: any) {
               console.log(`[enrichment] Page extraction failed for ${firm.firm_name}: ${e.message || e}`);

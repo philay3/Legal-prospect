@@ -1,74 +1,72 @@
-# Current Task — Direct-fetch-first page extraction behind `EXTRACT_PROVIDER` (Tavily stays the fallback + the revert)
+# Current Task — Results UI v2 (display-only)
 
 ## Why
+Frontend v2: tighten the results table for the demo. The firm-name popover currently opens on hover and blocks scrolling (and likely drives a ~10s render lag from eagerly building a hidden popover for every row). This task switches it to click-to-toggle + on-demand render, moves the address into the popover, promotes attorneys to their own column, and collapses phone/email/website to action icons. **Display-only — no API, schema, migration, or pipeline changes.** Firm-rows stay (no attorney-row restructure).
 
-Tavily Extract runs once per enriched firm (~60 per search), which burns credits fast. Two low-risk moves: (1) a **fresh Tavily key** for headroom, and (2) **invert the fetch order** — try a free direct fetch first and only fall back to Tavily Extract when direct fetch fails or returns empty. That cuts paid Tavily calls down to just the sites a plain fetch can't handle, while keeping Tavily — the proven extractor — in the loop. We do it behind an `EXTRACT_PROVIDER` flag (mirrors `SEARCH_PROVIDER`) so it's fully reversible: one env var flips back to today's Tavily-first behavior.
-
-**No new vendor before the demo.** Jina / Firecrawl remain drop-in future values behind the same flag, but are **out of scope here** — this task introduces no new dependency and no new API key.
-
-> Reversibility is the point. Tavily must stay fully wired so `EXTRACT_PROVIDER=tavily` restores current behavior with no code change.
-
-## Step 0 — Read first
-
-- `runLeadResearch.ts` `enrichFirm` calls `fetchPageContent(targetUrl)` (imported from `./searchProviders/tavily`), wrapped in try/catch so a failure still saves the firm with Places data.
-- Where the **direct-fetch + HTML-clean** routine lives — the logs show `fetchPageContent` falling back to a direct fetch ("falling back to direct fetch" / "Fetching page directly"), so there's already a direct-fetch routine (likely inside `searchProviders/tavily.ts`, using `cleanHtmlToText`). **Reuse it**; don't write a new one.
-- The existing `SEARCH_PROVIDER` wiring and `.env.example`, so `EXTRACT_PROVIDER` follows the same conventions.
-
-If reality differs from these assumptions, **surface it in your implementation plan and stop for review before coding.**
+## Step 0 — read first
+Read the results table component and the current firm-name popover implementation. Implement against what's actually there. Also check the CSV export helper and the pagination helpers (`src/utils/pagination.ts`) so you don't regress them.
 
 ## Acceptance criteria
-
-1. `EXTRACT_PROVIDER` selects the fetch order, with two values:
-   - `tavily` — Tavily Extract → direct-fetch fallback. (**today's exact behavior; the revert**)
-   - `direct` — direct fetch → Tavily Extract fallback. (the cost-saver)
-2. **Default is `tavily`** when `EXTRACT_PROVIDER` is unset — prod/demo stay on the proven path; `direct` is an opt-in.
-3. **Reverting / staying safe is one env var:** `EXTRACT_PROVIDER=tavily` is current behavior, no code change.
-4. Graceful failure preserved: if the primary **and** the fallback both fail, the firm still saves with its Places data; one bad fetch never aborts the batch.
-5. Logs say which path ran (e.g. `Extracting via direct fetch`, `direct fetch empty/failed, falling back to Tavily`, `Extracting via Tavily`), so the A/B is visible in the logs.
-6. `npx vitest run` and `npx tsc --noEmit` pass.
+- The firm-name popover opens on click of its cue and closes on a second click, an outside click, Escape, and scroll. It renders on-demand (not eagerly per row), isn't clipped by table/row overflow, and the prior render lag is gone.
+- The popover contains **practice areas + address only** (no attorneys).
+- Attorneys appear as their own table column, capped at the first 2 with a `+N more` indicator.
+- Phone, email, and website are action icons (`tel:` / `mailto:` / link), each carrying the real value in `title` and `aria-label`; a missing value shows a muted dash, not a dead icon.
+- CSV export includes **all rows across all pages** (not just the current page) with the **full** phone/email/website values (not icons).
+- Sorting, pagination, and loading/error states still work. Firm-name wrap, the area header, and the clickable/copyable API endpoint are preserved.
 
 ## The change
 
-Add a small extractor module (e.g. `src/lib/research/extract.ts` — confirm placement in Step 0) exporting `extractPageContent(url: string): Promise<string>` that dispatches on `EXTRACT_PROVIDER`:
+### A. Click-to-toggle popover (stop blocking scroll)
+Change the firm-name popover from sticky-hover to **click-to-open (toggle)**:
+- The discoverability cue (e.g. the practice-area count chip) is the click target; click opens, click again or click outside closes.
+- **Close on scroll**, on outside-click, and on Escape.
+- **Render the popover content on-demand** — only build it when open, not eagerly for every row. (This also likely fixes the ~10s render lag: eagerly rendering a hidden popover per row builds a lot of DOM up front.)
+- Keep it from being clipped by row/table overflow (high `z-index` or a portal).
 
-- `tavily` → call the existing `fetchPageContent` (Tavily Extract → direct fallback). **Leave that function untouched.**
-- `direct` → `fetchDirect(url)` first; on throw/empty, `fetchPageContent(url)` (Tavily) as the fallback.
+### B. Address inside the popover
+Since the address column is gone, show each firm's address in its popover:
+```
+{streetAddress}
+{city}, {state} {zip}
+```
+Omit empty lines; show a muted "Address not found" if all parts are missing.
 
-Where `fetchDirect(url)` reuses the existing direct-fetch + `cleanHtmlToText` routine — extract it into a shared, reusable function if it's currently inlined inside the Tavily fallback. Reuse the existing timeout wrapper (`withTimeout` / `fetchWithTimeout`).
+### C. Attorneys out of the popover; kept in the table
+- The popover contains **practice areas + address only** — not attorneys.
+- Attorneys stay as their own table column, capped (first 2 + `+N more`), since this tool is ultimately for contacting them and they should be visible at a glance.
 
-Then, in `runLeadResearch.ts` `enrichFirm`, replace the `fetchPageContent(targetUrl)` call with `extractPageContent(targetUrl)`. Nothing else in the pipeline changes — the rest of enrichment, the `extractEmails` backstop, save, route, and UI all stay the same.
+### D. Phone / email / website → action icons
+Shrink these three columns by replacing the full text with a click-to-act icon:
+- Phone → phone icon, `<a href="tel:{phone}">`.
+- Email → envelope icon, `<a href="mailto:{email}">`.
+- Website → globe/link icon, `<a href="{website}" target="_blank" rel="noopener noreferrer">`.
+So no data is lost:
+- Each icon carries the real value in `title` and an `aria-label` (e.g. `aria-label="Call (631) 555-1212"`).
+- Missing value → a muted dash, not a dead icon.
+- CSV export keeps the **full** phone/email/website values (don't reduce the export to icons).
+- (Tradeoff: this trades glanceability for compactness. If you later want the number visible, show it next to the icon — icons-only for now.)
 
-Env:
-- `EXTRACT_PROVIDER` (default `tavily`; `direct` is the cost-saver) — add to `.env.example` with a comment noting `direct` tries a free direct fetch first and falls back to Tavily. **No new keys** — keep using `TAVILY_API_KEY`.
+### Keep from v1 (don't regress)
+Firm name wraps; the area header ("Law firms near {city}, {state} {zip}"); the clickable/copyable API endpoint.
 
 ## Tests
+- Pure helper for the capped attorney display (e.g. `capAttorneys(names, max)`) → returns the first `max` names plus a remainder count. Unit-test 0, 1, exactly `max`, and `max+` names, and the `+N more` math.
+- Popover behavior: opens on cue click; closes on second click, outside-click, Escape, and scroll; content is not in the DOM until opened.
+- Action icons: a present value renders an icon with the correct `href`, `title`, and `aria-label`; a missing value renders a muted dash with no link.
+- CSV: export contains the full phone/email/website (not icons) for **all** rows across pages, not just the visible page.
 
-Keep light — the real proof is the live A/B run, and the fetchers do network I/O:
-- Dispatch / order selection: given each `EXTRACT_PROVIDER` value, the correct primary-then-fallback order is selected (`tavily` → Tavily-then-direct, `direct` → direct-then-Tavily), and an unknown/unset value falls back to `tavily`.
-- If the harness allows mocking the fetchers, add one test that the fallback fires: the primary throws/returns empty → the fallback is called and its result returned.
-- Keep all existing enrichment / `extractEmails` / `pickContactLink` tests green.
-
-## Commands for Human to Run (list only — do not run these)
-
-```bash
-npx vitest run
+## Commands for Human to Run (list only — do not run)
+```
 npx tsc --noEmit
-# A/B the fetch order on the SAME ZIP and compare the yield line + time.
-# Restart the dev server with each value, then curl the same ZIP with refresh=true:
-#   EXTRACT_PROVIDER=tavily  → curl ".../api/prospects/search?zip=48306&refresh=true"   (note: "E with email" and total time)
-#   EXTRACT_PROVIDER=direct  → curl ".../api/prospects/search?zip=48306&refresh=true"   (compare)
-# Confirm for each: failed=0 on save, all firms still saved, total time well under 300s.
-# If direct-first HOLDS the email yield → set EXTRACT_PROVIDER=direct on Vercel to start saving Tavily credits.
-# If it DIPS → leave it on tavily (the default). Reverting is just EXTRACT_PROVIDER=tavily.
+npx vitest run
+npm run dev   # then manually check a dense ZIP (e.g. 10510): popover toggle, icons, attorney column, CSV row count
 ```
 
 ## Guardrails
+- **Display-only.** No API, schema, migration, or pipeline changes. No Places work. No social-media display.
+- No attorney-row restructure — firm-rows stay.
+- Don't break sorting, pagination, loading/error states, or CSV.
+- No visual redesign beyond the changes above — reuse the existing styling/tokens.
+- Do not run any commands (including `npx`/`git`) — list them for the human only.
 
-- **No schema change, no migration, no destructive DB commands.**
-- Touch **only** the new extractor module, the `enrichFirm` call site in `runLeadResearch.ts`, and `.env.example`. Do **not** touch discovery, the save path / `searchZip` dedupe, the route response shape, or the UI.
-- **Keep the Tavily path fully working** — it's both the fallback and the revert. Do not delete `fetchPageContent` or change its behavior.
-- Preserve graceful failure (a firm with no usable page still saves with Places data) and the existing timeout/concurrency.
-- Keep enrichment on `gpt-5.4-mini`.
-- Do **not** add Jina / Firecrawl in this task — they're future values behind the same flag.
-
-When done, report per `08-coding-agent-rules.md` (including full changed-file contents), then stop and wait for review.
+Return an implementation plan first (file-by-file `[NEW]`/`[MODIFY]` list + verification plan) — do not implement yet. After approval, report per `08-coding-agent-rules.md` with the full contents of every changed and created file, then stop.

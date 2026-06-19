@@ -163,29 +163,7 @@ export class TavilySearchProvider implements SearchProvider {
   }
 }
 
-/**
- * Fetches page content using Tavily Extract, falling back to direct fetch.
- */
-export async function fetchPageContent(url: string, timeoutMs = 8000): Promise<string> {
-  const apiKey = process.env.TAVILY_API_KEY;
-  if (apiKey) {
-    try {
-      console.log(`[enrichment] Extracting page via Tavily: ${url}`);
-      const rawResponse = await postTavily("/extract", {
-        urls: [url],
-        extract_depth: "basic",
-      }, timeoutMs);
-      const text = mapTavilyExtractToText(rawResponse);
-      if (text) {
-        return text;
-      }
-      console.log(`[enrichment] Tavily Extract returned empty for ${url}, falling back to direct fetch.`);
-    } catch (e: any) {
-      console.log(`[enrichment] Tavily Extract failed for ${url}: ${e.message || e}, falling back to direct fetch.`);
-    }
-  }
-
-  // Fallback to direct fetch
+export async function fetchDirect(url: string, timeoutMs = 8000): Promise<string> {
   console.log(`[enrichment] Fetching page directly: ${url}`);
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
@@ -217,4 +195,30 @@ export async function fetchPageContent(url: string, timeoutMs = 8000): Promise<s
   } finally {
     clearTimeout(id);
   }
+}
+
+/**
+ * Fetches page content using Tavily Extract, falling back to direct fetch.
+ */
+export async function fetchPageContent(url: string, timeoutMs = 8000): Promise<string> {
+  const apiKey = process.env.TAVILY_API_KEY;
+  if (apiKey) {
+    try {
+      console.log(`[enrichment] Extracting page via Tavily: ${url}`);
+      const rawResponse = await postTavily("/extract", {
+        urls: [url],
+        extract_depth: "basic",
+      }, timeoutMs);
+      const text = mapTavilyExtractToText(rawResponse);
+      if (text) {
+        return text;
+      }
+      console.log(`[enrichment] Tavily Extract returned empty for ${url}, falling back to direct fetch.`);
+    } catch (e: any) {
+      console.log(`[enrichment] Tavily Extract failed for ${url}: ${e.message || e}, falling back to direct fetch.`);
+    }
+  }
+
+  // Fallback to direct fetch
+  return fetchDirect(url, timeoutMs);
 }
