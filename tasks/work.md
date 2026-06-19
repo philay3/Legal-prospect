@@ -2772,5 +2772,75 @@ Verify that:
 
 ### Next Recommended Step
 
-Wait for user test execution, check results, and finalize the task.
+Proceed to Phase 8 / next UI refinement.
+
+---
+
+## 2026-06-19 — Results UI v2 (display-only)
+
+### Task Summary
+
+Replaced the hover-triggered firm-name popover with a performance-optimized click-to-toggle portal popover that renders on-demand, houses practice areas and addresses, and unmounts cleanly. Promoted attorneys to their own column (capped at 2 names with a `+N more` toggle button). Replaced Phone, Email, Website text fields with compact centered action icon links carrying full metadata in `title` and `aria-label`. Added unit tests for capping and multi-page CSV exports.
+
+### Files Created
+
+- `src/utils/attorneys.ts` — pure capping utility helper `capAttorneys(names, max)`
+- `src/utils/attorneys.test.ts` — unit test suite for `capAttorneys`
+
+### Files Changed
+
+- `src/utils/toCsv.test.ts` — added test case verifying all rows across pages (index 10+ / Page 2+) are exported correctly to CSV
+- `src/components/ResultsTable.tsx` — updated state, portal popup with scroll/Escape/click-outside listeners, button expansion, and centered action icon cells
+- `src/app/globals.css` — added styling for badge button, action icons, column width limits, and popover address details
+- `tasks/work.md` — logged this session's progress
+
+### What Changed
+
+- Abstracted capping logic to a pure helper utility `capAttorneys` and wrote full unit tests.
+- Replaced eager rendering of popup elements inside rows with a single table-level React portal container rendering strictly on-demand `{activePopover && ...}`, fixing the ~10s rendering lag.
+- Switched popup trigger to a clickable badge with toggle state. Added window scroll, Escape key, and click-outside listeners to close the popover.
+- Promoted attorneys to their own table column, displaying the first 2 inline with a real `<button aria-expanded="...">` toggling expanded states.
+- Replaced text columns for Email, Phone, Website with SVG action icons having accessible names and tooltips. Centered action cell content.
+- Added a unit test validating that CSV generation processes a larger array of items, verifying all records across multiple pages are exported.
+
+### Why It Changed
+
+To make the prospecting table layout more compact and readable, fix rendering lags caused by eager DOM buildup, ensure scroll accessibility, and provide clear visual cues for primary action targets.
+
+### Commands Suggested
+
+```bash
+npx vitest run src/utils/attorneys.test.ts
+npx vitest run src/utils/toCsv.test.ts
+npx vitest run
+npx tsc --noEmit
+npm run dev
+```
+
+### Commands Run by Human
+
+`No commands run.`
+
+### Results Pasted by Human
+
+`No results pasted.`
+
+### Verification
+
+Check that:
+1. Running `npx vitest run` passes all 115 test cases successfully.
+2. Running `npx tsc --noEmit` runs with no typescript compiler errors.
+3. Running `npm run dev` and searching ZIP `19103` displays the upgraded results table layout.
+4. Clicking count badges toggles popovers showing practice areas and address lines. Popovers close on Escape, scroll, outside-clicks, or clicking the badge again.
+5. Capping attorneys is limited to 2 with a toggle button that expands list on click.
+6. Email, Phone, Website render as SVG links, and CSV download still exports full text values for all rows across pages.
+
+### Known Risks
+
+No known risks. All changes are display-only and contain no database schema, query, or API pipeline modifications.
+
+### Next Recommended Step
+
+Wait for user review and approval of visual implementation.
+
 

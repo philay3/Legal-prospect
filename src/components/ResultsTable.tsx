@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import type { Prospect } from "@/types/prospect";
 import { getPageCount, getPageItems, getPageWindow } from "@/utils/pagination";
+import { capAttorneys } from "@/utils/attorneys";
 
 const PAGE_SIZE = 10;
 
@@ -16,20 +17,99 @@ type SortOrder = "asc" | "desc";
 
 interface PopoverProps {
   practiceAreas: string[];
-  attorneys: string[];
+  addressLines: string[];
   triggerRect: DOMRect | null;
   onClose: () => void;
-  onMouseEnter: () => void;
-  onMouseLeave: () => void;
+}
+
+function PhoneIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="action-icon"
+      aria-hidden="true"
+    >
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+    </svg>
+  );
+}
+
+function EnvelopeIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="action-icon"
+      aria-hidden="true"
+    >
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+      <polyline points="22,6 12,13 2,6" />
+    </svg>
+  );
+}
+
+function GlobeIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="action-icon"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="2" y1="12" x2="22" y2="12" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
+  );
+}
+
+function getPopoverAddressLines(prospect: Prospect): string[] {
+  const street = prospect.streetAddress?.trim() || "";
+  const city = prospect.city?.trim() || "";
+  const state = prospect.state?.trim() || "";
+  const zip = prospect.zip?.trim() || "";
+
+  const lines: string[] = [];
+  if (street) {
+    lines.push(street);
+  }
+
+  let cityStateZip = "";
+  if (city && state) {
+    cityStateZip = `${city}, ${state} ${zip}`.trim();
+  } else if (city || state || zip) {
+    const cityState = [city, state].filter(Boolean).join(", ");
+    cityStateZip = `${cityState} ${zip}`.trim();
+  }
+
+  if (cityStateZip) {
+    lines.push(cityStateZip);
+  }
+
+  return lines;
 }
 
 function PracticeAreasPopover({
   practiceAreas,
-  attorneys,
+  addressLines,
   triggerRect,
   onClose,
-  onMouseEnter,
-  onMouseLeave,
 }: PopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
@@ -48,20 +128,35 @@ function PracticeAreasPopover({
     };
 
     const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.classList.contains("practice-count-badge-btn") ||
+        target.closest(".practice-count-badge-btn")
+      ) {
+        return;
+      }
+
       if (
         popoverRef.current &&
-        !popoverRef.current.contains(e.target as Node)
+        !popoverRef.current.contains(target)
       ) {
         onClose();
       }
     };
 
+    const handleScroll = (e: Event) => {
+      if (popoverRef.current?.contains(e.target as Node)) return;
+      onClose();
+    };
+
     document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("scroll", handleScroll, true);
 
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", handleScroll, true);
     };
   }, [mounted, onClose]);
 
@@ -83,25 +178,36 @@ function PracticeAreasPopover({
       ref={popoverRef}
       className="practice-areas-popover"
       style={{ top, left }}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
       role="tooltip"
     >
       <h4 className="popover-section-title">Practice Areas ({practiceAreas.length})</h4>
-      <div className="popover-tags">
-        {practiceAreas.map((area, idx) => (
-          <span key={idx} className="practice-tag">
-            {area}
-          </span>
-        ))}
-      </div>
-      {attorneys.length > 0 && (
-        <>
-          <h4 className="popover-section-title popover-divider">Attorneys ({attorneys.length})</h4>
-          <div className="popover-attorneys">
-            {attorneys.join(", ")}
-          </div>
-        </>
+      {practiceAreas.length > 0 ? (
+        <div className="popover-tags">
+          {practiceAreas.map((area, idx) => (
+            <span key={idx} className="practice-tag">
+              {area}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <div className="muted-text" style={{ fontStyle: "italic", marginBottom: "0.5rem" }}>
+          No practice areas listed
+        </div>
+      )}
+      
+      <h4 className="popover-section-title popover-divider">Address</h4>
+      {addressLines.length > 0 ? (
+        <div className="popover-address">
+          {addressLines.map((line, idx) => (
+            <div key={idx} className="address-line">
+              {line}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="muted-text" style={{ fontStyle: "italic" }}>
+          Address not found
+        </div>
       )}
     </div>,
     document.body
@@ -117,10 +223,9 @@ export function ResultsTable({ prospects }: ResultsTableProps) {
     firmId: string;
     triggerRect: DOMRect;
     practiceAreas: string[];
-    attorneys: string[];
+    addressLines: string[];
   } | null>(null);
 
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   // Reset sorting, page, expanded, and popover states whenever the search results change
@@ -130,19 +235,7 @@ export function ResultsTable({ prospects }: ResultsTableProps) {
     setSortOrder(null);
     setExpandedFirms({});
     setActivePopover(null);
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-    }
   }, [prospects]);
-
-  // Clean up timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-      }
-    };
-  }, []);
 
   // Scroll to the top of the table on page changes
   useEffect(() => {
@@ -223,43 +316,6 @@ export function ResultsTable({ prospects }: ResultsTableProps) {
     );
   };
 
-  const handleOpenPopover = (
-    e: React.SyntheticEvent,
-    firmId: string,
-    practiceAreas: string[],
-    attorneys: string[]
-  ) => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-    }
-    const rect = e.currentTarget.getBoundingClientRect();
-    setActivePopover({
-      firmId,
-      triggerRect: rect,
-      practiceAreas,
-      attorneys,
-    });
-  };
-
-  const handleClosePopover = () => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-    }
-    hoverTimeoutRef.current = setTimeout(() => {
-      setActivePopover(null);
-    }, 150);
-  };
-
-  const handlePopoverMouseEnter = () => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-    }
-  };
-
-  const handlePopoverMouseLeave = () => {
-    setActivePopover(null);
-  };
-
   return (
     <div ref={tableContainerRef} className="table-container">
       <table className="results-table">
@@ -274,10 +330,6 @@ export function ResultsTable({ prospects }: ResultsTableProps) {
         </thead>
         <tbody>
           {paginatedProspects.map((prospect) => {
-            const displayWebsite = prospect.website
-              ? prospect.website.replace(/^https?:\/\/(www\.)?/, "")
-              : "—";
-
             const activePracticeAreas = prospect.practiceAreas
               ? prospect.practiceAreas.filter((area) => area && area.trim())
               : [];
@@ -288,62 +340,65 @@ export function ResultsTable({ prospects }: ResultsTableProps) {
               : [];
             const hasAttorneys = activeAttorneys.length > 0;
 
+            const { visible, remaining } = capAttorneys(activeAttorneys, 2);
             const isExpanded = !!expandedFirms[prospect.id];
-            const displayedAttorneys = isExpanded ? activeAttorneys : activeAttorneys.slice(0, 2);
-            const remainingAttorneys = activeAttorneys.length - 2;
 
             return (
               <tr key={prospect.id}>
                 <td className="firm-name-cell">
-                  <button
-                    type="button"
-                    className="firm-name-trigger"
-                    onMouseEnter={(e) => {
-                      if (hasPracticeAreas) {
-                        handleOpenPopover(e, prospect.id, activePracticeAreas, activeAttorneys);
-                      }
-                    }}
-                    onMouseLeave={handleClosePopover}
-                    onFocus={(e) => {
-                      if (hasPracticeAreas) {
-                        handleOpenPopover(e, prospect.id, activePracticeAreas, activeAttorneys);
-                      }
-                    }}
-                    onBlur={handleClosePopover}
-                    onClick={(e) => {
-                      if (hasPracticeAreas) {
-                        if (activePopover?.firmId === prospect.id) {
-                          setActivePopover(null);
-                        } else {
-                          handleOpenPopover(e, prospect.id, activePracticeAreas, activeAttorneys);
-                        }
-                      }
-                    }}
-                  >
+                  <div className="firm-name-container">
                     <span className="firm-name-text">{prospect.firmName}</span>
                     {hasPracticeAreas && (
-                      <span className="practice-count-badge">
+                      <button
+                        type="button"
+                        className="practice-count-badge-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (activePopover?.firmId === prospect.id) {
+                            setActivePopover(null);
+                          } else {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setActivePopover({
+                              firmId: prospect.id,
+                              triggerRect: rect,
+                              practiceAreas: activePracticeAreas,
+                              addressLines: getPopoverAddressLines(prospect),
+                            });
+                          }
+                        }}
+                        aria-label={`Show practice areas and address for ${prospect.firmName}`}
+                      >
                         {activePracticeAreas.length} {activePracticeAreas.length === 1 ? "area" : "areas"}
-                      </span>
+                      </button>
                     )}
-                  </button>
+                  </div>
                 </td>
                 <td className="email-cell">
                   {prospect.email ? (
-                    <a href={`mailto:${prospect.email}`} className="contact-link" title={prospect.email}>
-                      {prospect.email}
+                    <a
+                      href={`mailto:${prospect.email}`}
+                      className="action-icon-link"
+                      title={prospect.email}
+                      aria-label={`Email ${prospect.email}`}
+                    >
+                      <EnvelopeIcon />
                     </a>
                   ) : (
-                    "—"
+                    <span className="muted-dash">—</span>
                   )}
                 </td>
                 <td className="phone-cell">
                   {prospect.phone ? (
-                    <a href={`tel:${prospect.phone}`} className="contact-link" title={prospect.phone}>
-                      {prospect.phone}
+                    <a
+                      href={`tel:${prospect.phone}`}
+                      className="action-icon-link"
+                      title={prospect.phone}
+                      aria-label={`Call ${prospect.phone}`}
+                    >
+                      <PhoneIcon />
                     </a>
                   ) : (
-                    "—"
+                    <span className="muted-dash">—</span>
                   )}
                 </td>
                 <td className="website-cell">
@@ -352,31 +407,35 @@ export function ResultsTable({ prospects }: ResultsTableProps) {
                       href={prospect.website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="contact-link"
+                      className="action-icon-link"
                       title={prospect.website}
+                      aria-label={`Visit website ${prospect.website}`}
                     >
-                      {displayWebsite}
+                      <GlobeIcon />
                     </a>
                   ) : (
-                    "—"
+                    <span className="muted-dash">—</span>
                   )}
                 </td>
                 <td className="attorneys-cell">
                   {hasAttorneys ? (
                     <div className="prospect-attorneys">
-                      <span>{displayedAttorneys.join(", ")}</span>
+                      <span>
+                        {isExpanded ? activeAttorneys.join(", ") : visible.join(", ")}
+                      </span>
                       {activeAttorneys.length > 2 && (
                         <button
                           type="button"
                           className="toggle-more-btn"
                           onClick={() => toggleFirmExpanded(prospect.id)}
+                          aria-expanded={isExpanded}
                         >
-                          {isExpanded ? "Show less" : `+${remainingAttorneys} more`}
+                          {isExpanded ? "Show less" : `+${remaining} more`}
                         </button>
                       )}
                     </div>
                   ) : (
-                    "—"
+                    <span className="muted-dash">—</span>
                   )}
                 </td>
               </tr>
@@ -388,11 +447,9 @@ export function ResultsTable({ prospects }: ResultsTableProps) {
       {activePopover && (
         <PracticeAreasPopover
           practiceAreas={activePopover.practiceAreas}
-          attorneys={activePopover.attorneys}
+          addressLines={activePopover.addressLines}
           triggerRect={activePopover.triggerRect}
           onClose={() => setActivePopover(null)}
-          onMouseEnter={handlePopoverMouseEnter}
-          onMouseLeave={handlePopoverMouseLeave}
         />
       )}
 

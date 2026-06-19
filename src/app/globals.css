@@ -874,45 +874,22 @@ body {
   gap: 0.25rem;
 }
 
-/* Firm Name Popover Trigger & Count Badge */
-.firm-name-trigger {
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-  font-family: inherit;
-  font-size: inherit;
-  font-weight: inherit;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
+/* Firm Name Container & Trigger Badge */
+.firm-name-container {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
   width: 100%;
-  outline: none;
 }
 
 .firm-name-text {
   font-weight: 600;
   color: #ffffff;
   transition: color 0.2s ease;
-  border-bottom: 1px dashed transparent;
 }
 
-.firm-name-trigger:hover .firm-name-text {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
-}
-
-.firm-name-trigger:focus-visible .firm-name-text {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: 2px;
-}
-
-.practice-count-badge {
+.practice-count-badge-btn {
   background-color: var(--accent-muted);
   color: var(--accent);
   border: 1px solid rgba(16, 185, 129, 0.2);
@@ -923,12 +900,69 @@ body {
   white-space: nowrap;
   display: inline-block;
   transition: all 0.2s ease;
+  cursor: pointer;
+  font-family: inherit;
+  outline: none;
 }
 
-.firm-name-trigger:hover .practice-count-badge {
+.practice-count-badge-btn:hover {
   background-color: var(--accent);
   color: #ffffff;
   border-color: var(--accent);
+}
+
+.practice-count-badge-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Compact Action Icon Links */
+.action-icon-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  color: var(--accent);
+  border: 1px solid rgba(16, 185, 129, 0.15);
+  background-color: rgba(16, 185, 129, 0.03);
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.action-icon-link:hover {
+  color: var(--accent-hover);
+  background-color: var(--accent-muted);
+  border-color: var(--accent);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.1);
+}
+
+.action-icon-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.action-icon {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+}
+
+.results-table td.email-cell,
+.results-table td.phone-cell,
+.results-table td.website-cell {
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* Adjust column widths for action icons */
+.results-table .email-cell,
+.results-table .phone-cell,
+.results-table .website-cell {
+  min-width: 60px;
+  max-width: 80px;
+  width: 60px;
 }
 
 /* Portal Popover */
@@ -981,11 +1015,21 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
+  margin-bottom: 0.5rem;
 }
 
-.popover-attorneys {
+.popover-address {
   font-size: 0.8rem;
   color: var(--text-muted);
   line-height: 1.4;
 }
+
+.address-line {
+  margin-bottom: 0.2rem;
+}
+
+.address-line:last-child {
+  margin-bottom: 0;
+}
+
 

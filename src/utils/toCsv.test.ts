@@ -98,5 +98,39 @@ describe("CSV Helper Utility Tests", () => {
       // Verify Beta Boutique row (with quotes in name and empty cells)
       expect(lines[2]).toBe('"Beta ""Boutique"" Law","","","","Harrisburg, PA 17101","",""');
     });
+
+    it("should export all rows across multiple pages (including index 10+ / Page 2+ items)", () => {
+      // Create 12 mock prospects (UI page size is 10, so index 10 & 11 will reside on Page 2+)
+      const prospects: Prospect[] = Array.from({ length: 12 }, (_, i) => ({
+        id: `prospect-${i}`,
+        firmName: `Firm ${i + 1}`,
+        email: `contact${i + 1}@example.com`,
+        phone: `555-010${i}`,
+        website: `https://firm${i + 1}.com`,
+        streetAddress: `${i + 1} Main St`,
+        city: "Philadelphia",
+        state: "PA",
+        zip: "19103",
+        practiceAreas: ["General Practice"],
+        attorneys: [`Attorney ${i + 1}`],
+      } as unknown as Prospect));
+
+      const csv = toCsv(prospects);
+      const lines = csv.split("\r\n");
+
+      // We expect 1 header line + 12 prospect lines = 13 lines total
+      expect(lines.length).toBe(13);
+
+      // Verify header
+      expect(lines[0]).toBe('"Name","Email","Phone","Website","Address","Practice Areas","Attorneys"');
+
+      // Verify a Page 1 item (e.g. index 0 -> Firm 1)
+      expect(lines[1]).toBe('"Firm 1","contact1@example.com","555-0100","https://firm1.com","1 Main St 19103","General Practice","Attorney 1"');
+
+      // Verify Page 2 items (index 10 and 11 -> Firm 11 and Firm 12)
+      expect(lines[11]).toBe('"Firm 11","contact11@example.com","555-01010","https://firm11.com","11 Main St 19103","General Practice","Attorney 11"');
+      expect(lines[12]).toBe('"Firm 12","contact12@example.com","555-01011","https://firm12.com","12 Main St 19103","General Practice","Attorney 12"');
+    });
   });
 });
+

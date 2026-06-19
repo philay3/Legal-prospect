@@ -153,7 +153,7 @@ export default function Home() {
             <span className="placeholder-icon">🔍</span>
             <h3 className="placeholder-title">Ready for Search</h3>
             <p className="placeholder-desc">
-              Enter a 5-digit ZIP code above (try <strong>19103</strong> to see pilot prospects) to begin ZIP-code search for boutique law firms.
+              Enter a 5-digit ZIP code above (e.g., <strong>19103</strong>) to find small and boutique law firms in that area.
             </p>
           </div>
         ) : matchingProspects.length > 0 ? (
@@ -171,7 +171,7 @@ export default function Home() {
                 </button>
               </div>
               <p className="results-subtitle">
-                Currently showing a small pilot dataset: seeded demo prospects plus manually reviewed real-firm records pending final verification.
+                Law firms found for this ZIP, with contact details researched automatically. Coverage can vary by firm.
               </p>
             </div>
 
@@ -233,7 +233,7 @@ export default function Home() {
             <span className="placeholder-icon">⚠️</span>
             <h3 className="placeholder-title">No prospects found</h3>
             <p className="placeholder-desc">
-              No prospects found for this ZIP code in the current pilot dataset. Please search for ZIP <strong>19103</strong> to view pilot prospect data.
+              No law firms found for this ZIP. Double-check the ZIP code and try again.
             </p>
           </div>
         )}

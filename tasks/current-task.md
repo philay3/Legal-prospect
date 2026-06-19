@@ -1,72 +1,78 @@
-# Current Task — Results UI v2 (display-only)
+# Task — UI fixes: popover scroll-close bug + refresh stale demo copy
+
+Two small, display-only fixes. No API, schema, migration, pipeline, or logic changes. The changes are fully specified below (exact before/after), so implement them directly — no separate plan step needed.
 
 ## Why
-Frontend v2: tighten the results table for the demo. The firm-name popover currently opens on hover and blocks scrolling (and likely drives a ~10s render lag from eagerly building a hidden popover for every row). This task switches it to click-to-toggle + on-demand render, moves the address into the popover, promotes attorneys to their own column, and collapses phone/email/website to action icons. **Display-only — no API, schema, migration, or pipeline changes.** Firm-rows stay (no attorney-row restructure).
+1. The firm-name popover closes on *any* scroll, including scrolling **inside** the popover itself — so a firm with enough practice areas to overflow the popover can't be scrolled (it closes instead). One-line fix.
+2. The page copy still uses demo/pilot/seed language ("seeded demo prospects", "try 19103 to see pilot prospects", "pilot dataset"). The app now returns live, real-firm data for any ZIP, so this wording is inaccurate and undersells the product. Replace three strings.
 
 ## Step 0 — read first
-Read the results table component and the current firm-name popover implementation. Implement against what's actually there. Also check the CSV export helper and the pagination helpers (`src/utils/pagination.ts`) so you don't regress them.
+Open `src/components/ResultsTable.tsx` (the `PracticeAreasPopover` component, its `handleScroll`) and `src/app/page.tsx` (the three copy strings below). Implement against what's actually there.
 
-## Acceptance criteria
-- The firm-name popover opens on click of its cue and closes on a second click, an outside click, Escape, and scroll. It renders on-demand (not eagerly per row), isn't clipped by table/row overflow, and the prior render lag is gone.
-- The popover contains **practice areas + address only** (no attorneys).
-- Attorneys appear as their own table column, capped at the first 2 with a `+N more` indicator.
-- Phone, email, and website are action icons (`tel:` / `mailto:` / link), each carrying the real value in `title` and `aria-label`; a missing value shows a muted dash, not a dead icon.
-- CSV export includes **all rows across all pages** (not just the current page) with the **full** phone/email/website values (not icons).
-- Sorting, pagination, and loading/error states still work. Firm-name wrap, the area header, and the clickable/copyable API endpoint are preserved.
+## Outcome / acceptance criteria
+1. Scrolling inside an overflowing popover keeps it open and scrolls its content; scrolling the page still closes it. Second-click / outside-click / Escape still close it (unchanged).
+2. The three strings below are replaced exactly. No "pilot", "seeded demo", "pilot dataset", or "pilot prospect data" language remains anywhere in `page.tsx`.
+3. No behavior changes beyond these. Sorting, pagination, popover open/close, action icons, and CSV all still work.
+4. `npx vitest run` still passes (166) and `npx tsc --noEmit` is clean. No new tests are needed (display-only copy + one event-handler line).
 
-## The change
+## The changes
 
-### A. Click-to-toggle popover (stop blocking scroll)
-Change the firm-name popover from sticky-hover to **click-to-open (toggle)**:
-- The discoverability cue (e.g. the practice-area count chip) is the click target; click opens, click again or click outside closes.
-- **Close on scroll**, on outside-click, and on Escape.
-- **Render the popover content on-demand** — only build it when open, not eagerly for every row. (This also likely fixes the ~10s render lag: eagerly rendering a hidden popover per row builds a lot of DOM up front.)
-- Keep it from being clipped by row/table overflow (high `z-index` or a portal).
+### 1. `src/components/ResultsTable.tsx` — scroll handler (inside `PracticeAreasPopover`)
+```js
+// before
+const handleScroll = () => {
+  onClose();
+};
 
-### B. Address inside the popover
-Since the address column is gone, show each firm's address in its popover:
+// after
+const handleScroll = (e: Event) => {
+  if (popoverRef.current?.contains(e.target as Node)) return;
+  onClose();
+};
 ```
-{streetAddress}
-{city}, {state} {zip}
+This ignores scroll events that originate inside the popover (its own overflow scroll) while still closing on any page scroll. Leave the `window.addEventListener("scroll", handleScroll, true)` registration as-is.
+
+### 2. `src/app/page.tsx` — replace three copy strings
+
+**a. "Ready for Search" placeholder description**
+```jsx
+// before
+Enter a 5-digit ZIP code above (try <strong>19103</strong> to see pilot prospects) to begin ZIP-code search for boutique law firms.
+
+// after
+Enter a 5-digit ZIP code above (e.g., <strong>19103</strong>) to find small and boutique law firms in that area.
 ```
-Omit empty lines; show a muted "Address not found" if all parts are missing.
 
-### C. Attorneys out of the popover; kept in the table
-- The popover contains **practice areas + address only** — not attorneys.
-- Attorneys stay as their own table column, capped (first 2 + `+N more`), since this tool is ultimately for contacting them and they should be visible at a glance.
+**b. Results subtitle (under the results header)**
+```jsx
+// before
+Currently showing a small pilot dataset: seeded demo prospects plus manually reviewed real-firm records pending final verification.
 
-### D. Phone / email / website → action icons
-Shrink these three columns by replacing the full text with a click-to-act icon:
-- Phone → phone icon, `<a href="tel:{phone}">`.
-- Email → envelope icon, `<a href="mailto:{email}">`.
-- Website → globe/link icon, `<a href="{website}" target="_blank" rel="noopener noreferrer">`.
-So no data is lost:
-- Each icon carries the real value in `title` and an `aria-label` (e.g. `aria-label="Call (631) 555-1212"`).
-- Missing value → a muted dash, not a dead icon.
-- CSV export keeps the **full** phone/email/website values (don't reduce the export to icons).
-- (Tradeoff: this trades glanceability for compactness. If you later want the number visible, show it next to the icon — icons-only for now.)
-
-### Keep from v1 (don't regress)
-Firm name wraps; the area header ("Law firms near {city}, {state} {zip}"); the clickable/copyable API endpoint.
-
-## Tests
-- Pure helper for the capped attorney display (e.g. `capAttorneys(names, max)`) → returns the first `max` names plus a remainder count. Unit-test 0, 1, exactly `max`, and `max+` names, and the `+N more` math.
-- Popover behavior: opens on cue click; closes on second click, outside-click, Escape, and scroll; content is not in the DOM until opened.
-- Action icons: a present value renders an icon with the correct `href`, `title`, and `aria-label`; a missing value renders a muted dash with no link.
-- CSV: export contains the full phone/email/website (not icons) for **all** rows across pages, not just the visible page.
-
-## Commands for Human to Run (list only — do not run)
+// after
+Law firms found for this ZIP, with contact details researched automatically. Coverage can vary by firm.
 ```
-npx tsc --noEmit
-npx vitest run
-npm run dev   # then manually check a dense ZIP (e.g. 10510): popover toggle, icons, attorney column, CSV row count
+
+**c. "No prospects found" placeholder description**
+```jsx
+// before
+No prospects found for this ZIP code in the current pilot dataset. Please search for ZIP <strong>19103</strong> to view pilot prospect data.
+
+// after
+No law firms found for this ZIP. Double-check the ZIP code and try again.
 ```
+
+Leave the search-input placeholder (`Enter 5-digit ZIP code (e.g., 19103)`) and the loading copy as-is — those are fine.
+
+## Verification (manual + regression)
+1. `npx tsc --noEmit` clean; `npx vitest run` still green at 166.
+2. `npm run dev`, then:
+   - Open a ZIP whose firms have many practice areas so a popover overflows its height. Open the popover and scroll inside it → it stays open and scrolls. Scroll the page → it closes. Confirm second-click, outside-click, and Escape still close it.
+   - Check the three states read with the new wording: the empty "Ready for Search" card, the results subtitle, and the "No prospects found" card. Confirm no "pilot"/"demo"/"seed" language remains.
 
 ## Guardrails
-- **Display-only.** No API, schema, migration, or pipeline changes. No Places work. No social-media display.
-- No attorney-row restructure — firm-rows stay.
-- Don't break sorting, pagination, loading/error states, or CSV.
-- No visual redesign beyond the changes above — reuse the existing styling/tokens.
-- Do not run any commands (including `npx`/`git`) — list them for the human only.
+- Display-only. Only two files change: `ResultsTable.tsx` (the one `handleScroll` line) and `page.tsx` (the three strings). Nothing else.
+- No API, schema, migration, pipeline, or logic changes. Don't touch the input-placeholder example or the loading copy.
+- Don't run any commands (list them for the human only).
+- The existing test suite must stay green — no tests removed.
 
-Return an implementation plan first (file-by-file `[NEW]`/`[MODIFY]` list + verification plan) — do not implement yet. After approval, report per `08-coding-agent-rules.md` with the full contents of every changed and created file, then stop.
+Implement directly (the changes are exact) and report per `08-coding-agent-rules.md` with the full contents of both changed files, then stop.
