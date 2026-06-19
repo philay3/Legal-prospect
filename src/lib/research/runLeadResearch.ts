@@ -5,17 +5,21 @@
 import { OpenAI } from "openai";
 import { buildResearchPrompt, buildEnrichmentPrompt } from "./buildResearchPrompt";
 import { parseResearchResponse, parseEnrichmentResponse, ValidatedResearchResponse } from "./parseResearchResponse";
-import { isUseful, extractEmails, normalizeWebsite, pickContactLink, normalizePracticeAreas } from "./sanitize";
+import { isUseful, extractEmails, normalizeWebsite, pickContactLink, normalizePracticeAreas, isInSearchedState, getFirmsToEnrich } from "./sanitize";
 import { getSearchProvider } from "./searchProviders";
 import { fetchPageContent } from "./searchProviders/tavily";
+import zipcodes from "zipcodes";
 
-export type { SearchResult } from "./searchProviders/types";
+import { SearchResult } from "./searchProviders/types";
+export type { SearchResult };
 import { cleanDdgUrl, isDirectoryOrSocial, getLikelyOfficialWebsite } from "./searchProviders/ddg";
 export { cleanDdgUrl, isDirectoryOrSocial, getLikelyOfficialWebsite };
 
 // Configurable model defaults
 const DEFAULT_RESEARCH_MODEL = process.env.DEFAULT_RESEARCH_MODEL || "gpt-5.5";
 const QUICK_RESEARCH_MODEL = process.env.QUICK_RESEARCH_MODEL || "gpt-5.4-mini";
+const ENRICHMENT_CAP = parseInt(process.env.ENRICHMENT_CAP || "60", 10);
+const ENRICHMENT_CONCURRENCY = parseInt(process.env.ENRICHMENT_CONCURRENCY || "6", 10);
 
 /**
  * Wrap a promise with a timeout.
@@ -74,6 +78,23 @@ async function runWithConcurrencyLimit<T, R>(
  * 5. Performs targeted backend contact enrichment pass for missing phone/email.
  * 6. Returns final validated and enriched results.
  */
+// Helper to determine temperature based on model to avoid 400 errors with newer models
+function getTemperature(model: string, defaultVal: number) {
+  if (model.includes("gpt-5") || model.includes("gpt-5.") || model.startsWith("o1") || model.startsWith("o3")) {
+    return undefined; // Only default (1) supported
+  }
+  return defaultVal;
+}
+
+/**
+ * Performs lead research for a given ZIP code:
+ * 1. Obtains search context (single query for quick, multiple queries for thorough).
+ * 2. Runs discovery pass via LLM (gpt-5.4-mini or gpt-5.5).
+ * 3. Normalizes and deduplicates raw candidates.
+ * 4. In thorough mode, runs validation pass via LLM (gpt-5.5) to filter results.
+ * 5. Performs targeted backend contact enrichment pass for missing phone/email.
+ * 6. Returns final validated and enriched results.
+ */
 export async function runLeadResearch(
   zipCode: string,
   mode: "quick" | "thorough" = "quick"
@@ -86,75 +107,78 @@ export async function runLeadResearch(
     throw new Error("Missing OPENAI_API_KEY environment variable. Please add it to your .env file.");
   }
 
-  // 1. Gather web search context and track whether it succeeded
+  // Early ZIP resolution to city and state
+  const zipInfo = zipcodes.lookup(zipCode);
+  const city = zipInfo?.city || "";
+  const state = zipInfo?.state || "";
+  console.log(`[research] Resolved ZIP ${zipCode} to ${city}, ${state}`);
+
   const provider = getSearchProvider();
-  const providerName = provider.constructor.name === "TavilySearchProvider" ? "Tavily Search" : "DuckDuckGo HTML";
-  console.log(`[research] Discovery source: ${providerName}`);
-  const searchContextResult = await provider.getSearchContext(zipCode, mode);
+  const providerType = process.env.SEARCH_PROVIDER?.trim().toLowerCase() || "tavily";
 
-  let useLLMFallback = false;
-  if (!searchContextResult.success || searchContextResult.resultCount === 0) {
-    console.log(`[research] ${providerName} failed: ${searchContextResult.error || "No results returned"}`);
-    console.log("[research] Discovery source: LLM-only fallback");
-    console.log("[research] Web search unavailable; using temporary LLM-only fallback.");
-    useLLMFallback = true;
-  } else {
-    console.log(`[research] Search source results collected: ${searchContextResult.resultCount}`);
-  }
+  let finalCandidates: any[] = [];
 
-  // 2. Configure model names
-  const discoveryModel = mode === "thorough" ? DEFAULT_RESEARCH_MODEL : QUICK_RESEARCH_MODEL;
-  console.log(`[research] Discovery model: ${discoveryModel}`);
+  if (providerType === "places") {
+    console.log(`[research] Discovery source: Google Places API`);
+    console.log(`[research] Running Google Places discovery for ZIP ${zipCode}`);
+    const { searchPlaces } = await import("./searchProviders/places");
+    const placesFirms = await searchPlaces(city, state, zipCode);
 
-  // Helper to determine temperature based on model to avoid 400 errors with newer models
-  const getTemperature = (model: string, defaultVal: number) => {
-    if (model.includes("gpt-5") || model.includes("gpt-5.") || model.startsWith("o1") || model.startsWith("o3")) {
-      return undefined; // Only default (1) supported
+    // Deduplicate Places candidates by normalized firm name
+    const dedupedFirmsMap = new Map<string, any>();
+    for (const firm of placesFirms) {
+      const key = firm.firm_name.replace(/\s+/g, " ").trim().toLowerCase();
+      if (!dedupedFirmsMap.has(key)) {
+        dedupedFirmsMap.set(key, firm);
+      }
     }
-    return defaultVal;
-  };
+    finalCandidates = Array.from(dedupedFirmsMap.values());
+  } else {
+    // 1. Gather web search context and track whether it succeeded
+    const providerName = provider.constructor.name === "TavilySearchProvider" ? "Tavily Search" : "DuckDuckGo HTML";
+    console.log(`[research] Discovery source: ${providerName}`);
+    const searchContextResult = await provider.getSearchContext(zipCode, mode, city, state);
 
-  // 3. Construct prompt
-  const basePrompt = buildResearchPrompt(zipCode, mode);
-  let completePrompt = "";
+    let useLLMFallback = false;
+    if (!searchContextResult.success || searchContextResult.resultCount === 0) {
+      console.log(`[research] ${providerName} failed: ${searchContextResult.error || "No results returned"}`);
+      console.log("[research] Discovery source: LLM-only fallback");
+      console.log("[research] Web search unavailable; using temporary LLM-only fallback.");
+      useLLMFallback = true;
+    } else {
+      console.log(`[research] Search source results collected: ${searchContextResult.resultCount}`);
+    }
 
-  if (useLLMFallback) {
-    completePrompt = `${basePrompt}
+    // 2. Configure model names
+    const discoveryModel = mode === "thorough" ? DEFAULT_RESEARCH_MODEL : QUICK_RESEARCH_MODEL;
+    console.log(`[research] Discovery model: ${discoveryModel}`);
+
+    // 3. Construct prompt
+    const basePrompt = buildResearchPrompt(zipCode, mode, city, state);
+    let completePrompt = "";
+
+    if (useLLMFallback) {
+      completePrompt = `${basePrompt}
 
 ### WARNING: Web Search Context Unavailable
 Currently, web search results are unavailable. You MUST rely on your internal knowledge to discover real, active boutique law firms in or serving ZIP code "${zipCode}".
 This is a temporary fallback. Do NOT guess or fabricate phone numbers, email addresses, or physical addresses. If you do not have high confidence in their specific contact information, return null for those fields. Only provide the firm name and website if you are reasonably confident they exist and operate in/for "${zipCode}".
 `;
-  } else {
-    completePrompt = `${basePrompt}
+    } else {
+      completePrompt = `${basePrompt}
 
 ### Real-world Web Search Grounding Context
 Use the following real-world search results context to identify active local boutique firms matching the criteria. Do not invent any names or contact info outside of what is supported by this context:
 
 ${searchContextResult.context}
 `;
-  }
+    }
 
-  const openai = new OpenAI({ apiKey });
-  let response;
-  try {
-    response = await openai.chat.completions.create({
-      model: discoveryModel,
-      messages: [
-        {
-          role: "user",
-          content: completePrompt,
-        },
-      ],
-      response_format: { type: "json_object" },
-      temperature: getTemperature(discoveryModel, 0.2),
-    });
-  } catch (err: any) {
-    if (err.message && (err.message.includes("model") || err.message.includes("404") || err.message.includes("400"))) {
-      const fallbackModel = mode === "thorough" ? "gpt-4o" : "gpt-4o-mini";
-      console.warn(`[research] Discovery model ${discoveryModel} failed or unsupported. Falling back to ${fallbackModel}. Error:`, err.message);
+    const openai = new OpenAI({ apiKey });
+    let response;
+    try {
       response = await openai.chat.completions.create({
-        model: fallbackModel,
+        model: discoveryModel,
         messages: [
           {
             role: "user",
@@ -162,59 +186,78 @@ ${searchContextResult.context}
           },
         ],
         response_format: { type: "json_object" },
-        temperature: getTemperature(fallbackModel, 0.2),
+        temperature: getTemperature(discoveryModel, 0.2),
       });
-    } else {
-      throw err;
+    } catch (err: any) {
+      if (err.message && (err.message.includes("model") || err.message.includes("404") || err.message.includes("400"))) {
+        const fallbackModel = mode === "thorough" ? "gpt-4o" : "gpt-4o-mini";
+        console.warn(`[research] Discovery model ${discoveryModel} failed or unsupported. Falling back to ${fallbackModel}. Error:`, err.message);
+        response = await openai.chat.completions.create({
+          model: fallbackModel,
+          messages: [
+            {
+              role: "user",
+              content: completePrompt,
+            },
+          ],
+          response_format: { type: "json_object" },
+          temperature: getTemperature(fallbackModel, 0.2),
+        });
+      } else {
+        throw err;
+      }
     }
-  }
 
-  const rawJsonText = response.choices[0]?.message?.content || "";
-  if (!rawJsonText) {
-    throw new Error("OpenAI discovery pass returned an empty response.");
-  }
-
-  // 4. Parse discovery response
-  let parsedDiscovery;
-  try {
-    parsedDiscovery = parseResearchResponse(rawJsonText);
-  } catch (err: any) {
-    console.error("[research] Discovery parser failed. Error:", err.message);
-    throw new Error(`Discovery parser failed: ${err.message}`);
-  }
-
-  // 5. Deduplicate raw candidates by normalized firm name
-  const dedupedFirmsMap = new Map<string, typeof parsedDiscovery.firms[0]>();
-  for (const firm of parsedDiscovery.firms) {
-    const key = firm.firm_name.replace(/\s+/g, " ").trim().toLowerCase();
-    if (!dedupedFirmsMap.has(key)) {
-      dedupedFirmsMap.set(key, firm);
+    const rawJsonText = response.choices[0]?.message?.content || "";
+    if (!rawJsonText) {
+      throw new Error("OpenAI discovery pass returned an empty response.");
     }
-  }
-  const dedupedCandidates = Array.from(dedupedFirmsMap.values());
 
-  // 6. Contact enrichment pass for all discovered firms (capped at 20)
-  const firmsToEnrich = dedupedCandidates.slice(0, 20);
+    // 4. Parse discovery response
+    let parsedDiscovery;
+    try {
+      parsedDiscovery = parseResearchResponse(rawJsonText);
+    } catch (err: any) {
+      console.error("[research] Discovery parser failed. Error:", err.message);
+      throw new Error(`Discovery parser failed: ${err.message}`);
+    }
+
+    // 5. Deduplicate raw candidates by normalized firm name
+    const dedupedFirmsMap = new Map<string, typeof parsedDiscovery.firms[0]>();
+    for (const firm of parsedDiscovery.firms) {
+      const key = firm.firm_name.replace(/\s+/g, " ").trim().toLowerCase();
+      if (!dedupedFirmsMap.has(key)) {
+        dedupedFirmsMap.set(key, firm);
+      }
+    }
+    finalCandidates = Array.from(dedupedFirmsMap.values());
+  }
+
+  // 6. Contact enrichment pass for all discovered firms (capped at safety ceiling)
+  const firmsToEnrich = getFirmsToEnrich(finalCandidates, ENRICHMENT_CAP);
   console.log(`[enrichment] Starting enrichment for top ${firmsToEnrich.length} firms`);
 
   let Y = 0; // Succeeded
   let Z = 0; // Failed
 
   const enrichedMap = new Map<string, any>();
+  const openai = new OpenAI({ apiKey });
 
   // Implement individual enrichment with 10s timeout, safety catch, and concurrency limit of 3
-  const enrichFirm = async (firm: typeof parsedDiscovery.firms[0]) => {
+  const enrichFirm = async (firm: any) => {
     const key = firm.firm_name.replace(/\s+/g, " ").trim().toLowerCase();
     try {
       return await withTimeout(
         (async () => {
           console.log(`[enrichment] Enriching firm: ${firm.firm_name}`);
-          // Gather search context for this firm
-          const searchProvider = getSearchProvider();
-          const searchResults = await searchProvider.getFirmSearchContext(firm.firm_name, zipCode);
           
           let urlToFetch = normalizeWebsite(firm.website);
+          let searchResults: SearchResult[] = [];
+
           if (!urlToFetch) {
+            // Gather search context for this firm ONLY if website is missing
+            const searchProvider = getSearchProvider();
+            searchResults = await searchProvider.getFirmSearchContext(firm.firm_name, zipCode);
             urlToFetch = getLikelyOfficialWebsite(searchResults);
           }
 
@@ -222,8 +265,12 @@ ${searchContextResult.context}
 
           if (urlToFetch) {
             try {
-              const candidateUrls = searchResults.map(r => r.url);
-              const targetUrl = pickContactLink(urlToFetch, candidateUrls) || urlToFetch;
+              // Choose target URL for page extraction
+              let targetUrl = urlToFetch;
+              if (searchResults.length > 0) {
+                const candidateUrls = searchResults.map(r => r.url);
+                targetUrl = pickContactLink(urlToFetch, candidateUrls) || urlToFetch;
+              }
               
               console.log(`[enrichment] Best contact/about URL chosen for ${firm.firm_name}: ${targetUrl}`);
               const pageText = await fetchPageContent(targetUrl);
@@ -347,8 +394,8 @@ ${searchContextResult.context}
   };
 
   try {
-    // Run concurrently with a limit of 4 to prevent rate limits
-    await runWithConcurrencyLimit(firmsToEnrich, 4, enrichFirm);
+    // Run concurrently to prevent rate limits
+    await runWithConcurrencyLimit(firmsToEnrich, ENRICHMENT_CONCURRENCY, enrichFirm);
   } catch (err: any) {
     console.error("[enrichment] Critical failure in enrichment orchestration:", err.message || err);
   }
@@ -356,7 +403,7 @@ ${searchContextResult.context}
   console.log(`[enrichment] Enrichment complete. Firms attempted: ${firmsToEnrich.length}, succeeded: ${Y}, failed: ${Z}`);
 
   // Merge enriched results back to the original candidates
-  const finalFirms = dedupedCandidates.map((candidate) => {
+  const finalFirms = finalCandidates.map((candidate) => {
     const key = candidate.firm_name.replace(/\s+/g, " ").trim().toLowerCase();
     const enriched = enrichedMap.get(key);
 
@@ -430,8 +477,21 @@ ${searchContextResult.context}
       attorneys,
       practice_areas: practiceAreas,
       practiceAreas,
+      // If candidate has Places fields, carry them through
+      city: candidate.city || null,
+      state: candidate.state || null,
+      zip: candidate.zip || null,
+      lat: candidate.lat || null,
+      lng: candidate.lng || null,
+      sourceType: candidate.sourceType || null,
+      isUS: candidate.isUS,
     };
   });
+
+  const attemptedSubset = finalFirms.slice(0, firmsToEnrich.length);
+  const withPhoneCount = attemptedSubset.filter(f => isUseful(f.phone)).length;
+  const withEmailCount = attemptedSubset.filter(f => isUseful(f.email)).length;
+  console.log(`[enrichment] complete: ${firmsToEnrich.length} attempted, ${withPhoneCount} with phone, ${withEmailCount} with email, ${Z} extraction-failed`);
 
   console.log(`[research] Firms discovered before save: ${finalFirms.length}`);
 

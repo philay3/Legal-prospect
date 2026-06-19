@@ -12,6 +12,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [matchingProspects, setMatchingProspects] = useState<Prospect[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,6 +83,23 @@ export default function Home() {
     URL.revokeObjectURL(url);
   };
 
+  const getResolvedLocationString = () => {
+    if (matchingProspects.length === 0) return `ZIP ${searchedZip}`;
+    const first = matchingProspects[0];
+    const titleCase = (str: string) => {
+      if (!str) return "";
+      return str
+        .toLowerCase()
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+    };
+    const city = first.city ? titleCase(first.city.trim()) : "";
+    const state = first.state ? first.state.trim().toUpperCase() : "";
+    if (city && state) {
+      return `${city}, ${state} ${searchedZip}`;
+    }
+    return `ZIP ${searchedZip}`;
+  };
+
   return (
     <div className="app-wrapper">
       <header className="header">
@@ -142,7 +160,7 @@ export default function Home() {
           <>
             <div className="results-header">
               <div className="results-header-main">
-                <h2 className="results-title">Pilot Prospects for ZIP {searchedZip}</h2>
+                <h2 className="results-title">Law firms near {getResolvedLocationString()}</h2>
                 <button
                   type="button"
                   className="download-csv-btn"
@@ -156,6 +174,57 @@ export default function Home() {
                 Currently showing a small pilot dataset: seeded demo prospects plus manually reviewed real-firm records pending final verification.
               </p>
             </div>
+
+            {searchedZip && (
+              <div className="api-endpoint-container">
+                <span className="api-badge">API</span>
+                <span className="api-method">GET</span>
+                <a
+                  href={`/api/prospects/search?zip=${encodeURIComponent(searchedZip)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="api-link"
+                  title="Open raw JSON search endpoint in a new tab"
+                >
+                  /api/prospects/search?zip={searchedZip}
+                </a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const apiPath = `/api/prospects/search?zip=${encodeURIComponent(searchedZip)}`;
+                    const absoluteUrl = `${window.location.origin}${apiPath}`;
+                    navigator.clipboard.writeText(absoluteUrl);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className="api-copy-btn"
+                  aria-label="Copy API URL to clipboard"
+                >
+                  {copied ? "Copied! ✓" : "📋 Copy"}
+                </button>
+                
+                <span className="api-divider">|</span>
+                
+                <a
+                  href={`/api/prospects/search?zip=${encodeURIComponent(searchedZip)}&refresh=true`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="api-refresh-link"
+                  title="Triggers live search (takes ~80s)"
+                  onClick={(e) => {
+                    if (
+                      !confirm(
+                        "Are you sure you want to trigger a live re-run? This takes around 80 seconds and runs real-time queries."
+                      )
+                    ) {
+                      e.preventDefault();
+                    }
+                  }}
+                >
+                  ⚡ Force Live Re-run (?refresh=true)
+                </a>
+              </div>
+            )}
 
             <ResultsTable prospects={matchingProspects} />
           </>

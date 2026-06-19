@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { cleanDdgUrl, isDirectoryOrSocial, getLikelyOfficialWebsite, SearchResult } from "./runLeadResearch";
-import { isUseful, cleanHtmlToText, extractEmails, normalizeWebsite, pickContactLink } from "./sanitize";
+import { isUseful, cleanHtmlToText, extractEmails, normalizeWebsite, pickContactLink, getFirmsToEnrich } from "./sanitize";
 
 describe("Research pure helpers", () => {
   describe("cleanDdgUrl", () => {
@@ -229,6 +229,30 @@ describe("Research pure helpers", () => {
         "/careers"
       ];
       expect(pickContactLink(baseUrl, hrefs)).toBeNull();
+    });
+  });
+
+  describe("getFirmsToEnrich", () => {
+    it("should return all discovered firms up to the ceiling", () => {
+      const firms = Array.from({ length: 10 }, (_, i) => ({ firm_name: `Firm ${i}` }));
+      expect(getFirmsToEnrich(firms, 5)).toHaveLength(5);
+      expect(getFirmsToEnrich(firms, 5)[0].firm_name).toBe("Firm 0");
+      expect(getFirmsToEnrich(firms, 5)[4].firm_name).toBe("Firm 4");
+    });
+
+    it("should clamp to the ceiling when given more than the ceiling", () => {
+      const firms = Array.from({ length: 80 }, (_, i) => ({ firm_name: `Firm ${i}` }));
+      expect(getFirmsToEnrich(firms, 60)).toHaveLength(60);
+    });
+
+    it("should return all firms if fewer than the ceiling", () => {
+      const firms = Array.from({ length: 15 }, (_, i) => ({ firm_name: `Firm ${i}` }));
+      expect(getFirmsToEnrich(firms, 60)).toHaveLength(15);
+    });
+
+    it("should handle empty or single-item lists safely", () => {
+      expect(getFirmsToEnrich([], 60)).toEqual([]);
+      expect(getFirmsToEnrich([{ firm_name: "Only" }], 60)).toEqual([{ firm_name: "Only" }]);
     });
   });
 });

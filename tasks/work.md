@@ -2698,3 +2698,79 @@ The human should verify:
 ### Next Recommended Step
 
 Wait for user review and approval.
+
+---
+
+## 2026-06-19 — Discovery Hardening & Locality Guard (Same-State Filter)
+
+### Task Summary
+
+Implemented discovery hardening to keep research results local to the searched ZIP code, by geo-grounding Tavily queries, geo-constraining LLM prompts, and enforcing a deterministic state matching guard that drops out-of-area candidate firms.
+
+### Files Created
+
+None.
+
+### Files Changed
+
+- `src/lib/research/parseResearchResponse.ts` — Updated ResearchFirmSchema and EnrichmentResultSchema with optional state and city, and updated parser sanitizers.
+- `src/lib/research/sanitize.ts` — Added detectState and isInSearchedState pure helper functions.
+- `src/lib/research/sanitize.test.ts` — Added comprehensive TDD unit tests for detectState and isInSearchedState.
+- `src/lib/research/searchProviders/types.ts` — Added optional city and state parameters to getSearchContext.
+- `src/lib/research/searchProviders/tavily.ts` — Updated TavilySearchProvider.getSearchContext to build geo-grounded search queries.
+- `src/lib/research/searchProviders/ddg.ts` — Updated DdgSearchProvider.getSearchContext to accept city and state and build geo-grounded search queries.
+- `src/lib/research/runLeadResearch.ts` — Integrated early ZIP resolution, location-grounded queries, prompts, and the deterministic locality guard.
+- `tasks/decisions.md` — Documented same-state filtering limitations and Places API triggers.
+- `tasks/work.md` — Logged the hardening implementation task.
+
+### What Changed
+
+- Resolved ZIP codes to city/state early in `runLeadResearch` using the offline zipcodes database.
+- Structured search provider queries to use location context (e.g., "small law firms in Huntington, NY 11746" instead of just "11746").
+- Updated prompt schemas and LLM instructions to focus strictly on searched states and output parsed "state" and "city" fields.
+- Implemented `detectState` and `isInSearchedState` helpers to filter out firms base-located in different states (while keeping unknown/undetermined states to avoid over-filtering).
+- Added verbose logging showing which firms are dropped by the locality guard in stdout.
+
+### Why It Changed
+
+To resolve issues where live research on New York ZIP codes leaked out-of-area firms from Oklahoma, Texas, or other states due to broad search groundings and generic prompts.
+
+### Commands Suggested
+
+1. Run the Vitest unit test suite to verify all checks (including the new state detection tests) pass:
+   ```bash
+   npx vitest run
+   ```
+2. Check typescript compilation:
+   ```bash
+   npx tsc --noEmit
+   ```
+3. Test a live search on ZIP `11746` with refresh enabled:
+   ```bash
+   curl -s "http://localhost:3000/api/prospects/search?zip=11746&refresh=true"
+   ```
+   Verify in console logs that out-of-state firms (e.g., Lindsey Law Firm in Tulsa, OK) are successfully dropped by the locality guard, and the returned JSON contains only NY-based or unknown-state firms.
+
+### Commands Run by Human
+
+`No commands run.`
+
+### Results Pasted by Human
+
+`No results pasted.`
+
+### Verification
+
+Verify that:
+1. `npx vitest run` passes all unit tests cleanly.
+2. `npx tsc --noEmit` completes without compilation errors.
+3. Querying ZIP `11746` drops Tulsa-based "Lindsey Law Firm" and logs it clearly.
+
+### Known Risks
+
+- Cross-border metro zones (e.g., a New Jersey firm serving adjacent New York border ZIPs) will be dropped because their detected state (NJ) does not match the searched ZIP's state (NY). This is documented as an acceptable trade-off for intra-state demos.
+
+### Next Recommended Step
+
+Wait for user test execution, check results, and finalize the task.
+

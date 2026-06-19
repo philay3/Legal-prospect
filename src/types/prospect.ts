@@ -19,6 +19,7 @@ export interface Prospect {
   firmName: string;
   zip: string;
   zipExt?: string | null;
+  searchZip?: string | null;
   city: string;
   state: string;
   streetAddress?: string | null;
@@ -27,7 +28,7 @@ export interface Prospect {
   email?: string | null;
   practiceAreas: string[];
   attorneyCountRange: string;
-  attorneys?: string[];
+  attorneys: string[];
   sourceType: SourceType;
   sourceUrl?: string | null;
   confidenceLevel: ConfidenceLevel;

@@ -12,6 +12,8 @@ export const ResearchFirmSchema = z.object({
   phone: z.string().nullable(),
   website: z.string().nullable(),
   email: z.string().nullable(),
+  state: z.string().nullable().optional(),
+  city: z.string().nullable().optional(),
   attorneys: z.array(z.object({
     name: z.string(),
     email: z.string().nullable(),
@@ -100,6 +102,8 @@ export function parseResearchResponse(rawResponse: string): ValidatedResearchRes
             phone: sanitizeValue(firm.phone),
             website: sanitizeValue(firm.website),
             email: sanitizeValue(firm.email),
+            state: sanitizeValue(firm.state),
+            city: sanitizeValue(firm.city),
             attorneys: attorneys || undefined,
             practice_areas: practice_areas || undefined,
           };
@@ -191,6 +195,8 @@ export const EnrichmentResultSchema = z.object({
   email: z.string().nullable(),
   website: z.string().nullable(),
   address: z.string().nullable(),
+  state: z.string().nullable().optional(),
+  city: z.string().nullable().optional(),
   attorneys: z.array(z.object({
     name: z.string(),
     email: z.string().nullable(),
@@ -270,6 +276,8 @@ export function parseEnrichmentResponse(rawResponse: string): ValidatedEnrichmen
           email: sanitizeEnrichValue(item.email),
           website: sanitizeEnrichValue(item.website),
           address: sanitizeEnrichValue(item.address),
+          state: sanitizeEnrichValue(item.state),
+          city: sanitizeEnrichValue(item.city),
           attorneys,
           practice_areas,
         };

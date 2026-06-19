@@ -12,6 +12,29 @@ export interface ResearchFirmInput {
   attorneys?: { name: string; email: string | null }[] | null;
   practiceAreas?: string[] | null;
   practice_areas?: string[] | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  sourceType?: string | null;
+  isUS?: boolean;
+}
+
+/**
+ * Normalizes a single practice area name to a canonical casing (Title Case, preserving acronyms).
+ */
+export function toCanonicalPracticeArea(name: string): string {
+  const clean = name.replace(/\s+/g, " ").trim();
+  return clean
+    .split(" ")
+    .map((word) => {
+      if (word.toUpperCase() === word && word.length <= 3) {
+        return word;
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(" ");
 }
 
 /**
@@ -28,137 +51,264 @@ export async function saveResearchFirms(
   const city = zipInfo?.city || "";
   const state = zipInfo?.state || "";
 
-  for (const rawFirm of firms) {
-    try {
-      const firm = sanitizeFirm(rawFirm);
-      const firmName = firm.firm_name.trim();
+  console.log(`[save] zip=${zip} received=${firms.length}`);
 
-      // Map attorneys array
-      const mappedAttorneys = firm.attorneys
-        ? firm.attorneys.map((a) => a.name.trim()).filter(Boolean)
-        : (isUseful(firm.attorney_name) ? [firm.attorney_name!.trim()] : []);
+  // Pre-process and sanitize incoming firms
+  const processedFirms = firms.map((rawFirm) => {
+    const firm = sanitizeFirm(rawFirm);
+    const firmName = firm.firm_name.trim();
+    return { rawFirm, firm, firmName };
+  });
 
-      // Derive attorneyCountRange
-      let attorneyCountRange = "Unknown";
-      const count = mappedAttorneys.length;
-      if (count === 1) {
-        attorneyCountRange = "1";
-      } else if (count >= 2 && count <= 5) {
-        attorneyCountRange = "2-5";
-      } else if (count >= 6 && count <= 10) {
-        attorneyCountRange = "6-10";
-      } else if (count >= 11) {
-        attorneyCountRange = "11+";
-      }
+  // Extract all distinct, canonical practice area names across incoming firms
+  const allIncomingPracticeAreas = processedFirms.flatMap(
+    (pf) => pf.firm.practiceAreas ?? pf.firm.practice_areas ?? []
+  );
+  
+  const allAreaNames = normalizePracticeAreas(allIncomingPracticeAreas).map(toCanonicalPracticeArea);
 
-      const streetAddress = isUseful(firm.address) ? firm.address!.trim() : null;
-      const phone = isUseful(firm.phone) ? firm.phone!.trim() : null;
-      const website = isUseful(firm.website) ? firm.website!.trim() : null;
-      const email = isUseful(firm.email) ? firm.email!.trim() : null;
-      const sourceUrl = website || null;
+  // Batch-create practice areas to avoid race conditions
+  if (allAreaNames.length > 0) {
+    await prisma.practiceArea.createMany({
+      data: allAreaNames.map((name) => ({ name })),
+      skipDuplicates: true,
+    });
+  }
 
-      // Check if an existing firm matches the zip and firmName exactly
-      const existing = await prisma.firm.findFirst({
-        where: {
-          zip,
-          firmName,
-        },
-      });
+  // Retrieve IDs for the practice areas
+  const areaRows = allAreaNames.length > 0
+    ? await prisma.practiceArea.findMany({
+        where: { name: { in: allAreaNames } },
+        select: { id: true, name: true },
+      })
+    : [];
 
-      if (existing) {
-        // Build update object, updating only fields where incoming values are useful
-        const updateData: any = {
-          lastCheckedDate: new Date(),
-        };
+  const areaIdByName = new Map<string, string>();
+  for (const r of areaRows) {
+    areaIdByName.set(r.name, r.id);
+    areaIdByName.set(r.name.toLowerCase(), r.id);
+  }
 
-        if (isUseful(firm.address)) updateData.streetAddress = streetAddress;
-        if (isUseful(firm.phone)) updateData.phone = phone;
-        if (isUseful(firm.website)) {
-          updateData.website = website;
-          updateData.sourceUrl = sourceUrl;
+  const getAreaId = (name: string): string | undefined => {
+    const canonical = toCanonicalPracticeArea(name);
+    return areaIdByName.get(canonical) || areaIdByName.get(canonical.toLowerCase());
+  };
+
+  const results = await Promise.allSettled(
+    processedFirms.map(async ({ rawFirm, firm, firmName }) => {
+      try {
+        // Map attorneys array
+        const mappedAttorneys = firm.attorneys
+          ? firm.attorneys.map((a) => a.name.trim()).filter(Boolean)
+          : (isUseful(firm.attorney_name) ? [firm.attorney_name!.trim()] : []);
+
+        // Derive attorneyCountRange
+        let attorneyCountRange = "Unknown";
+        const count = mappedAttorneys.length;
+        if (count === 1) {
+          attorneyCountRange = "1";
+        } else if (count >= 2 && count <= 5) {
+          attorneyCountRange = "2-5";
+        } else if (count >= 6 && count <= 10) {
+          attorneyCountRange = "6-10";
+        } else if (count >= 11) {
+          attorneyCountRange = "11+";
         }
-        if (isUseful(firm.email)) updateData.email = email;
-        if (isUseful(city)) updateData.city = city;
-        if (isUseful(state)) updateData.state = state;
 
-        if (mappedAttorneys.length > 0) {
-          updateData.attorneys = mappedAttorneys;
-          updateData.attorneyCountRange = attorneyCountRange;
+        const streetAddress = isUseful(firm.address) ? firm.address!.trim() : null;
+        const phone = isUseful(firm.phone) ? firm.phone!.trim() : null;
+        const website = isUseful(firm.website) ? firm.website!.trim() : null;
+        const email = isUseful(firm.email) ? firm.email!.trim() : null;
+        const sourceUrl = website || null;
+
+        // Gate location overrides to authoritative Places (GOOGLE_MAPS) data in the US only
+        const isPlaces = rawFirm.sourceType === "GOOGLE_MAPS";
+        const shouldOverrideLocation = isPlaces && rawFirm.isUS !== false;
+
+        let firmCity = city;
+        let firmState = state;
+        let firmZip = zip;
+        let firmZipExt: string | null = null;
+
+        if (shouldOverrideLocation) {
+          if (isUseful(firm.city)) firmCity = firm.city!.trim();
+          if (isUseful(firm.state)) firmState = firm.state!.trim();
+          if (isUseful(firm.zip)) {
+            const rawZip = firm.zip!.trim();
+            if (rawZip.includes("-")) {
+              const parts = rawZip.split("-");
+              firmZip = parts[0].trim();
+              firmZipExt = parts[1].trim() || null;
+            } else {
+              firmZip = rawZip;
+            }
+          }
         }
 
-        updateData.practiceAreas = normalizePracticeAreas([
-          ...(existing.practiceAreas ?? []),
-          ...(firm.practiceAreas ?? firm.practice_areas ?? []),
-        ]);
-
-        await prisma.firm.update({
-          where: { id: existing.id },
-          data: updateData,
-        });
-
-        // Save attorneys (dual-write)
-        const attorneyInputs = buildAttorneyInputs(existing.id, mappedAttorneys);
-        for (const input of attorneyInputs) {
-          await prisma.attorney.upsert({
-            where: {
-              firmId_name: {
-                firmId: existing.id,
-                name: input.name,
-              },
-            },
-            create: {
-              firmId: existing.id,
-              name: input.name,
-            },
-            update: {},
-          });
-        }
-      } else {
-        // Create a new firm record
-        const createdFirm = await prisma.firm.create({
-          data: {
+        // Check if an existing firm matches the searchZip and firmName exactly
+        const existing = await prisma.firm.findFirst({
+          where: {
+            searchZip: zip,
             firmName,
-            zip,
-            city,
-            state,
-            streetAddress,
-            website,
-            phone,
-            email,
-            practiceAreas: normalizePracticeAreas(firm.practiceAreas || firm.practice_areas),
-            attorneyCountRange,
-            attorneys: mappedAttorneys,
-            sourceType: "WEB_SCRAPE",
-            sourceUrl,
-            confidenceLevel: "UNKNOWN",
-            verificationStatus: "CANDIDATE",
-            lastCheckedDate: new Date(),
-            globalNotes: "Discovered via live web research; pending review.",
           },
         });
 
-        // Save attorneys (dual-write)
-        const attorneyInputs = buildAttorneyInputs(createdFirm.id, mappedAttorneys);
-        for (const input of attorneyInputs) {
-          await prisma.attorney.upsert({
-            where: {
-              firmId_name: {
+        if (existing) {
+          // Build update object, updating only fields where incoming values are useful
+          const updateData: any = {
+            lastCheckedDate: new Date(),
+          };
+
+          if (isUseful(firm.address)) updateData.streetAddress = streetAddress;
+          if (isUseful(firm.phone)) updateData.phone = phone;
+          if (isUseful(firm.website)) {
+            updateData.website = website;
+            updateData.sourceUrl = sourceUrl;
+          }
+          if (isUseful(firm.email)) updateData.email = email;
+          if (isUseful(firmCity)) updateData.city = firmCity;
+          if (isUseful(firmState)) updateData.state = firmState;
+          if (shouldOverrideLocation) {
+            updateData.zip = firmZip;
+            updateData.zipExt = firmZipExt;
+          }
+
+          if (mappedAttorneys.length > 0) {
+            updateData.attorneys = mappedAttorneys;
+            updateData.attorneyCountRange = attorneyCountRange;
+          }
+
+          updateData.practiceAreas = normalizePracticeAreas([
+            ...(existing.practiceAreas ?? []),
+            ...(firm.practiceAreas ?? firm.practice_areas ?? []),
+          ]).map(toCanonicalPracticeArea);
+
+          await prisma.firm.update({
+            where: { id: existing.id },
+            data: updateData,
+          });
+
+          // Save attorneys (dual-write)
+          const attorneyInputs = buildAttorneyInputs(existing.id, mappedAttorneys);
+          for (const input of attorneyInputs) {
+            await prisma.attorney.upsert({
+              where: {
+                firmId_name: {
+                  firmId: existing.id,
+                  name: input.name,
+                },
+              },
+              create: {
+                firmId: existing.id,
+                name: input.name,
+              },
+              update: {},
+            });
+          }
+
+          // Save practice areas (dual-write) - Link only the incoming ones
+          const incomingPracticeAreas = normalizePracticeAreas(
+            firm.practiceAreas ?? firm.practice_areas ?? []
+          ).map(toCanonicalPracticeArea);
+
+          const links = incomingPracticeAreas
+            .map((name) => getAreaId(name))
+            .filter((id): id is string => Boolean(id))
+            .map((practiceAreaId) => ({
+              firmId: existing.id,
+              practiceAreaId,
+            }));
+
+          if (links.length > 0) {
+            await prisma.firmPracticeArea.createMany({
+              data: links,
+              skipDuplicates: true,
+            });
+          }
+        } else {
+          // Create a new firm record
+          const createdFirm = await prisma.firm.create({
+            data: {
+              firmName,
+              searchZip: zip,
+              zip: firmZip,
+              zipExt: firmZipExt,
+              city: firmCity,
+              state: firmState,
+              streetAddress,
+              website,
+              phone,
+              email,
+              practiceAreas: normalizePracticeAreas(
+                firm.practiceAreas || firm.practice_areas
+              ).map(toCanonicalPracticeArea),
+              attorneyCountRange,
+              attorneys: mappedAttorneys,
+              sourceType: isPlaces ? "GOOGLE_MAPS" : "WEB_SCRAPE",
+              sourceUrl,
+              confidenceLevel: isPlaces ? "MEDIUM" : "UNKNOWN",
+              verificationStatus: "CANDIDATE",
+              lastCheckedDate: new Date(),
+              globalNotes: isPlaces 
+                ? "Discovered via Google Places API; pending review."
+                : "Discovered via live web research; pending review.",
+            },
+          });
+
+          // Save attorneys (dual-write)
+          const attorneyInputs = buildAttorneyInputs(createdFirm.id, mappedAttorneys);
+          for (const input of attorneyInputs) {
+            await prisma.attorney.upsert({
+              where: {
+                firmId_name: {
+                  firmId: createdFirm.id,
+                  name: input.name,
+                },
+              },
+              create: {
                 firmId: createdFirm.id,
                 name: input.name,
               },
-            },
-            create: {
+              update: {},
+            });
+          }
+
+          // Save practice areas (dual-write)
+          const practiceAreaNames = createdFirm.practiceAreas ?? [];
+          const links = practiceAreaNames
+            .map((name) => getAreaId(name))
+            .filter((id): id is string => Boolean(id))
+            .map((practiceAreaId) => ({
               firmId: createdFirm.id,
-              name: input.name,
-            },
-            update: {},
-          });
+              practiceAreaId,
+            }));
+
+          if (links.length > 0) {
+            await prisma.firmPracticeArea.createMany({
+              data: links,
+              skipDuplicates: true,
+            });
+          }
         }
+      } catch (error) {
+        return Promise.reject({ firmName, error });
       }
-    } catch (error) {
-      console.error(`Error saving research firm "${rawFirm.firm_name}":`, error);
+    })
+  );
+
+  let upserted = 0;
+  let failed = 0;
+  for (const res of results) {
+    if (res.status === "fulfilled") {
+      upserted++;
+    } else {
+      failed++;
+      const reason = res.reason;
+      console.error(`[save] Failed to save firm "${reason?.firmName || "Unknown"}":`, reason?.error || reason);
     }
   }
+
+  console.log(`[save] zip=${zip} received=${firms.length} upserted=${upserted} failed=${failed}`);
 }
 
 /**
@@ -184,3 +334,4 @@ export function buildAttorneyInputs(
 
   return inputs;
 }
+

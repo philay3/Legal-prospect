@@ -32,16 +32,21 @@ export function escapeCsvField(val: string | null | undefined): string {
  * Ordered columns: Name, Email, Phone, Website, Address
  */
 export function toCsv(prospects: Prospect[]): string {
-  const headers = ["Name", "Email", "Phone", "Website", "Address"];
+  const headers = ["Name", "Email", "Phone", "Website", "Address", "Practice Areas", "Attorneys"];
   const lines = [headers.map(h => `"${h}"`).join(",")];
 
   for (const p of prospects) {
+    const practiceAreasStr = p.practiceAreas ? p.practiceAreas.filter(a => a && a.trim()).join(", ") : "";
+    const attorneysStr = p.attorneys ? p.attorneys.filter(a => a && a.trim()).join(", ") : "";
+
     const row = [
       escapeCsvField(p.firmName || ""),
       escapeCsvField(p.email || ""),
       escapeCsvField(p.phone || ""),
       escapeCsvField(p.website || ""),
-      escapeCsvField(formatAddress(p))
+      escapeCsvField(formatAddress(p)),
+      escapeCsvField(practiceAreasStr),
+      escapeCsvField(attorneysStr)
     ];
     lines.push(row.join(","));
   }

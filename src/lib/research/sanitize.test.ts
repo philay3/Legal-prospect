@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sanitizeText, sanitizeFirm, normalizePracticeAreas } from "./sanitize";
+import { sanitizeText, sanitizeFirm, normalizePracticeAreas, pickContactLink, detectState, isInSearchedState } from "./sanitize";
 
 describe("sanitizeText", () => {
   it("should strip NUL bytes", () => {
@@ -141,3 +141,82 @@ describe("normalizePracticeAreas", () => {
     ]);
   });
 });
+
+describe("pickContactLink — directory rejection + own-domain preference", () => {
+  it("prefers the firm's own contact page over a directory listing", () => {
+    const baseUrl = "https://www.smithlaw.com";
+    const hrefs = [
+      "https://www.avvo.com/attorneys/smith",
+      "https://law.usnews.com/law-firms/smith-law",
+      "https://www.smithlaw.com/contact-us",
+    ];
+    expect(pickContactLink(baseUrl, hrefs)).toBe("https://www.smithlaw.com/contact-us");
+  });
+
+  it("rejects directory domains including subdomains", () => {
+    const baseUrl = "https://www.smithlaw.com";
+    const hrefs = [
+      "https://sbm.reliaguide.com/smith",          // subdomain of a directory
+      "https://attorneys.lexinter.net/smith",
+      "https://www.experience.com/smith",
+    ];
+    // every candidate is a directory → nothing acceptable
+    expect(pickContactLink(baseUrl, hrefs)).toBeNull();
+  });
+
+  it("treats www. and bare domain as the same firm domain", () => {
+    const baseUrl = "https://www.smithlaw.com";
+    const hrefs = ["https://smithlaw.com/about"];
+    expect(pickContactLink(baseUrl, hrefs)).toBe("https://smithlaw.com/about");
+  });
+
+  it("keeps the existing path scoring among own-domain links (contact beats about)", () => {
+    const baseUrl = "https://smithlaw.com";
+    const hrefs = ["https://smithlaw.com/about", "https://smithlaw.com/contact"];
+    expect(pickContactLink(baseUrl, hrefs)).toBe("https://smithlaw.com/contact");
+  });
+
+  it("allows off-domain links if no own-domain links are present and they are not directory domains", () => {
+    const baseUrl = "https://www.smithlaw.com";
+    const hrefs = [
+      "https://www.avvo.com/attorneys/smith", // directory -> reject
+      "https://www.another-site.com/contact", // off-domain -> allow since no own-domain
+    ];
+    expect(pickContactLink(baseUrl, hrefs)).toBe("https://www.another-site.com/contact");
+  });
+});
+
+describe("detectState", () => {
+  it("should detect state from address string", () => {
+    expect(detectState({ address: "1612 S Denver Ave., Tulsa, Oklahoma 74119" })).toBe("OK");
+    expect(detectState({ address: "453 W. Main Street, Huntington, NY 11743" })).toBe("NY");
+    expect(detectState({ address: "no state here" })).toBeNull();
+  });
+
+  it("should honor explicit state field over address", () => {
+    expect(detectState({ state: "NY", address: "1612 S Denver Ave., Tulsa, Oklahoma 74119" })).toBe("NY");
+    expect(detectState({ state: "New York", address: "1612 S Denver Ave., Tulsa, Oklahoma 74119" })).toBe("NY");
+  });
+
+  it("should handle lowercase zip-adjacent state codes in address", () => {
+    expect(detectState({ address: "453 w. main street, huntington, ny 11743" })).toBe("NY");
+  });
+});
+
+describe("isInSearchedState", () => {
+  it("should match state case-insensitively", () => {
+    expect(isInSearchedState({ state: "NY" }, "ny")).toBe(true);
+    expect(isInSearchedState({ state: "NY" }, "NY")).toBe(true);
+  });
+
+  it("should drop different state", () => {
+    expect(isInSearchedState({ state: "OK" }, "NY")).toBe(false);
+    expect(isInSearchedState({ address: "1612 S Denver Ave., Tulsa, Oklahoma 74119" }, "NY")).toBe(false);
+  });
+
+  it("should keep unknown state", () => {
+    expect(isInSearchedState({ address: "no state here" }, "NY")).toBe(true);
+  });
+});
+
+

@@ -68,7 +68,9 @@ describe("CSV Helper Utility Tests", () => {
           city: "Philadelphia",
           state: "PA",
           zip: "19103",
-        } as Prospect,
+          practiceAreas: ["Corporate Law", "Intellectual Property"],
+          attorneys: ["Jane Doe", "John Smith"],
+        } as unknown as Prospect,
         {
           id: "p2",
           firmName: 'Beta "Boutique" Law',
@@ -79,20 +81,22 @@ describe("CSV Helper Utility Tests", () => {
           city: "Harrisburg",
           state: "PA",
           zip: "17101",
-        } as Prospect,
+          practiceAreas: [],
+          attorneys: [],
+        } as unknown as Prospect,
       ];
 
       const csv = toCsv(prospects);
       const lines = csv.split("\r\n");
 
       // Verify header row
-      expect(lines[0]).toBe('"Name","Email","Phone","Website","Address"');
+      expect(lines[0]).toBe('"Name","Email","Phone","Website","Address","Practice Areas","Attorneys"');
 
       // Verify Acme Legal row (with comma in name)
-      expect(lines[1]).toBe('"Acme Legal, LLC","contact@acmelegal.com","555-0199","https://acmelegal.com","100 Pine St 19103"');
+      expect(lines[1]).toBe('"Acme Legal, LLC","contact@acmelegal.com","555-0199","https://acmelegal.com","100 Pine St 19103","Corporate Law, Intellectual Property","Jane Doe, John Smith"');
 
       // Verify Beta Boutique row (with quotes in name and empty cells)
-      expect(lines[2]).toBe('"Beta ""Boutique"" Law","","","","Harrisburg, PA 17101"');
+      expect(lines[2]).toBe('"Beta ""Boutique"" Law","","","","Harrisburg, PA 17101","",""');
     });
   });
 });

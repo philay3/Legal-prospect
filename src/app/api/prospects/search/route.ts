@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     // Query Neon database via Prisma Client, ordering alphabetically by firmName ascending.
     let firms = await prisma.firm.findMany({
       where: {
-        zip: normalizedZip,
+        searchZip: normalizedZip,
       },
       orderBy: {
         firmName: "asc",
@@ -44,17 +44,19 @@ export async function GET(request: NextRequest) {
       console.log(`[api/search] Cache miss or refresh for ZIP ${normalizedZip}. Running research.`);
       try {
         const researchResult = await runLeadResearch(normalizedZip, "thorough");
+        console.log(`[api/search] Discovered ${researchResult.firms.length} firms from live research.`);
         await saveResearchFirms(normalizedZip, researchResult.firms);
 
         // Re-query database to fetch newly saved results
         firms = await prisma.firm.findMany({
           where: {
-            zip: normalizedZip,
+            searchZip: normalizedZip,
           },
           orderBy: {
             firmName: "asc",
           },
         });
+        console.log(`[api/search] DB read-back after save returned ${firms.length} rows for ZIP ${normalizedZip}.`);
       } catch (researchError) {
         console.error(`[api/search] Live research failed for ZIP ${normalizedZip}:`, researchError);
         return NextResponse.json({
@@ -66,6 +68,8 @@ export async function GET(request: NextRequest) {
           warning: "Live research failed. Returning empty results.",
         });
       }
+    } else {
+      console.log(`[api/search] Cache hit: DB returned ${firms.length} rows for ZIP ${normalizedZip}.`);
     }
 
     // Map database rows to the frontend Prospect shape
@@ -74,6 +78,7 @@ export async function GET(request: NextRequest) {
       firmName: firm.firmName,
       zip: firm.zip,
       zipExt: firm.zipExt,
+      searchZip: firm.searchZip,
       city: firm.city,
       state: firm.state,
       streetAddress: firm.streetAddress,
@@ -109,6 +114,8 @@ export async function GET(request: NextRequest) {
 
       return a.firmName.localeCompare(b.firmName);
     });
+
+    console.log(`[api/search] Response will contain ${results.length} firms for ZIP ${normalizedZip}.`);
 
     return NextResponse.json({
       query: {

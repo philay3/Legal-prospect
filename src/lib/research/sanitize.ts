@@ -99,6 +99,31 @@ export function normalizeWebsite(website: string | null | undefined): string | n
   }
 }
 
+const DIRECTORY_DOMAINS = [
+  "avvo.com","justia.com","findlaw.com","martindale.com","lawyers.com",
+  "superlawyers.com","nolo.com","usnews.com","experience.com","expertise.com",
+  "reliaguide.com","lexinter.net","wheree.com","lawinfo.com","allusinjurylawyers.com",
+  "specialneedsanswers.com","yelp.com","mapquest.com","bbb.org","thumbtack.com",
+  "birdeye.com","chambersandpartners.com","yellowpages.com",
+];
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function registrable(host: string): string {
+  const parts = host.split(".");
+  return parts.length <= 2 ? host : parts.slice(-2).join("."); // good-enough eTLD+1
+}
+
+function isDirectory(host: string): boolean {
+  return DIRECTORY_DOMAINS.some((d) => host === d || host.endsWith("." + d));
+}
+
 /**
  * Picks the single best candidate page link from hrefs for enrichment.
  * Resolves relative URLs against baseUrl, applies exclusion/inclusion rules,
@@ -113,7 +138,8 @@ export function pickContactLink(baseUrl: string, hrefs: string[]): string | null
   }
 
   const baseOrigin = baseObj.origin;
-  const baseHostnameNormalized = baseObj.hostname.replace(/^www\./, "").toLowerCase();
+  const baseHost = hostOf(baseUrl);
+  const baseRegistrable = registrable(baseHost);
 
   const assetExtensions = [
     ".css", ".js", ".json", ".png", ".jpg", ".jpeg", ".gif", ".svg",
@@ -126,6 +152,7 @@ export function pickContactLink(baseUrl: string, hrefs: string[]): string | null
   interface Candidate {
     url: string;
     score: number;
+    isOwnDomain: boolean;
   }
 
   const candidates: Candidate[] = [];
@@ -137,9 +164,10 @@ export function pickContactLink(baseUrl: string, hrefs: string[]): string | null
       // Resolve href against base URL
       const resolved = new URL(href, baseUrl);
       
-      // Ensure it is same domain or subdomain
-      const candidateHostnameNormalized = resolved.hostname.replace(/^www\./, "").toLowerCase();
-      if (candidateHostnameNormalized !== baseHostnameNormalized && !candidateHostnameNormalized.endsWith("." + baseHostnameNormalized)) {
+      const candidateHost = hostOf(resolved.href);
+
+      // Filter: drop any href where isDirectory(hostOf(href))
+      if (isDirectory(candidateHost)) {
         continue;
       }
 
@@ -189,7 +217,9 @@ export function pickContactLink(baseUrl: string, hrefs: string[]): string | null
         const urlStr = resolved.href;
         if (!seenUrls.has(urlStr)) {
           seenUrls.add(urlStr);
-          candidates.push({ url: urlStr, score });
+          
+          const isOwnDomain = registrable(candidateHost) === baseRegistrable;
+          candidates.push({ url: urlStr, score, isOwnDomain });
         }
       }
     } catch (e) {
@@ -199,10 +229,14 @@ export function pickContactLink(baseUrl: string, hrefs: string[]): string | null
 
   if (candidates.length === 0) return null;
 
-  // Sort candidates by score descending
-  candidates.sort((a, b) => b.score - a.score);
+  // Prefer own domain: keep own-domain links first, fall back to others if none exist
+  const ownDomainCandidates = candidates.filter((c) => c.isOwnDomain);
+  const targetCandidates = ownDomainCandidates.length > 0 ? ownDomainCandidates : candidates;
 
-  return candidates[0].url;
+  // Sort candidates by score descending
+  targetCandidates.sort((a, b) => b.score - a.score);
+
+  return targetCandidates[0].url;
 }
 
 /**
@@ -261,3 +295,106 @@ export function normalizePracticeAreas(
   }
   return out;
 }
+
+const STATE_NAME_TO_CODE: Record<string, string> = {
+  alabama: "AL", alaska: "AK", arizona: "AZ", arkansas: "AR", california: "CA",
+  colorado: "CO", connecticut: "CT", delaware: "DE", florida: "FL", georgia: "GA",
+  hawaii: "HI", idaho: "ID", illinois: "IL", indiana: "IN", iowa: "IA",
+  kansas: "KS", kentucky: "KY", louisiana: "LA", maine: "ME", maryland: "MD",
+  massachusetts: "MA", michigan: "MI", minnesota: "MN", mississippi: "MS", missouri: "MO",
+  montana: "MT", nebraska: "NE", nevada: "NV", newhampshire: "NH", newjersey: "NJ",
+  newmexico: "NM", newyork: "NY", northcarolina: "NC", northdakota: "ND", ohio: "OH",
+  oklahoma: "OK", oregon: "OR", pennsylvania: "PA", rhodeisland: "RI", southcarolina: "SC",
+  southdakota: "SD", tennessee: "TN", texas: "TX", utah: "UT", vermont: "VT",
+  virginia: "VA", washington: "WA", westvirginia: "WV", wisconsin: "WI", wyoming: "WY",
+  "new york": "NY", "new jersey": "NJ", "new mexico": "NM", "new hampshire": "NH",
+  "north carolina": "NC", "north dakota": "ND", "south carolina": "SC", "south dakota": "SD",
+  "west virginia": "WV", "district of columbia": "DC"
+};
+
+const STATE_CODES = new Set(Object.values(STATE_NAME_TO_CODE));
+
+/**
+ * Detects a US state from the firm's state field, or scans its address fields for a state name or code.
+ * Returns the 2-letter uppercase state code, or null if undetected.
+ */
+export function detectState(firm: {
+  state?: string | null;
+  address?: string | null;
+  streetAddress?: string | null;
+}): string | null {
+  if (firm.state && isUseful(firm.state)) {
+    const cleanState = firm.state.trim().replace(/[^a-zA-Z\s]/g, "");
+    const lowerState = cleanState.toLowerCase();
+    const upperState = cleanState.toUpperCase();
+    if (upperState.length === 2 && STATE_CODES.has(upperState)) {
+      return upperState;
+    }
+    if (STATE_NAME_TO_CODE[lowerState]) {
+      return STATE_NAME_TO_CODE[lowerState];
+    }
+  }
+
+  const addressText = [firm.address, firm.streetAddress]
+    .filter(Boolean)
+    .join(" ");
+
+  if (!addressText || !isUseful(addressText)) {
+    return null;
+  }
+
+  const sortedStateNames = Object.keys(STATE_NAME_TO_CODE).sort((a, b) => b.length - a.length);
+  for (const name of sortedStateNames) {
+    const regex = new RegExp(`\\b${name}\\b`, "i");
+    if (regex.test(addressText)) {
+      return STATE_NAME_TO_CODE[name];
+    }
+  }
+
+  const twoLetterRegex = /\b([a-zA-Z]{2})\b/g;
+  let match;
+  while ((match = twoLetterRegex.exec(addressText)) !== null) {
+    const token = match[1];
+    const upperToken = token.toUpperCase();
+    if (STATE_CODES.has(upperToken)) {
+      if (token === upperToken) {
+        return upperToken;
+      }
+      const matchIndex = match.index;
+      const contextAfter = addressText.slice(matchIndex + token.length).trim();
+      if (/^\d{5}(-\d{4})?/.test(contextAfter)) {
+        return upperToken;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Keeps a firm if its state matches the expected state, or if its state is unknown.
+ * Drops only when a different state is clearly detected.
+ */
+export function isInSearchedState(
+  firm: {
+    state?: string | null;
+    address?: string | null;
+    streetAddress?: string | null;
+  },
+  expectedState: string
+): boolean {
+  const detected = detectState(firm);
+  if (!detected) {
+    return true;
+  }
+  return detected.toUpperCase() === expectedState.toUpperCase();
+}
+
+/**
+ * Decides which discovered firms get enriched based on the configured safety ceiling.
+ */
+export function getFirmsToEnrich<T>(candidates: T[], ceiling: number): T[] {
+  return candidates.slice(0, ceiling);
+}
+
+

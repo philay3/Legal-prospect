@@ -527,3 +527,42 @@ A firm that still fails to save is now logged-and-skipped rather than loud — w
 
 ### Revisit If
 We add new save paths (e.g. the Attorney insert) — apply the same sanitization there (already accounted for in the Attorney task).
+
+---
+
+## 2026-06-18 — Locality Guard & Same-State Filtering for Grounded Research
+
+### Decision
+Implemented a strict same-state filtering logic using a deterministic locality guard. Discovered firms whose state is confidently identified as being different from the searched ZIP's state are dropped from the enrichment pipeline and the final output list. Firms whose state is unknown are preserved to avoid over-filtering.
+
+### Reason
+LLM discovery grounded by Tavily queries would occasionally leak out-of-area firms (e.g., Tulsa, OK firms appearing on a New York ZIP search). Filtering by the searched ZIP's state prevents irrelevant results from cluttering search views.
+
+### Tradeoffs / Risks
+Legitimate cross-border metro firms (such as a New Jersey firm servicing a New York border ZIP) may be filtered out under this pure same-state matching scheme. This is acceptable for the intra-state demo ZIPs.
+
+### Revisit If
+We require support for cross-border metro zones, at which point we should transition to physical geocoding and radial distance queries, or integrate Google Places API.
+
+---
+
+## 2026-06-19 — Google Places API (Geo-Biased) & Hybrid Tavily Enrichment
+
+### Decision
+
+Add Google Places as a switchable search/discovery provider behind `SEARCH_PROVIDER=places`. Use the Google Places Text Search (New) API to perform geo-biased discovery (querying `"law firms in ${city}, ${state} ${zipCode}"` with `includedType: "lawyer"`). Retain Tavily for secondary email/attorney/practice-area enrichment. If Places returns a valid `websiteUri`, fetch and extract that website directly to bypass Tavily search calls. Retire the state-string locality guard block. Fail loudly if Places is configured but the API key is missing.
+
+### Reason
+
+AI-based discovery via search engine queries and LLM parsers frequently produced hallucinated firms, bad websites, and inaccurate locations. Sourcing names, websites, telephone numbers, and addresses directly from Google Places provides geo-biased results from Google's database. This eliminates discovery hallucinations and improves initial metadata quality. Re-using the Places `websiteUri` directly in the enrichment phase saves Tavily search costs and anchors the crawl to the correct domain.
+
+### Tradeoffs / Risks
+
+- Text Search (New) is a paid Google API, introducing direct discovery costs ($25/1,000 requests), capped at 3 pages (60 firms) max per ZIP.
+- Removing the same-state locality guard might allow adjacent cross-border metro firms to be saved, which is acceptable since Google Places is natively anchored around the search ZIP.
+- `lat` and `lng` coordinates are parsed but kept strictly in-memory (not written to Prisma database) to avoid database migrations.
+
+### Revisit If
+
+- Google API pricing becomes restrictive.
+- A strict radial distance limit is required, in which case we should upgrade to Google Places Nearby Search using ZIP centroids.

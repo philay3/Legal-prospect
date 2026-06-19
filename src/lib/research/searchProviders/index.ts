@@ -2,14 +2,16 @@
 import { SearchProvider } from "./types";
 import { DdgSearchProvider } from "./ddg";
 import { TavilySearchProvider } from "./tavily";
+import { PlacesSearchProvider } from "./places";
 
 /**
  * Maps the environment string to the supported provider keys.
  */
-export function selectProvider(envVal: string | undefined): "tavily" | "ddg" {
+export function selectProvider(envVal: string | undefined): "tavily" | "ddg" | "places" {
   if (!envVal) return "tavily";
   const normalized = envVal.trim().toLowerCase();
   if (normalized === "ddg") return "ddg";
+  if (normalized === "places") return "places";
   return "tavily";
 }
 
@@ -19,6 +21,15 @@ export function selectProvider(envVal: string | undefined): "tavily" | "ddg" {
  */
 export function getSearchProvider(): SearchProvider {
   const providerType = selectProvider(process.env.SEARCH_PROVIDER);
+
+  if (providerType === "places") {
+    const placesKey = process.env.GOOGLE_PLACES_API_KEY;
+    if (!placesKey) {
+      throw new Error("SEARCH_PROVIDER is set to 'places' but GOOGLE_PLACES_API_KEY is not set. Fail loudly.");
+    }
+    return new PlacesSearchProvider();
+  }
+
   const apiKey = process.env.TAVILY_API_KEY;
 
   if (providerType === "ddg") {

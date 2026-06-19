@@ -48,6 +48,7 @@ model Firm {
   attorneyCountRange String
   attorneys          String[]
   attorneyList       Attorney[]
+  areaLinks          FirmPracticeArea[]
   sourceType         SourceType
   sourceUrl          String?
   confidenceLevel    ConfidenceLevel    @default(UNKNOWN)
@@ -56,9 +57,11 @@ model Firm {
   globalNotes        String?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
+  searchZip          String?
 
   @@index([zip])
   @@index([city, state])
+  @@index([searchZip])
 }
 
 model Attorney {
@@ -74,4 +77,24 @@ model Attorney {
   @@unique([firmId, name])
   @@index([firmId])
 }
+
+model PracticeArea {
+  id        String             @id @default(uuid())
+  name      String             @unique
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  firmLinks FirmPracticeArea[]
+}
+
+model FirmPracticeArea {
+  firmId         String
+  practiceAreaId String
+  firm           Firm         @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  practiceArea   PracticeArea @relation(fields: [practiceAreaId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@id([firmId, practiceAreaId])
+  @@index([practiceAreaId])
+}
+
 

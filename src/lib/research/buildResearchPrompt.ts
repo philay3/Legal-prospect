@@ -8,35 +8,46 @@
  * @param zipCode The 5-digit US ZIP code to search.
  * @param mode The search mode ("quick" or "thorough").
  */
-export function buildResearchPrompt(zipCode: string, mode: "quick" | "thorough" = "quick"): string {
+export function buildResearchPrompt(
+  zipCode: string,
+  mode: "quick" | "thorough" = "quick",
+  city?: string,
+  state?: string
+): string {
+  const locationText = (city && state) ? `in or near ${city}, ${state} (${zipCode})` : `in the ZIP code: "${zipCode}"`;
+  const stateConstraint = state ? `physically located in or operating in the state of ${state}, ideally in or near ${city}` : `physically located in ${zipCode}`;
+
   if (mode === "quick") {
-    return `You are a professional legal research assistant. Your task is to find small, boutique law firms located in the ZIP code: "${zipCode}".
+    return `You are a professional legal research assistant. Your task is to find small, boutique law firms located ${locationText}.
 
 ### Ideal Customer Profile (Inclusion Criteria)
 Include a law firm ONLY if it meets ALL of the following:
-1. The firm has a physical office located in the ZIP code "${zipCode}".
+1. The firm is ${stateConstraint}.
 2. The firm is small, consisting of 1 to 10 attorneys in total.
 3. The firm is a single-office, independent firm (solo practitioners are allowed).
 
 ### Exclusion Criteria
 Do NOT include a law firm if it matches ANY of the following:
-1. The firm has more than 10 attorneys.
-2. The firm is a national or regional law firm.
-3. The firm has multiple office locations, or is a branch/satellite office of a larger firm.
+1. The firm is based in a different state than ${state || 'the searched ZIP'}.
+2. The firm has more than 10 attorneys.
+3. The firm is a national or regional law firm.
+4. The firm has multiple office locations, or is a branch/satellite office of a larger firm.
 
 ### Data Collection Requirements
 For each qualifying law firm found, collect the following fields:
 1. "attorney_name": The name of a primary attorney or solo practitioner at the firm (use null if not identified).
 2. "firm_name": The official name of the law firm (must be non-empty).
-3. "address": The physical office address in ZIP code ${zipCode} (use null if not found).
+3. "address": The physical office address (use null if not found).
 4. "phone": The phone number of the firm (use null if not found).
-5. "website": The official website URL of the firm (use null if not found).
+5. "website": The official website URL of the firm (use the firm's own website, never a directory or aggregator; use null if not found).
 6. "email": The general contact email or attorney-specific email of the firm (use null if not found).
-7. "practice_areas": An array of the firm's practice areas / specialties (e.g. ["Family Law", "Personal Injury"]); use an empty array if not stated.
+7. "state": The 2-letter US state code of the firm's physical location (use null if not found).
+8. "city": The city of the firm's physical location (use null if not found).
+9. "practice_areas": An array of the firm's practice areas / specialties (e.g. ["Family Law", "Personal Injury"]); use an empty array if not stated.
 
 ### Crucial Constraints
 - Do NOT invent, guess, or hallucinate any data. If a phone, website, email, address, or attorney name is not explicitly found, use null.
-- Provide real, active boutique firms currently operating in "${zipCode}".
+- Provide real, active boutique firms currently operating in or near "${zipCode}".
 
 ### Output Format
 Return ONLY a valid JSON object matching the following structure. Do not output any conversational text, notes, or explanations before or after the JSON.
@@ -52,6 +63,8 @@ JSON Schema:
       "phone": "string or null",
       "website": "string or null",
       "email": "string or null",
+      "state": "string or null",
+      "city": "string or null",
       "practice_areas": ["string"]
     }
   ]
@@ -60,11 +73,11 @@ JSON Schema:
   }
 
   // Thorough mode prompt
-  return `You are a professional legal research assistant. Your task is to perform a deep research pass to discover small, boutique, or local law firms serving or located in the ZIP code: "${zipCode}".
+  return `You are a professional legal research assistant. Your task is to perform a deep research pass to discover small, boutique, or local law firms serving or located ${locationText}.
 
 ### Ideal Customer Profile (Inclusion Criteria)
 We are looking for boutique and small-firm prospects. Include a law firm if it fits the following profile:
-1. The firm is located in or clearly serving the searched ZIP code "${zipCode}".
+1. The firm is located in or clearly serving the searched location ${locationText}. Only include firms physically based in the state of ${state || 'the searched ZIP'}.
 2. The firm is small or boutique, consisting of 1 to 10 attorneys in total (solo practitioners are allowed).
 3. The firm is independent or local-facing.
 4. If some details (like attorney count or single-office status) are slightly uncertain, but it is plausibly a small local/boutique prospect, do NOT automatically exclude it. Keep it as a candidate.
@@ -75,7 +88,7 @@ Look broadly across common small-firm practice areas, including civil litigation
 ### Exclusion Criteria (Strict Rejection)
 Reject a candidate ONLY if there is clear evidence of the following:
 1. The candidate is clearly not a law firm (e.g. legal aid society, directory site, bar association, government entity, court).
-2. The firm is clearly outside the targeted geography.
+2. The firm is physically based in a different state than ${state || 'the searched ZIP'}.
 3. The firm is clearly a large national or regional law firm (e.g. hundreds of attorneys).
 4. The firm clearly has multiple office locations with many attorneys, or is a branch/satellite office of a major national firm.
 5. The firm has more than 10 attorneys.
@@ -85,6 +98,19 @@ Reject a candidate ONLY if there is clear evidence of the following:
 - For each firm, compile all details from the provided search context.
 - Include the firm's practice areas / specialties when evident from the results; use an empty array if not stated.
 - Do NOT invent, guess, or fabricate phone numbers, websites, email addresses, or attorney names. If unknown, use null.
+- Collect the firm's own website URL, never a directory or aggregator URL.
+
+### Data Collection Fields
+For each candidate firm, collect:
+1. "attorney_name": The name of a primary attorney or solo practitioner (use null if not identified).
+2. "firm_name": The official name of the law firm (must be non-empty).
+3. "address": The physical office address (use null if not found).
+4. "phone": The phone number of the firm (use null if not found).
+5. "website": The official website URL (never a directory/aggregator URL; use null if not found).
+6. "email": The general contact email or attorney-specific email (use null if not found).
+7. "state": The 2-letter US state code of the firm's physical location (use null if not found).
+8. "city": The city of the firm's physical location (use null if not found).
+9. "practice_areas": An array of the firm's practice areas / specialties (use an empty array if not stated).
 
 ### Output Format
 Return ONLY a valid JSON object matching the following structure. Do not output any conversational text, notes, or explanations before or after the JSON.
@@ -100,6 +126,8 @@ JSON Schema:
       "phone": "string or null",
       "website": "string or null",
       "email": "string or null",
+      "state": "string or null",
+      "city": "string or null",
       "practice_areas": ["string"]
     }
   ]

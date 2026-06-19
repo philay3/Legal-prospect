@@ -65,19 +65,22 @@ async function postTavily(endpoint: string, body: any, timeoutMs = 8000) {
 export class TavilySearchProvider implements SearchProvider {
   async getSearchContext(
     zipCode: string,
-    mode: "quick" | "thorough"
+    mode: "quick" | "thorough",
+    city?: string,
+    state?: string
   ): Promise<SearchContextResponse> {
     const queries: string[] = [];
+    const location = (city && state) ? `${city}, ${state} ${zipCode}` : zipCode;
     if (mode === "quick") {
-      queries.push(`law firms in ZIP code ${zipCode}`);
+      queries.push(`law firms in ${location}`);
     } else {
       queries.push(
-        `boutique law firms in ZIP ${zipCode}`,
-        `small law offices in ZIP ${zipCode}`,
-        `solo practitioner lawyers in ZIP ${zipCode}`,
-        `personal injury criminal defense family estate immigration lawyers ZIP ${zipCode}`,
-        `litigation bankruptcy employment real estate trial attorneys ZIP ${zipCode}`,
-        `local law firm contact information ZIP ${zipCode}`
+        `boutique law firms in ${location}`,
+        `small law offices in ${location}`,
+        `solo practitioner lawyers in ${location}`,
+        `personal injury criminal defense family estate immigration lawyers ${location}`,
+        `litigation bankruptcy employment real estate trial attorneys ${location}`,
+        `local law firm contact information ${location}`
       );
     }
 

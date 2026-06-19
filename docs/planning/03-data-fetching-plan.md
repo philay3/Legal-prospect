@@ -141,7 +141,24 @@ Law firm structures, contact info, and website domains change regularly. We enfo
 
 ## 10. Manual first-pass workflow
 
+### 10.1. Google Places Discovery Pass (Automated)
+
+When `SEARCH_PROVIDER` is set to `places`, the initial discovery phase is managed directly via the Google Places API.
+
+- **Trigger:** A cache miss or explicit `refresh=true` GET query to `/api/prospects/search` for a target ZIP code.
+- **Input:** The offline resolved `city`, `state`, and `zipCode` of the queried area.
+- **Request:** HTTP POST to `https://places.googleapis.com/v1/places:searchText` with body:
+  ```json
+  {
+    "textQuery": "law firms in ${city}, ${state} ${zipCode}",
+    "includedType": "lawyer"
+  }
+  ```
+- **Field Mask:** `places.id,places.displayName,places.formattedAddress,places.addressComponents,places.location,places.nationalPhoneNumber,places.websiteUri,places.businessStatus,places.types,nextPageToken`
+- **Cost:** Paid SKU ($0.025 per call). Capped at up to 3 pages (60 results max) using `pageToken` pagination. Hits the API only once per ZIP (results cached in db).
+
 To validate our database schema and refine our prospect data fields before writing automation scripts, we propose a manual real-data experiment:
+
 
 ### Proposed Manual Verification Experiment for ZIP 19103
 - **Target ZIP:** `19103` (Center City, Philadelphia, PA).

@@ -56,6 +56,7 @@ describe("GET /api/prospects/search", () => {
         firmName: "Alpha Law",
         zip: "19103",
         zipExt: null,
+        searchZip: "19103",
         city: "Philadelphia",
         state: "PA",
         streetAddress: "123 Market St",
@@ -89,6 +90,7 @@ describe("GET /api/prospects/search", () => {
       firmName: "Alpha Law",
       zip: "19103",
       zipExt: null,
+      searchZip: "19103",
       city: "Philadelphia",
       state: "PA",
       streetAddress: "123 Market St",
@@ -107,7 +109,7 @@ describe("GET /api/prospects/search", () => {
     });
 
     expect(prisma.firm.findMany).toHaveBeenCalledWith({
-      where: { zip: "19103" },
+      where: { searchZip: "19103" },
       orderBy: { firmName: "asc" },
     });
     expect(runLeadResearch).not.toHaveBeenCalled();
@@ -124,7 +126,7 @@ describe("GET /api/prospects/search", () => {
     expect(data.query.zip).toBe("19103-1234");
     expect(data.query.normalizedZip).toBe("19103");
     expect(prisma.firm.findMany).toHaveBeenCalledWith({
-      where: { zip: "19103" },
+      where: { searchZip: "19103" },
       orderBy: { firmName: "asc" },
     });
   });

@@ -81,7 +81,7 @@ export const SEED_PROSPECTS: Prospect[] = [
     email: null,
     practiceAreas: ["Labor Relations", "Employment Law"],
     attorneyCountRange: "2-5",
-    attorneys: undefined,
+    attorneys: [],
     sourceType: "MANUAL_SEED",
     sourceUrl: null,
     confidenceLevel: "UNKNOWN",

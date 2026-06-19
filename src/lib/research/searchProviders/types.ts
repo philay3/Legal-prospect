@@ -17,7 +17,9 @@ export interface SearchContextResponse {
 export interface SearchProvider {
   getSearchContext(
     zipCode: string,
-    mode: "quick" | "thorough"
+    mode: "quick" | "thorough",
+    city?: string,
+    state?: string
   ): Promise<SearchContextResponse>;
   
   getFirmSearchContext(
