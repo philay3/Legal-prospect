@@ -1,78 +1,331 @@
-# Task — UI fixes: popover scroll-close bug + refresh stale demo copy
+# Legal Prospector
 
-Two small, display-only fixes. No API, schema, migration, pipeline, or logic changes. The changes are fully specified below (exact before/after), so implement them directly — no separate plan step needed.
+![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat&logo=next.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=flat&logo=prisma&logoColor=white)
+![Postgres](https://img.shields.io/badge/Neon_Postgres-336791?style=flat&logo=postgresql&logoColor=white)
+![Vitest](https://img.shields.io/badge/tests-223_passing-success?style=flat&logo=vitest&logoColor=white)
+![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000000?style=flat&logo=vercel&logoColor=white)
 
-## Why
-1. The firm-name popover closes on *any* scroll, including scrolling **inside** the popover itself — so a firm with enough practice areas to overflow the popover can't be scrolled (it closes instead). One-line fix.
-2. The page copy still uses demo/pilot/seed language ("seeded demo prospects", "try 19103 to see pilot prospects", "pilot dataset"). The app now returns live, real-firm data for any ZIP, so this wording is inaccurate and undersells the product. Replace three strings.
+> **Turn a ZIP code into an accurate, exportable list of small and boutique law firms — with the contact and firm data that Google misses.**
 
-## Step 0 — read first
-Open `src/components/ResultsTable.tsx` (the `PracticeAreasPopover` component, its `handleScroll`) and `src/app/page.tsx` (the three copy strings below). Implement against what's actually there.
+Legal Prospector is a legal-sales prospecting tool built for a Thomson Reuters account executive who sells Westlaw to small and boutique law firms. Enter a ZIP code, and it discovers the firms in that area, visits each firm's website, and extracts structured contact and firm details — phone, attorneys, and practice areas — then lets a signed-in user save and export the best leads.
 
-## Outcome / acceptance criteria
-1. Scrolling inside an overflowing popover keeps it open and scrolls its content; scrolling the page still closes it. Second-click / outside-click / Escape still close it (unchanged).
-2. The three strings below are replaced exactly. No "pilot", "seeded demo", "pilot dataset", or "pilot prospect data" language remains anywhere in `page.tsx`.
-3. No behavior changes beyond these. Sorting, pagination, popover open/close, action icons, and CSV all still work.
-4. `npx vitest run` still passes (166) and `npx tsc --noEmit` is clean. No new tests are needed (display-only copy + one event-handler line).
+<!-- TODO: add a hero screenshot — the search results table for a real ZIP -->
+<!-- ![Legal Prospector — search results](docs/images/results.png) -->
 
-## The changes
+🔗 **Live demo:** [legal-prospect.vercel.app](https://legal-prospect.vercel.app)
 
-### 1. `src/components/ResultsTable.tsx` — scroll handler (inside `PracticeAreasPopover`)
-```js
-// before
-const handleScroll = () => {
-  onClose();
-};
+---
 
-// after
-const handleScroll = (e: Event) => {
-  if (popoverRef.current?.contains(e.target as Node)) return;
-  onClose();
-};
+## What it does
+
+Finding small law firms is traditionally slow, manual work. Google Maps gives you a pin and maybe a phone number, but it misses attorneys, practice areas, and reliable contact details — and the data goes stale. Legal Prospector automates that research:
+
+- **Search by ZIP** — discovers the firms in an area in one query.
+- **Automatic enrichment** — visits each firm's site and pulls phone, attorneys, and practice areas with an LLM, grounded in the firm's real website.
+- **Sortable results** — review firms in a clean, paginated table.
+- **Save & export** — signed-in users bookmark firms to a private Leads list and export to CSV.
+- **Email-code accounts** — passwordless sign-in via a one-time code.
+
+---
+
+## Tech stack
+
+| Layer | Technology |
+| --- | --- |
+| Framework | Next.js (App Router) · React · TypeScript |
+| Database | Neon Postgres (one shared DB for local + production) |
+| ORM | Prisma |
+| Firm discovery | Google Places API |
+| Page extraction | Tavily Extract (falls back to direct fetch) |
+| Structured extraction | OpenAI <!-- TODO: confirm exact model string in code (e.g. gpt-5.4-mini) --> |
+| Auth email | Resend (one-time login codes) |
+| Testing | Vitest (223 passing) |
+| Hosting | Vercel (Pro) |
+
+---
+
+## Architecture
+
+The app is **two journeys that share one database**: a public *search* journey, and a private *account* journey. Firm research is global and shared across all users; saved leads are private and scoped to one user.
+
+```mermaid
+flowchart TD
+    User([User])
+
+    subgraph Search["🔎 Search journey (public)"]
+        Home["Home page<br/>ZIP search + results table"]
+        Pipeline["Discovery + enrichment pipeline"]
+    end
+
+    subgraph Account["🔐 Account journey (private)"]
+        Auth["Auth routes<br/>request-code / verify-code"]
+        Leads["Leads page<br/>save + CSV export"]
+    end
+
+    DB[("Neon Postgres<br/>global firms + private leads")]
+
+    User -->|enters ZIP| Home
+    Home --> Pipeline
+    Pipeline -->|Places → extract → save| DB
+    DB -->|firms| Home
+
+    User -->|email + code| Auth
+    Auth -->|HttpOnly session cookie| DB
+    User -->|save / export| Leads
+    Leads -->|scoped by userId| DB
 ```
-This ignores scroll events that originate inside the popover (its own overflow scroll) while still closing on any page scroll. Leave the `window.addEventListener("scroll", handleScroll, true)` registration as-is.
 
-### 2. `src/app/page.tsx` — replace three copy strings
+The dividing line is the whole reason auth exists in this app: **global research data can be shared, but user workflow data must be private.**
 
-**a. "Ready for Search" placeholder description**
-```jsx
-// before
-Enter a 5-digit ZIP code above (try <strong>19103</strong> to see pilot prospects) to begin ZIP-code search for boutique law firms.
+---
 
-// after
-Enter a 5-digit ZIP code above (e.g., <strong>19103</strong>) to find small and boutique law firms in that area.
+## How it works: the enrichment pipeline
+
+A ZIP becomes real firm data in **two passes**. The key idea: the LLM does one narrow, supervised job — extracting fields from a real page — it never invents the list of firms.
+
+```mermaid
+flowchart LR
+    ZIP([ZIP code]) --> P1
+
+    subgraph P1["Pass 1 · Discovery"]
+        Places["Google Places"] --> Cands["~60 candidate firms<br/>name, phone, address, site"]
+    end
+
+    Cands --> P2
+
+    subgraph P2["Pass 2 · Enrichment (per firm, capped ~20)"]
+        direction TB
+        Pick["pickContactLink<br/>choose best contact page"] --> Ext["Tavily Extract<br/>clean page text"]
+        Ext --> LLM["OpenAI<br/>phone · email · attorneys"]
+        LLM --> Rgx["extractEmails<br/>regex backstop, prefers firm domain"]
+    end
+
+    P2 --> Save
+
+    subgraph Save["Persistence"]
+        San["sanitizeFirm<br/>strip bad bytes"] --> Dedupe["dedupe by<br/>searchZip + firmName"]
+        Dedupe --> Firm[("Firm table")]
+    end
 ```
 
-**b. Results subtitle (under the results header)**
-```jsx
-// before
-Currently showing a small pilot dataset: seeded demo prospects plus manually reviewed real-firm records pending final verification.
+**The `searchZip` design decision.** Discovery and dedupe key off `searchZip` — a column kept deliberately *separate* from the firm's real physical `zip`. Early on, one `zip` column did both jobs, and Google Places kept overwriting the search key with each firm's actual address, silently corrupting cache reads. Splitting the key from the real address fixed it. The lesson baked into the schema: **never overload one column as both a lookup key and mutable data.**
 
-// after
-Law firms found for this ZIP, with contact details researched automatically. Coverage can vary by firm.
+Persistence is **cache-first**, so each ZIP is only researched once. Known limitation: **email yield is low**, because law firm homepages rarely expose an email address — a dedicated contact-page pass is on the roadmap. Phone, the more useful number for outreach, comes back reliably from Places.
+
+---
+
+## Data model
+
+Eight research + auth tables, plus a feedback table — in two layers, joined by a single bridge.
+
+```mermaid
+erDiagram
+    Firm ||--o{ Attorney : "has"
+    Firm ||--o{ FirmPracticeArea : "tagged"
+    PracticeArea ||--o{ FirmPracticeArea : "tags"
+    Firm ||--o{ SavedLead : "saved as"
+    User ||--o{ SavedLead : "saves"
+    User ||--o{ Session : "has"
+    User ||--o{ Feedback : "submits"
+
+    Firm {
+        string id PK
+        string firmName
+        string searchZip "search + dedupe key"
+        string zip "real address"
+        string phone
+        string email
+        string[] attorneys
+        enum confidenceLevel
+        enum verificationStatus
+    }
+    Attorney {
+        string id PK
+        string firmId FK
+        string name
+        string email
+    }
+    PracticeArea {
+        string id PK
+        string name UK
+    }
+    FirmPracticeArea {
+        string firmId FK
+        string practiceAreaId FK
+    }
+    User {
+        string id PK
+        string email UK
+        boolean isActive "ban switch"
+        datetime lastLoginAt
+    }
+    Session {
+        string id PK
+        string userId FK
+        string tokenHash
+        datetime expiresAt
+    }
+    LoginCode {
+        string id PK
+        string email "no FK — transient"
+        string codeHash
+        datetime expiresAt
+        datetime usedAt
+    }
+    SavedLead {
+        string userId FK
+        string firmId FK
+    }
+    Feedback {
+        string id PK
+        string choice
+        string message "optional"
+        string userId FK "nullable"
+    }
 ```
 
-**c. "No prospects found" placeholder description**
-```jsx
-// before
-No prospects found for this ZIP code in the current pilot dataset. Please search for ZIP <strong>19103</strong> to view pilot prospect data.
+**Research corpus (global, shared):** `Firm` is the center — `Attorney` hangs off it one-to-many, and `PracticeArea` is many-to-many with firms through the `FirmPracticeArea` join table.
 
-// after
-No law firms found for this ZIP. Double-check the ZIP code and try again.
+**Auth layer (private):** `User` owns `Session` rows; `LoginCode` is standalone with no foreign key because it's a transient credential keyed by email.
+
+**The bridge:** `SavedLead` is the only table connecting the two layers — a many-to-many between `User` and `Firm`, the same join-table pattern as `FirmPracticeArea`. `Feedback` is an optional, nullable link to `User`, so feedback can be anonymous or attributed.
+
+---
+
+## Project structure
+
+```
+legal-prospector/
+├── prisma/
+│   ├── schema.prisma           # 9 models, 3 enums
+│   └── migrations/             # additive-only migration history
+├── src/
+│   ├── app/
+│   │   ├── page.tsx            # home — ZIP search + results
+│   │   ├── about/page.tsx
+│   │   ├── contact/page.tsx
+│   │   ├── login/page.tsx      # email-code sign in
+│   │   ├── leads/page.tsx      # saved leads + CSV export  (private)
+│   │   ├── account/page.tsx    # account info             (private) [confirm path]
+│   │   ├── api/
+│   │   │   ├── auth/
+│   │   │   │   ├── request-code/route.ts
+│   │   │   │   └── verify-code/route.ts
+│   │   │   ├── leads/route.ts          # bulk save / remove
+│   │   │   └── feedback/route.ts       # feedback capture
+│   │   ├── layout.tsx          # NavBar + Footer + FeedbackWidget
+│   │   └── globals.css
+│   ├── components/
+│   │   ├── NavBar.tsx · AvatarMenu.tsx · ResultsTable.tsx
+│   │   ├── Footer.tsx · FeedbackWidget.tsx
+│   ├── lib/
+│   │   ├── prisma.ts           # Prisma client singleton
+│   │   ├── auth/session.ts     # getCurrentUser, session helpers
+│   │   ├── leads.ts · feedback.ts
+│   │   └── ...                 # discovery / enrichment / pickContactLink [confirm filenames]
+│   └── generated/prisma/       # generated Prisma client
+└── tasks/
+    └── current-task.md         # the one task currently in flight
 ```
 
-Leave the search-input placeholder (`Enter 5-digit ZIP code (e.g., 19103)`) and the loading copy as-is — those are fine.
+---
 
-## Verification (manual + regression)
-1. `npx tsc --noEmit` clean; `npx vitest run` still green at 166.
-2. `npm run dev`, then:
-   - Open a ZIP whose firms have many practice areas so a popover overflows its height. Open the popover and scroll inside it → it stays open and scrolls. Scroll the page → it closes. Confirm second-click, outside-click, and Escape still close it.
-   - Check the three states read with the new wording: the empty "Ready for Search" card, the results subtitle, and the "No prospects found" card. Confirm no "pilot"/"demo"/"seed" language remains.
+## Routes
 
-## Guardrails
-- Display-only. Only two files change: `ResultsTable.tsx` (the one `handleScroll` line) and `page.tsx` (the three strings). Nothing else.
-- No API, schema, migration, pipeline, or logic changes. Don't touch the input-placeholder example or the loading copy.
-- Don't run any commands (list them for the human only).
-- The existing test suite must stay green — no tests removed.
+| Route | Type | Auth | Purpose |
+| --- | --- | --- | --- |
+| `/` | Page | Public | ZIP search + results table |
+| `/about`, `/contact` | Page | Public | Static info |
+| `/login` | Page | Public | Email-code sign in |
+| `/leads` | Page | Private | Saved leads + CSV export |
+| `/account` | Page | Private | Account info |
+| `POST /api/auth/request-code` | API | Public | Send a one-time login code |
+| `POST /api/auth/verify-code` | API | Public | Verify code, set session cookie |
+| `/api/leads` | API | Private | Save / list / remove saved leads (bulk) |
+| `POST /api/feedback` | API | Public | Capture in-app feedback |
 
-Implement directly (the changes are exact) and report per `08-coding-agent-rules.md` with the full contents of both changed files, then stop.
+> Search discovery + enrichment runs server-side off the home route. <!-- TODO: confirm whether this is a dedicated /api route or a server action -->
+
+---
+
+## Local setup
+
+**Prerequisites:** Node.js, a Neon Postgres database, and API keys for Google Places, Tavily, OpenAI, and Resend.
+
+```bash
+# 1. install
+npm install
+
+# 2. configure environment (see table below)
+cp .env.example .env        # then fill in real values
+
+# 3. set up the database
+npx prisma migrate dev      # applies migrations + generates the client
+
+# 4. run
+npm run dev                 # http://localhost:3000
+```
+
+> **Migrations are strictly additive.** Local and production share one Neon database, so this project never resets or drops — every schema change is a new additive migration, and the SQL is reviewed before it's applied.
+
+### Environment variables
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | Pooled Neon connection string |
+| `DIRECT_URL` | Direct Neon connection (for migrations) |
+| `GOOGLE_PLACES_API_KEY` | Firm discovery |
+| `TAVILY_API_KEY` | Page content extraction |
+| `OPENAI_API_KEY` | Structured field extraction |
+| `SEARCH_PROVIDER` | Discovery provider switch (`places`) |
+| `EXTRACT_PROVIDER` | Extraction provider switch (default `tavily`) |
+| `RESEND_API_KEY` | Sending login-code emails |
+| `AUTH_EMAIL_FROM` | From address for auth emails |
+| `AUTH_SESSION_SECRET` | Pepper for hashing session tokens (identical local + prod) |
+| `AUTH_SESSION_COOKIE_NAME` | Session cookie name |
+| `APP_BASE_URL` | Base URL (differs per environment) |
+
+---
+
+## Testing
+
+```bash
+npx vitest run        # full suite (223 passing)
+npx tsc --noEmit      # type check
+```
+
+The test suite is the safety net that makes it safe to move fast — every change, including ones implemented by the coding agent, runs against it. Development is **test-driven**: new behavior starts as a failing test, then the smallest change to make it pass. Route logic, auth flows, lead saving, dedupe edge cases, and pure helpers like `pickContactLink` are all covered.
+
+> Vitest gotchas in this repo: route files and tests use **relative imports** (the `@/` alias isn't resolved by the runner), and any module importing `server-only` is mocked at the top of the test with `vi.mock("server-only", () => ({}))`.
+
+---
+
+## How this was built
+
+This project was built with a deliberate **three-way development loop** — a human reviewer, a planning AI acting as architect, and a separate CLI coding agent doing implementation — with guardrails at every step (plans before code, additive-only migrations, full-file-contents reports, human-run commands). See **[`docs/HOW-WE-BUILD.md`](docs/HOW-WE-BUILD.md)** for the full process.
+
+---
+
+## Roadmap
+
+**Near term**
+- **Email yield** — a dedicated contact-page fetch and a harder `mailto:` scrape, triggered when a user *saves* a lead, to spend extraction effort where it matters.
+- Persistent saved-leads dashboard and per-user search history.
+
+**The bigger arc — from a search tool to a data product**
+- Store *evidence*, not just answers: `ResearchRun`, `WebsiteCheck`, and `DataPoint` provenance tables.
+- Continuous background enrichment with scheduled freshness re-checks.
+- `Prediction` — propensity-to-buy lead scoring derived from the evidence.
+
+---
+
+<!--
+SCREENSHOT SHOT-LIST (grab these once; also great for the demo):
+1. Search results table for a real ZIP (hero image, top of README)
+2. The avatar menu open (accounts)
+3. The Leads page with a few saved firms + the export button
+4. The feedback widget open
+Drop them in docs/images/ and uncomment the image lines above.
+-->

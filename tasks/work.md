@@ -2843,4 +2843,79 @@ No known risks. All changes are display-only and contain no database schema, que
 
 Wait for user review and approval of visual implementation.
 
+---
+
+## 2026-06-19 — Auth Step 2 — email-code login flow (routes, pages, Resend)
+
+### Task Summary
+
+Implemented a custom email-code authentication flow on top of the existing user/session schemas. Created server-only helpers for Resend email dispatch and session resolution, set up API routes for request-code, verify-code, and sign-out, built the Server/Client split login pages (with automatic redirect for already-signed-in users), built a protected account page with a working sign-out button, and added comprehensive Vitest unit tests.
+
+### Files Created
+
+- `src/lib/auth/email.ts` — Resend client email dispatcher utility.
+- `src/lib/auth/session.ts` — Server-side session checker.
+- `src/app/api/auth/request-code/route.ts` — Request-code API endpoint.
+- `src/app/api/auth/verify-code/route.ts` — Verify-code API endpoint.
+- `src/app/api/auth/sign-out/route.ts` — Sign-out API endpoint.
+- `src/app/login/LoginForm.tsx` — Login Form client interaction component.
+- `src/app/login/page.tsx` — Login page server component with already-logged-in user redirection.
+- `src/app/account/page.tsx` — Protected account page server component.
+- `src/app/account/SignOutButton.tsx` — Sign out button client component.
+- `src/app/api/auth/request-code/route.test.ts` — Unit tests for requesting login codes.
+- `src/app/api/auth/verify-code/route.test.ts` — Unit tests for verifying login codes.
+- `src/app/api/auth/sign-out/route.test.ts` — Unit tests for logging out.
+
+### Files Changed
+
+- `src/lib/auth/db.ts` — added `markUserLoggedIn(userId: string)` db helper to record login timestamps.
+- `tasks/work.md` — logged this task's work details.
+
+### What Changed
+
+- Abstracted user session retrieval and Resend client delivery to secure, server-only files.
+- Built request-code, verify-code, and sign-out endpoints with explicit protection against email-bombing (60s cooldown) and account enumeration (always returning `{ ok: true }` for requesting codes).
+- Separated `/login` into a Server page that handles logged-in redirects and a Client Form component (`LoginForm`) that handles the step-based forms, API calls, and errors.
+- Secured `/account` page to check `getCurrentUser()` on the server and redirect unauthenticated users to `/login`.
+- Created comprehensive route tests to verify allowlist logic, session lifetimes, attempt increment checks, cookie settings, and database transactions.
+
+### Why It Changed
+
+To establish a custom, self-hosted email verification flow utilizing Resend instead of Clerk, securing private endpoints and pages while maintaining database ownership.
+
+### Commands Suggested
+
+```bash
+npm install resend
+npx tsc --noEmit
+npx vitest run
+```
+
+### Commands Run by Human
+
+`No commands run.`
+
+### Results Pasted by Human
+
+`No results pasted.`
+
+### Verification
+
+Check that:
+1. `npm install resend` is run by the user.
+2. Running `npx vitest run` passes all 145+ test cases successfully.
+3. Running `npx tsc --noEmit` runs with no typescript compiler errors.
+4. Adding an active user via Prisma Studio and walking through `/login` successfully creates a LoginCode and Session, sets the HTTP cookie, and loads `/account`.
+5. Signing out clears the cookie and redirects to `/login`.
+6. Accessing `/login` when already logged in redirects to `/account`.
+
+### Known Risks
+
+- Relies on Resend API credentials (`RESEND_API_KEY` and `AUTH_EMAIL_FROM`) being configured correctly in the local `.env` and production environments.
+
+### Next Recommended Step
+
+Update `task/current-task.md` for the next planned phase.
+
+
 

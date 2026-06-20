@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { normalizeZipCode } from "@/utils/prospectMatcher";
 import { ResultsTable } from "@/components/ResultsTable";
-import { toCsv } from "@/utils/toCsv";
 import type { Prospect } from "@/types/prospect";
 
 export default function Home() {
@@ -68,20 +67,7 @@ export default function Home() {
     }
   };
 
-  const handleDownloadCsv = () => {
-    if (matchingProspects.length === 0) return;
-    const csvContent = toCsv(matchingProspects);
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `leads-${searchedZip || "export"}.csv`);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
+
 
   const getResolvedLocationString = () => {
     if (matchingProspects.length === 0) return `ZIP ${searchedZip}`;
@@ -161,14 +147,6 @@ export default function Home() {
             <div className="results-header">
               <div className="results-header-main">
                 <h2 className="results-title">Law firms near {getResolvedLocationString()}</h2>
-                <button
-                  type="button"
-                  className="download-csv-btn"
-                  onClick={handleDownloadCsv}
-                  aria-label="Download all search results as CSV"
-                >
-                  📥 Download CSV
-                </button>
               </div>
               <p className="results-subtitle">
                 Law firms found for this ZIP, with contact details researched automatically. Coverage can vary by firm.
@@ -226,7 +204,7 @@ export default function Home() {
               </div>
             )}
 
-            <ResultsTable prospects={matchingProspects} />
+            <ResultsTable prospects={matchingProspects} variant="search" />
           </>
         ) : (
           <div className="placeholder-card">

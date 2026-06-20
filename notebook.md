@@ -44,3 +44,60 @@ We started with one flat `Firm` table — a fine MVP call (ship fast, defer norm
 - **Contact-link picker grabs directories.** `pickContactLink` sometimes chooses a third-party aggregator (allbiz.com, rcwba.org, nydivorcehelp.com) over the firm's own site, so we extract the directory's contact info, not the firm's.
 - **City comes from the ZIP, not the firm.** Out-of-area firms get stamped with the ZIP's town (e.g. a San Francisco firm labeled "Peekskill"). City really belongs to the firm's actual address.
 - **Attorney entity resolution.** Names like "Michael H. Joseph" vs "Michael H. Joseph Esq" are the same person stored twice. Deferred until extraction is cleaner.
+
+## 2026-06-19
+
+### Session: custom auth + the app shell (and a UI cleanup pass)
+The whole session was about giving Legal Prospector a front door. We recovered a lost Results-UI spec from an old chat, verified and merged that UI v2 (click-to-toggle popovers, contact action-icons, a capped attorney column, CSV-across-all-pages), fixed two small bugs (a popover that closed when you scrolled *inside* it; stale "demo/seed/pilot" copy), walked the full data model as an ERD, then built **custom email-code authentication** end to end across three task specs — foundation (tables + crypto/db/cookie helpers), the login flow (request/verify/sign-out routes + login & account pages), and the app shell (auth-aware nav + a protected dashboard, currently in flight). 198 tests green; login works for real. Then wired up Resend + the env vars and wrote a handoff for the next chat.
+
+### Why we built auth now — a scope call
+My advice was to defer accounts until after the demo and keep the runway clear. Chops overruled it — accounts are non-negotiable for where this is headed, and he's shipped auth before. Right call for the owner to make; I logged the trade-off and we moved.
+**Carry forward:** the planner flags the cost, the owner makes the call. Don't relitigate a decision once it's made.
+
+### The test that failed because of *when* it computed a hash
+A `checkLoginCode` test failed with a hash mismatch — and the cause wasn't the crypto, it was timing. The agent computed the expected hash at the **describe-body load time**, before `beforeEach` had stubbed the `AUTH_SESSION_SECRET` pepper (so it hashed with an empty pepper), while the test itself ran *after* the stub (real pepper). Same input, two peppers, two hashes. Fix: move the fixture inside `beforeEach`.
+**Carry forward:** never compute a fixture that depends on env or stubs at module/describe load time — compute it inside `beforeEach`, after the stubs are in place. Purely a test-ordering trap, not a prod bug.
+
+### One pepper, every environment
+`AUTH_SESSION_SECRET` is the pepper we hash login codes and session tokens with. Local `.env` and Vercel are separate stores, and the Neon DB is shared between them — so if the two environments hold *different* peppers, a code hashed in one won't verify in the other and logins silently break. A `|| ""` fallback also makes a *missing* secret fail quietly.
+**Carry forward:** any secret that participates in hashing must be byte-identical across every environment that touches the same DB. Set it in both stores, same value.
+
+### Make the server-rendered nav update after login/logout
+The nav reads auth state in a server layout (`getCurrentUser()`), so the client has to tell Next to refetch it after an auth change — `router.refresh()` after sign-in and after sign-out. Without it the header keeps showing "Sign in" until a hard reload.
+**Carry forward:** when a client action changes something a server component renders, `router.refresh()` is what re-syncs it.
+
+### Why LoginCode has no foreign key (and Session does)
+Chops asked why `Session` hangs off `User` with an FK but `LoginCode` is standalone, keyed only by email. The split is durable-relationship vs transient-credential: a session is an ongoing fact about a logged-in user (belongs to them, cascades when they're deleted); a login code is a pre-auth, single-use, expiring token that exists *before* we know who anyone is — so it keys off the email being verified, not a user row.
+**Carry forward:** model the lifecycle, not just the shape of the data. "Belongs to a user" earns an FK; "exists before there's a user relationship" doesn't.
+
+### Decision: search is public, an account unlocks the dashboard
+Locked the routing model. `/` (the ZIP search) and `/login` are public; `/dashboard` and `/account` require login; a successful login lands on `/dashboard`. The dashboard is a shell for now and fills in when SavedLead lands.
+
+### New idea (captured): gate all firm emails behind an account
+Chops wants to hide **every firm email** behind login, so the email — the highest-value contact field — becomes the reward for having an account. Good lever. Two things to get right when we build it:
+- **Strip it server-side, don't hide it in CSS.** The public results page has to *omit* the email from the data it sends to signed-out users (return an `emailLocked` flag instead). If we only hide it in the UI, the address is still sitting in the network response and the DOM — that's cosmetic, not gated. Same goes for CSV: signed-out exports must not contain emails, or make CSV account-only outright (a cleaner, stronger gate).
+- **Mind the signup model.** Accounts are currently *allowlist / invite-only* (active `User` rows seeded by hand), so today this gates emails to approved users — that's access control. It only becomes a true "force people to sign up" funnel if/when signup goes self-serve. Worth deciding which one we're building toward before we lean on it as a growth move.
+
+---
+
+### Where things stand — structure reference
+
+**The 7 tables.**
+- *Research corpus (shared/global):* `Firm` — `searchZip` (the searched ZIP, our cache/dedupe key) kept separate from the firm's real `zip`/`city`/`state`, plus contact fields and confidence/verification metadata → `Attorney` (1:M off Firm, unique per `[firmId, name]`); `PracticeArea` (unique `name`) ↔ `Firm` many-to-many via `FirmPracticeArea` (composite PK `[firmId, practiceAreaId]`).
+- *Auth layer (per-user/private):* `User` (email unique, `isActive` = the allowlist flag, lastLoginAt) → `Session` (1:M, hashed token, expiry, cascades on user delete); `LoginCode` standalone (email-keyed, single-use, expiring).
+- `SavedLead` (future) is the bridge between `User` and `Firm`.
+
+**Auth files** (`src/lib/auth/`, all `server-only`): `crypto.ts` (code/token generation + peppered sha256 + the check helpers), `db.ts` (user/code/session queries), `cookies.ts` (HttpOnly session cookie), `constants.ts`; plus `email.ts` (Resend `sendLoginCodeEmail`) and `session.ts` (`getCurrentUser`). Routes: `request-code`, `verify-code`, `sign-out`. Pages: `/login` (server page that redirects if already signed in + a `LoginForm` client child), `/account` (protected) + `SignOutButton`; `/dashboard` (in flight). Allowlist = active `User` rows; codes and tokens hashed; responses generic (no email enumeration); 60s resend cooldown.
+
+**Pipeline** (untouched this session): ZIP → Google Places discovery → Tavily/direct extract + gpt-4o-mini → save → sortable, paginated results table with CSV.
+
+### Plans for the future — roadmap
+1. **App-shell nav** (in flight) — auth-aware header + the public/protected routing above.
+2. **Gate emails behind login** (per the idea above) — pairs naturally with the nav work, since that's when the public results page becomes auth-aware. Remember: strip server-side.
+3. **SavedLead** (+ `LeadActivity`) — private per user, bridges `User ↔ Firm`, fills the dashboard, needs route protection.
+4. **Recent ZIPs** — user-scoped search history.
+5. **Data-app layer:** `Zip` (research ledger), `ResearchRun`, `WebsiteCheck` (the explicit liveness check we keep wanting), `DataPoint` (per-field provenance), `Prediction` — turns the snapshot into continuously-enriched data.
+6. **AI analysis** (deferred experiment): export leads → LLM for findings ("rank as Westlaw prospects," "practice-area gaps in this ZIP"); later an in-app "Generate insights" button.
+
+### New loose thread
+- **Dev-only "log the code" hack must not ship.** The agent suggested `console.log`-ing the login code in development to skip the email round-trip. Fine locally, but it can never reach production — a logged code is a logged credential. Watch for it when reviewing the login routes.

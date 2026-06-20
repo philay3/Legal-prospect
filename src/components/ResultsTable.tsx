@@ -2,14 +2,21 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import type { Prospect } from "@/types/prospect";
 import { getPageCount, getPageItems, getPageWindow } from "@/utils/pagination";
 import { capAttorneys } from "@/utils/attorneys";
+import { toCsv } from "@/utils/toCsv";
 
 const PAGE_SIZE = 10;
 
 interface ResultsTableProps {
   prospects: Prospect[];
+  removeOnUnsave?: boolean;
+  initialSignedIn?: boolean;
+  initialSavedFirmIds?: string[];
+  variant?: "search" | "leads";
 }
 
 type SortField = "name" | "email" | "phone" | "website";
@@ -76,6 +83,110 @@ function GlobeIcon() {
       <line x1="2" y1="12" x2="22" y2="12" />
       <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
     </svg>
+  );
+}
+
+interface SignInPopoverProps {
+  triggerRect: DOMRect | null;
+  onClose: () => void;
+}
+
+function SignInPopover({ triggerRect, onClose }: SignInPopoverProps) {
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      // Do not close if click is on one of the checkboxes that triggered this
+      if (
+        target.classList.contains("table-checkbox") ||
+        target.closest(".table-checkbox")
+      ) {
+        return;
+      }
+
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(target)
+      ) {
+        onClose();
+      }
+    };
+
+    const handleScroll = (e: Event) => {
+      if (popoverRef.current?.contains(e.target as Node)) return;
+      onClose();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("scroll", handleScroll, true);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", handleScroll, true);
+    };
+  }, [mounted, onClose]);
+
+  if (!mounted || !triggerRect) return null;
+
+  const popoverWidth = 280;
+  let top = triggerRect.bottom + window.scrollY + 6;
+  let left = triggerRect.left + window.scrollX;
+
+  if (triggerRect.left + popoverWidth > window.innerWidth) {
+    left = window.innerWidth - popoverWidth - 16 + window.scrollX;
+  }
+  if (left < 16) {
+    left = 16;
+  }
+
+  return createPortal(
+    <div
+      ref={popoverRef}
+      className="signin-popover"
+      style={{ top, left }}
+      role="dialog"
+      aria-label="Sign in required"
+    >
+      <div className="signin-popover-header">
+        <h4 className="popover-section-title">Sign In Required</h4>
+        <button
+          type="button"
+          className="signin-popover-close-btn"
+          onClick={onClose}
+          aria-label="Close popover"
+        >
+          &times;
+        </button>
+      </div>
+      <p className="signin-popover-text">
+        Sign in to select and export leads.
+      </p>
+      <div className="signin-popover-actions">
+        <Link href="/login" className="signin-popover-btn primary">
+          Sign In
+        </Link>
+        <Link href="/signup" className="signin-popover-btn secondary">
+          Sign Up
+        </Link>
+      </div>
+    </div>,
+    document.body
   );
 }
 
@@ -214,7 +325,14 @@ function PracticeAreasPopover({
   );
 }
 
-export function ResultsTable({ prospects }: ResultsTableProps) {
+export function ResultsTable({
+  prospects,
+  removeOnUnsave = false,
+  initialSignedIn,
+  initialSavedFirmIds,
+  variant = "search",
+}: ResultsTableProps) {
+  const router = useRouter();
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -226,15 +344,151 @@ export function ResultsTable({ prospects }: ResultsTableProps) {
     addressLines: string[];
   } | null>(null);
 
+  const [signedIn, setSignedIn] = useState(initialSignedIn ?? false);
+  const [savedFirmIds, setSavedFirmIds] = useState<Set<string>>(() => new Set(initialSavedFirmIds ?? []));
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [activeSignInPopover, setActiveSignInPopover] = useState<{
+    triggerRect: DOMRect;
+  } | null>(null);
+  const [localProspects, setLocalProspects] = useState<Prospect[]>(prospects);
+
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
-  // Reset sorting, page, expanded, and popover states whenever the search results change
+  // Sync prospects prop with local state
+  useEffect(() => {
+    setLocalProspects(prospects);
+  }, [prospects]);
+
+  useEffect(() => {
+    let active = true;
+    async function fetchLeads() {
+      try {
+        const res = await fetch("/api/leads");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!active) return;
+        setSignedIn(data.signedIn);
+        setSavedFirmIds(new Set(data.firmIds));
+      } catch (err) {
+        console.error("Failed to fetch saved leads:", err);
+      }
+    }
+    fetchLeads();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleDownloadCsvSelected = () => {
+    const selectedProspects = filteredProspects.filter((p) => selectedIds.has(p.id));
+    if (selectedProspects.length === 0) return;
+    const csvContent = toCsv(selectedProspects);
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    const firstZip = selectedProspects[0]?.zip || "export";
+    link.setAttribute("download", `leads-${firstZip}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleSaveSelected = async () => {
+    const idsToSave = Array.from(selectedIds);
+    if (idsToSave.length === 0) return;
+
+    // Optimistic update of savedFirmIds
+    setSavedFirmIds((prev) => {
+      const next = new Set(prev);
+      idsToSave.forEach((id) => next.add(id));
+      return next;
+    });
+
+    try {
+      const response = await fetch("/api/leads", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ firmIds: idsToSave }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save leads");
+      }
+    } catch (err) {
+      console.error("Error saving leads:", err);
+      // Revert savedFirmIds by fetching current database state
+      try {
+        const res = await fetch("/api/leads");
+        if (res.ok) {
+          const data = await res.json();
+          setSavedFirmIds(new Set(data.firmIds));
+        }
+      } catch (revertErr) {
+        console.error("Failed to revert saved leads state:", revertErr);
+      }
+    }
+  };
+
+  const handleRemoveSelected = async () => {
+    const idsToRemove = Array.from(selectedIds);
+    if (idsToRemove.length === 0) return;
+
+    // Save previous state for reverting on error
+    const prevSavedIds = new Set(savedFirmIds);
+    const prevLocalProspects = [...localProspects];
+
+    // Optimistic update: filter from localProspects and delete from savedFirmIds
+    setSavedFirmIds((prev) => {
+      const next = new Set(prev);
+      idsToRemove.forEach((id) => next.delete(id));
+      return next;
+    });
+    setLocalProspects((prev) => prev.filter((p) => !idsToRemove.includes(p.id)));
+
+    // Clear selection
+    setSelectedIds(new Set());
+
+    try {
+      const response = await fetch("/api/leads", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ firmIds: idsToRemove }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to remove leads");
+      }
+    } catch (err) {
+      console.error("Error removing leads:", err);
+      // Revert optimistic changes
+      setSavedFirmIds(prevSavedIds);
+      setLocalProspects(prevLocalProspects);
+    }
+  };
+
+  const filteredProspects = useMemo(() => {
+    if (removeOnUnsave) {
+      return localProspects.filter((p) => savedFirmIds.has(p.id));
+    }
+    return localProspects;
+  }, [localProspects, savedFirmIds, removeOnUnsave]);
+
+  // Reset sorting, page, expanded, selection, and popover states whenever the search results change
   useEffect(() => {
     setCurrentPage(1);
     setSortField(null);
     setSortOrder(null);
     setExpandedFirms({});
     setActivePopover(null);
+    setSelectedIds(new Set());
+    setActiveSignInPopover(null);
   }, [prospects]);
 
   // Scroll to the top of the table on page changes
@@ -266,10 +520,10 @@ export function ResultsTable({ prospects }: ResultsTableProps) {
 
   const sortedProspects = useMemo(() => {
     if (!sortField || !sortOrder) {
-      return prospects;
+      return filteredProspects;
     }
 
-    return [...prospects].sort((a, b) => {
+    return [...filteredProspects].sort((a, b) => {
       const valA = getSortValue(a, sortField).trim();
       const valB = getSortValue(b, sortField).trim();
 
@@ -280,7 +534,7 @@ export function ResultsTable({ prospects }: ResultsTableProps) {
       const comp = valA.localeCompare(valB, undefined, { sensitivity: "base", numeric: true });
       return sortOrder === "asc" ? comp : -comp;
     });
-  }, [prospects, sortField, sortOrder]);
+  }, [filteredProspects, sortField, sortOrder]);
 
   const totalPages = getPageCount(sortedProspects.length, PAGE_SIZE);
   const activePage = Math.min(currentPage, totalPages);
@@ -318,9 +572,73 @@ export function ResultsTable({ prospects }: ResultsTableProps) {
 
   return (
     <div ref={tableContainerRef} className="table-container">
+      {selectedIds.size > 0 && (
+        <div className="selection-action-bar">
+          <div className="selection-count">
+            <span>{selectedIds.size} selected</span>
+          </div>
+          <div className="selection-actions">
+            <button
+              type="button"
+              onClick={handleDownloadCsvSelected}
+              className="action-bar-btn"
+            >
+              📥 Download CSV
+            </button>
+            {variant === "search" ? (
+              <button
+                type="button"
+                onClick={handleSaveSelected}
+                className="action-bar-btn save-btn"
+              >
+                🔖 Save to Leads
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleRemoveSelected}
+                className="action-bar-btn delete-btn"
+              >
+                🗑️ Remove from Leads
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              className="action-bar-btn clear-btn"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+
       <table className="results-table">
         <thead>
           <tr>
+            <th style={{ width: "44px", cursor: "default" }} className="checkbox-cell">
+              <input
+                type="checkbox"
+                className="table-checkbox"
+                checked={
+                  filteredProspects.length > 0 &&
+                  filteredProspects.every((p) => selectedIds.has(p.id))
+                }
+                onChange={(e) => {
+                  if (!signedIn) {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setActiveSignInPopover({ triggerRect: rect });
+                    return;
+                  }
+                  if (e.target.checked) {
+                    setSelectedIds(new Set(filteredProspects.map((p) => p.id)));
+                  } else {
+                    setSelectedIds(new Set());
+                  }
+                }}
+                aria-label="Select all prospects"
+              />
+            </th>
             {renderHeader("Name", "name")}
             {renderHeader("Email", "email")}
             {renderHeader("Phone", "phone")}
@@ -342,12 +660,42 @@ export function ResultsTable({ prospects }: ResultsTableProps) {
 
             const { visible, remaining } = capAttorneys(activeAttorneys, 2);
             const isExpanded = !!expandedFirms[prospect.id];
+            const isSaved = savedFirmIds.has(prospect.id);
 
             return (
               <tr key={prospect.id}>
+                <td className="checkbox-cell">
+                  <input
+                    type="checkbox"
+                    className="table-checkbox"
+                    checked={selectedIds.has(prospect.id)}
+                    onChange={(e) => {
+                      if (!signedIn) {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setActiveSignInPopover({ triggerRect: rect });
+                        return;
+                      }
+                      setSelectedIds((prev) => {
+                        const next = new Set(prev);
+                        if (e.target.checked) {
+                          next.add(prospect.id);
+                        } else {
+                          next.delete(prospect.id);
+                        }
+                        return next;
+                      });
+                    }}
+                    aria-label={`Select ${prospect.firmName}`}
+                  />
+                </td>
                 <td className="firm-name-cell">
                   <div className="firm-name-container">
                     <span className="firm-name-text">{prospect.firmName}</span>
+                    {variant === "search" && signedIn && isSaved && (
+                      <span className="saved-indicator-badge" title="Saved to Leads">
+                        🔖 Saved
+                      </span>
+                    )}
                     {hasPracticeAreas && (
                       <button
                         type="button"
@@ -450,6 +798,13 @@ export function ResultsTable({ prospects }: ResultsTableProps) {
           addressLines={activePopover.addressLines}
           triggerRect={activePopover.triggerRect}
           onClose={() => setActivePopover(null)}
+        />
+      )}
+
+      {activeSignInPopover && (
+        <SignInPopover
+          triggerRect={activeSignInPopover.triggerRect}
+          onClose={() => setActiveSignInPopover(null)}
         />
       )}
 

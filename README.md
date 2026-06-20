@@ -1,466 +1,331 @@
-# Legal Prospecting App
+# Legal Prospector
 
-## Project Summary
+![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat&logo=next.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=flat&logo=prisma&logoColor=white)
+![Postgres](https://img.shields.io/badge/Neon_Postgres-336791?style=flat&logo=postgresql&logoColor=white)
+![Vitest](https://img.shields.io/badge/tests-223_passing-success?style=flat&logo=vitest&logoColor=white)
+![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000000?style=flat&logo=vercel&logoColor=white)
 
-This is a controlled rebuild of a legal prospecting web app.
+> **Turn a ZIP code into an accurate, exportable list of small and boutique law firms — with the contact and firm data that Google misses.**
 
-The app helps sales reps find small and boutique law firm prospects by ZIP code.
+Legal Prospector is a legal-sales prospecting tool built for a Thomson Reuters account executive who sells Westlaw to small and boutique law firms. Enter a ZIP code, and it discovers the firms in that area, visits each firm's website, and extracts structured contact and firm details — phone, attorneys, and practice areas — then lets a signed-in user save and export the best leads.
 
-The long-term product direction is a legal prospecting database organized around local ZIP code research.
+<!-- TODO: add a hero screenshot — the search results table for a real ZIP -->
+<!-- ![Legal Prospector — search results](docs/images/results.png) -->
 
-The first useful product flow is:
+🔗 **Live demo:** [legal-prospect.vercel.app](https://legal-prospect.vercel.app)
 
-```text
-User enters ZIP code → app shows matching seeded law firm prospects → user reviews result details.
+---
+
+## What it does
+
+Finding small law firms is traditionally slow, manual work. Google Maps gives you a pin and maybe a phone number, but it misses attorneys, practice areas, and reliable contact details — and the data goes stale. Legal Prospector automates that research:
+
+- **Search by ZIP** — discovers the firms in an area in one query.
+- **Automatic enrichment** — visits each firm's site and pulls phone, attorneys, and practice areas with an LLM, grounded in the firm's real website.
+- **Sortable results** — review firms in a clean, paginated table.
+- **Save & export** — signed-in users bookmark firms to a private Leads list and export to CSV.
+- **Email-code accounts** — passwordless sign-in via a one-time code.
+
+---
+
+## Tech stack
+
+| Layer | Technology |
+| --- | --- |
+| Framework | Next.js (App Router) · React · TypeScript |
+| Database | Neon Postgres (one shared DB for local + production) |
+| ORM | Prisma |
+| Firm discovery | Google Places API |
+| Page extraction | Tavily Extract (falls back to direct fetch) |
+| Structured extraction | OpenAI <!-- TODO: confirm exact model string in code (e.g. gpt-5.4-mini) --> |
+| Auth email | Resend (one-time login codes) |
+| Testing | Vitest (223 passing) |
+| Hosting | Vercel (Pro) |
+
+---
+
+## Architecture
+
+The app is **two journeys that share one database**: a public *search* journey, and a private *account* journey. Firm research is global and shared across all users; saved leads are private and scoped to one user.
+
+```mermaid
+flowchart TD
+    User([User])
+
+    subgraph Search["🔎 Search journey (public)"]
+        Home["Home page<br/>ZIP search + results table"]
+        Pipeline["Discovery + enrichment pipeline"]
+    end
+
+    subgraph Account["🔐 Account journey (private)"]
+        Auth["Auth routes<br/>request-code / verify-code"]
+        Leads["Leads page<br/>save + CSV export"]
+    end
+
+    DB[("Neon Postgres<br/>global firms + private leads")]
+
+    User -->|enters ZIP| Home
+    Home --> Pipeline
+    Pipeline -->|Places → extract → save| DB
+    DB -->|firms| Home
+
+    User -->|email + code| Auth
+    Auth -->|HttpOnly session cookie| DB
+    User -->|save / export| Leads
+    Leads -->|scoped by userId| DB
+```
+
+The dividing line is the whole reason auth exists in this app: **global research data can be shared, but user workflow data must be private.**
+
+---
+
+## How it works: the enrichment pipeline
+
+A ZIP becomes real firm data in **two passes**. The key idea: the LLM does one narrow, supervised job — extracting fields from a real page — it never invents the list of firms.
+
+```mermaid
+flowchart LR
+    ZIP([ZIP code]) --> P1
+
+    subgraph P1["Pass 1 · Discovery"]
+        Places["Google Places"] --> Cands["~60 candidate firms<br/>name, phone, address, site"]
+    end
+
+    Cands --> P2
+
+    subgraph P2["Pass 2 · Enrichment (per firm, capped ~20)"]
+        direction TB
+        Pick["pickContactLink<br/>choose best contact page"] --> Ext["Tavily Extract<br/>clean page text"]
+        Ext --> LLM["OpenAI<br/>phone · email · attorneys"]
+        LLM --> Rgx["extractEmails<br/>regex backstop, prefers firm domain"]
+    end
+
+    P2 --> Save
+
+    subgraph Save["Persistence"]
+        San["sanitizeFirm<br/>strip bad bytes"] --> Dedupe["dedupe by<br/>searchZip + firmName"]
+        Dedupe --> Firm[("Firm table")]
+    end
+```
+
+**The `searchZip` design decision.** Discovery and dedupe key off `searchZip` — a column kept deliberately *separate* from the firm's real physical `zip`. Early on, one `zip` column did both jobs, and Google Places kept overwriting the search key with each firm's actual address, silently corrupting cache reads. Splitting the key from the real address fixed it. The lesson baked into the schema: **never overload one column as both a lookup key and mutable data.**
+
+Persistence is **cache-first**, so each ZIP is only researched once. Known limitation: **email yield is low**, because law firm homepages rarely expose an email address — a dedicated contact-page pass is on the roadmap. Phone, the more useful number for outreach, comes back reliably from Places.
+
+---
+
+## Data model
+
+Eight research + auth tables, plus a feedback table — in two layers, joined by a single bridge.
+
+```mermaid
+erDiagram
+    Firm ||--o{ Attorney : "has"
+    Firm ||--o{ FirmPracticeArea : "tagged"
+    PracticeArea ||--o{ FirmPracticeArea : "tags"
+    Firm ||--o{ SavedLead : "saved as"
+    User ||--o{ SavedLead : "saves"
+    User ||--o{ Session : "has"
+    User ||--o{ Feedback : "submits"
+
+    Firm {
+        string id PK
+        string firmName
+        string searchZip "search + dedupe key"
+        string zip "real address"
+        string phone
+        string email
+        string[] attorneys
+        enum confidenceLevel
+        enum verificationStatus
+    }
+    Attorney {
+        string id PK
+        string firmId FK
+        string name
+        string email
+    }
+    PracticeArea {
+        string id PK
+        string name UK
+    }
+    FirmPracticeArea {
+        string firmId FK
+        string practiceAreaId FK
+    }
+    User {
+        string id PK
+        string email UK
+        boolean isActive "ban switch"
+        datetime lastLoginAt
+    }
+    Session {
+        string id PK
+        string userId FK
+        string tokenHash
+        datetime expiresAt
+    }
+    LoginCode {
+        string id PK
+        string email "no FK — transient"
+        string codeHash
+        datetime expiresAt
+        datetime usedAt
+    }
+    SavedLead {
+        string userId FK
+        string firmId FK
+    }
+    Feedback {
+        string id PK
+        string choice
+        string message "optional"
+        string userId FK "nullable"
+    }
+```
+
+**Research corpus (global, shared):** `Firm` is the center — `Attorney` hangs off it one-to-many, and `PracticeArea` is many-to-many with firms through the `FirmPracticeArea` join table.
+
+**Auth layer (private):** `User` owns `Session` rows; `LoginCode` is standalone with no foreign key because it's a transient credential keyed by email.
+
+**The bridge:** `SavedLead` is the only table connecting the two layers — a many-to-many between `User` and `Firm`, the same join-table pattern as `FirmPracticeArea`. `Feedback` is an optional, nullable link to `User`, so feedback can be anonymous or attributed.
+
+---
+
+## Project structure
+
+```
+legal-prospector/
+├── prisma/
+│   ├── schema.prisma           # 9 models, 3 enums
+│   └── migrations/             # additive-only migration history
+├── src/
+│   ├── app/
+│   │   ├── page.tsx            # home — ZIP search + results
+│   │   ├── about/page.tsx
+│   │   ├── contact/page.tsx
+│   │   ├── login/page.tsx      # email-code sign in
+│   │   ├── leads/page.tsx      # saved leads + CSV export  (private)
+│   │   ├── account/page.tsx    # account info             (private) [confirm path]
+│   │   ├── api/
+│   │   │   ├── auth/
+│   │   │   │   ├── request-code/route.ts
+│   │   │   │   └── verify-code/route.ts
+│   │   │   ├── leads/route.ts          # bulk save / remove
+│   │   │   └── feedback/route.ts       # feedback capture
+│   │   ├── layout.tsx          # NavBar + Footer + FeedbackWidget
+│   │   └── globals.css
+│   ├── components/
+│   │   ├── NavBar.tsx · AvatarMenu.tsx · ResultsTable.tsx
+│   │   ├── Footer.tsx · FeedbackWidget.tsx
+│   ├── lib/
+│   │   ├── prisma.ts           # Prisma client singleton
+│   │   ├── auth/session.ts     # getCurrentUser, session helpers
+│   │   ├── leads.ts · feedback.ts
+│   │   └── ...                 # discovery / enrichment / pickContactLink [confirm filenames]
+│   └── generated/prisma/       # generated Prisma client
+└── tasks/
+    └── current-task.md         # the one task currently in flight
 ```
 
 ---
 
-## Rebuild Principle
+## Routes
 
-This repo is a restart of the codebase and process, not a restart of the product thinking.
+| Route | Type | Auth | Purpose |
+| --- | --- | --- | --- |
+| `/` | Page | Public | ZIP search + results table |
+| `/about`, `/contact` | Page | Public | Static info |
+| `/login` | Page | Public | Email-code sign in |
+| `/leads` | Page | Private | Saved leads + CSV export |
+| `/account` | Page | Private | Account info |
+| `POST /api/auth/request-code` | API | Public | Send a one-time login code |
+| `POST /api/auth/verify-code` | API | Public | Verify code, set session cookie |
+| `/api/leads` | API | Private | Save / list / remove saved leads (bulk) |
+| `POST /api/feedback` | API | Public | Capture in-app feedback |
 
-```text
-Restart the repo.
-Do not restart the product thinking.
-Keep the lessons.
-Rebuild with tighter rules.
-```
-
-The previous version of the app made real progress, but the process became too hard to control.
-
-This rebuild starts with documentation, task boundaries, command rules, and clear scope before feature work.
-
----
-
-## Target User
-
-Primary user:
-
-```text
-A sales rep who sells legal software or legal-adjacent services to small and boutique law firms.
-```
-
-The user wants to quickly find law firm prospects in a specific ZIP code and decide which firms are worth saving or researching further.
+> Search discovery + enrichment runs server-side off the home route. <!-- TODO: confirm whether this is a dedicated /api route or a server action -->
 
 ---
 
-## Core Product Direction
+## Local setup
 
-The app should eventually help the user:
-
-1. Search a ZIP code.
-2. See law firm prospects.
-3. Review useful prospect details.
-4. Save good leads.
-5. Return to a private dashboard.
-
-Potential future prospect fields:
-
-- firm name
-- website
-- phone
-- email
-- address
-- attorneys
-- practice areas
-- website health indicators
-- contact completeness
-- source metadata
-- confidence metadata
-
-The first version should stay smaller than this long-term vision.
-
----
-
-## Current Phase
-
-Current phase:
-
-```text
-First MVP Deployment Ready
-```
-
-The application has been scaffolded and the client-side interactive search flow against sample seed data has been completed. The app is polished, validated, and prepared for its first public deployment.
-
----
-
-## Required Reading
-
-Before changing code, adding features, running commands, changing the database, adding auth, or adding external data fetching, read these files:
-
-```text
-docs/START-HERE.md
-AGENTS.md
-task/current-task.md
-task/work.md
-task/decisions.md
-```
-
-Recommended full reading order:
-
-```text
-docs/START-HERE.md
-AGENTS.md
-task/current-task.md
-task/work.md
-task/decisions.md
-docs/00-product-brief.md
-docs/01-product-scope.md
-docs/02-user-stories.md
-docs/03-data-fetching-plan.md
-docs/04-auth-account-plan.md
-docs/05-database-plan.md
-docs/06-api-contracts.md
-docs/07-testing-guide.md
-docs/08-coding-agent-rules.md
-docs/09-roadmap.md
-README.md
-```
-
----
-
-## Project Control Files
-
-### `AGENTS.md`
-
-Defines how coding agents are allowed to behave.
-
-This includes:
-
-- one task per session
-- human-controlled commands
-- testing rules
-- database rules
-- auth rules
-- data-fetching rules
-- stop conditions
-- final report requirements
-
-### `task/current-task.md`
-
-Defines the one task the coding agent is allowed to work on.
-
-If a requested change is not listed here, the coding agent should stop and ask for the task file to be updated.
-
-### `task/work.md`
-
-Tracks every coding-agent task.
-
-Each entry should explain:
-
-- what changed
-- why it changed
-- files created or changed
-- commands suggested
-- commands run by the human
-- results pasted by the human
-- known risks
-- next recommended step
-
-### `task/decisions.md`
-
-Records important product, technical, and process decisions.
-
-Do not delete old decisions.
-
-If a decision changes, add a new decision entry.
-
----
-
-## Documentation Map
-
-### `docs/START-HERE.md`
-
-Project entry point.
-
-Explains the rebuild context, product direction, data ownership rule, and safe working process.
-
-### `docs/00-product-brief.md`
-
-Defines the product concept, target user, problem, MVP direction, and early success criteria.
-
-### `docs/01-product-scope.md`
-
-Defines what is in scope and out of scope for the controlled rebuild.
-
-Helps prevent feature creep.
-
-### `docs/02-user-stories.md`
-
-Turns the scope into user stories and acceptance criteria.
-
-Future coding tasks should map back to these stories.
-
-### `docs/03-data-fetching-plan.md`
-
-Controls all scraping, enrichment, APIs, browser automation, prompt passes, and external data behavior.
-
-Current approved approach:
-
-```text
-Manual seed data only.
-```
-
-### `docs/04-auth-account-plan.md`
-
-Defines the delayed auth direction.
-
-Current auth decision:
-
-```text
-Do not use Clerk by default.
-Prefer custom email-code auth later.
-Delay auth until the app foundation is stable.
-```
-
-### `docs/05-database-plan.md`
-
-Defines safe database direction and the global/private data split.
-
-Important rule:
-
-```text
-Global research data can be shared.
-User workflow data must be private.
-```
-
-### `docs/06-api-contracts.md`
-
-Defines planned API shapes before routes are built.
-
-Keeps API behavior predictable and scoped.
-
-### `docs/07-testing-guide.md`
-
-Explains how the human should run and interpret checks.
-
-Important testing distinction:
-
-```text
-TypeScript passing means the project compiles.
-It does not prove the app works.
-
-Unit tests passing means tested behavior passed.
-It does not prove untested flows work.
-
-Manual browser verification proves visible user flows.
-It does not replace automated tests.
-```
-
-### `docs/08-coding-agent-rules.md`
-
-Expanded rules for future coding-agent sessions.
-
-### `docs/09-roadmap.md`
-
-Defines the safe rebuild sequence.
-
----
-
-## Data Ownership Rule
-
-This rule should guide database design, API design, auth design, and UI behavior.
-
-```text
-Global research data can be shared.
-User workflow data must be private.
-```
-
-### Global / Shared Research Data
-
-Examples:
-
-- ZIP code research
-- firm records
-- attorney records
-- practice areas
-- source records
-- cached ZIP results
-
-### Private / User Workflow Data
-
-Examples:
-
-- saved leads
-- recent ZIP searches
-- notes
-- statuses
-- tasks
-- follow-up reminders
-
----
-
-## Human-Controlled Commands
-
-The human user runs commands.
-
-The coding agent may suggest commands and explain them, but should not run development, test, build, database, or destructive git commands by default.
-
-Do not run these unless the human explicitly approves:
+**Prerequisites:** Node.js, a Neon Postgres database, and API keys for Google Places, Tavily, OpenAI, and Resend.
 
 ```bash
-npm run dev
-npm run build
-npm run test
-npm run test:run
-npx tsc --noEmit
-npx prisma migrate dev
-npx prisma migrate deploy
-npx prisma db push
-npx prisma db push --accept-data-loss
-npx prisma migrate reset
-git commit
-git push
-git reset
-git clean
+# 1. install
+npm install
+
+# 2. configure environment (see table below)
+cp .env.example .env        # then fill in real values
+
+# 3. set up the database
+npx prisma migrate dev      # applies migrations + generates the client
+
+# 4. run
+npm run dev                 # http://localhost:3000
 ```
 
-Never run:
+> **Migrations are strictly additive.** Local and production share one Neon database, so this project never resets or drops — every schema change is a new additive migration, and the SQL is reviewed before it's applied.
+
+### Environment variables
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | Pooled Neon connection string |
+| `DIRECT_URL` | Direct Neon connection (for migrations) |
+| `GOOGLE_PLACES_API_KEY` | Firm discovery |
+| `TAVILY_API_KEY` | Page content extraction |
+| `OPENAI_API_KEY` | Structured field extraction |
+| `SEARCH_PROVIDER` | Discovery provider switch (`places`) |
+| `EXTRACT_PROVIDER` | Extraction provider switch (default `tavily`) |
+| `RESEND_API_KEY` | Sending login-code emails |
+| `AUTH_EMAIL_FROM` | From address for auth emails |
+| `AUTH_SESSION_SECRET` | Pepper for hashing session tokens (identical local + prod) |
+| `AUTH_SESSION_COOKIE_NAME` | Session cookie name |
+| `APP_BASE_URL` | Base URL (differs per environment) |
+
+---
+
+## Testing
 
 ```bash
-npx prisma db push --accept-data-loss
-npx prisma migrate reset
-git reset --hard
-git clean -fd
+npx vitest run        # full suite (223 passing)
+npx tsc --noEmit      # type check
 ```
 
-Only the human starts or stops the dev server:
+The test suite is the safety net that makes it safe to move fast — every change, including ones implemented by the coding agent, runs against it. Development is **test-driven**: new behavior starts as a failing test, then the smallest change to make it pass. Route logic, auth flows, lead saving, dedupe edge cases, and pure helpers like `pickContactLink` are all covered.
 
-```bash
-npm run dev
-```
+> Vitest gotchas in this repo: route files and tests use **relative imports** (the `@/` alias isn't resolved by the runner), and any module importing `server-only` is mocked at the top of the test with `vi.mock("server-only", () => ({}))`.
 
 ---
 
-## Current Auth Direction
+## How this was built
 
-Auth is delayed.
-
-Do not use Clerk unless the human explicitly changes direction.
-
-Preferred future auth model:
-
-```text
-custom email-code auth
-Resend
-verified custom domain
-HttpOnly session cookie
-email allowlist
-10-50 users
-```
-
-Do not add early:
-
-- passwords
-- OAuth
-- teams
-- organizations
-- billing
-- enterprise SSO
+This project was built with a deliberate **three-way development loop** — a human reviewer, a planning AI acting as architect, and a separate CLI coding agent doing implementation — with guardrails at every step (plans before code, additive-only migrations, full-file-contents reports, human-run commands). See **[`docs/HOW-WE-BUILD.md`](docs/HOW-WE-BUILD.md)** for the full process.
 
 ---
 
-## Current Data Fetching Direction
+## Roadmap
 
-External data fetching is delayed.
+**Near term**
+- **Email yield** — a dedicated contact-page fetch and a harder `mailto:` scrape, triggered when a user *saves* a lead, to spend extraction effort where it matters.
+- Persistent saved-leads dashboard and per-user search history.
 
-Current approved approach:
-
-```text
-Manual seed data only.
-```
-
-Do not add until documented and approved in `docs/03-data-fetching-plan.md`:
-
-- scraping
-- enrichment
-- external APIs
-- browser automation
-- AI research passes
-- background fetch jobs
-- source ranking
-- automated overwrites
+**The bigger arc — from a search tool to a data product**
+- Store *evidence*, not just answers: `ResearchRun`, `WebsiteCheck`, and `DataPoint` provenance tables.
+- Continuous background enrichment with scheduled freshness re-checks.
+- `Prediction` — propensity-to-buy lead scoring derived from the evidence.
 
 ---
 
-## Current Database Direction
-
-Database implementation is delayed until the app shell and planning docs are ready.
-
-When database work begins, it should be small and safe.
-
-Possible future direction:
-
-```text
-PostgreSQL
-Prisma
-minimal Firm model first
-manual seed data
-safe migrations only
-```
-
-Never use destructive database commands to fix migration drift.
-
----
-
-## Recommended Rebuild Order
-
-```text
-Step 1: new repo
-Step 2: docs + AGENTS.md + task/work.md
-Step 3: basic app shell
-Step 4: clean Prisma from day one
-Step 5: seed data
-Step 6: custom auth
-Step 7: saved leads
-Step 8: recent ZIPs
-Step 9: external data fetching
-```
-
-Do not start with:
-
-- auth
-- scraping
-- enrichment
-- dashboard complexity
-- saved leads
-- recent ZIPs
-
----
-
-## Public Deployment
-
-The client-side search MVP is ready for public deployment. Refer to [11-first-deploy-checklist.md](file:///Users/phillipanthony/Desktop/Phase02/legal-prospecting-planning-docs-starter/docs/planning/11-first-deploy-checklist.md) for step-by-step instructions on deploying the application to platforms like Vercel or Netlify.
-
----
-
-## Coding-Agent Final Report Requirement
-
-At the end of every coding-agent task, the coding agent must report:
-
-- task completed
-- summary of changes
-- files created
-- files changed
-- commands suggested
-- commands run by the human, if known
-- manual verification steps
-- known risks or skipped items
-- next recommended task
-
-The coding agent must also update:
-
-```text
-task/work.md
-```
-
----
-
-## Project Mindset
-
-This project should be built in small, safe increments.
-
-The human owns scope and commands.
-
-The coding agent helps, but does not run the project.
+<!--
+SCREENSHOT SHOT-LIST (grab these once; also great for the demo):
+1. Search results table for a real ZIP (hero image, top of README)
+2. The avatar menu open (accounts)
+3. The Leads page with a few saved firms + the export button
+4. The feedback widget open
+Drop them in docs/images/ and uncomment the image lines above.
+-->
