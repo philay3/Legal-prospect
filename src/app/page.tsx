@@ -11,7 +11,6 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [matchingProspects, setMatchingProspects] = useState<Prospect[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,7 +117,14 @@ export default function Home() {
               disabled={isLoading}
             />
             <button type="submit" className="search-button" disabled={isLoading}>
-              {isLoading ? "Searching..." : "Search"}
+              {isLoading ? (
+                <>
+                  <span className="btn-spinner"></span>
+                  Searching
+                </>
+              ) : (
+                "Search"
+              )}
             </button>
           </div>
           {error && <div className="search-error">{error}</div>}
@@ -127,19 +133,40 @@ export default function Home() {
 
       <section className="results-section">
         {isLoading ? (
-          <div className="placeholder-card">
-            <span className="placeholder-icon">⏳</span>
-            <h3 className="placeholder-title">Searching for prospects...</h3>
-            <p className="placeholder-desc">
-              Searching live for firms near <strong>{normalizeZipCode(searchZip) || searchZip}</strong> — this can take a minute or two.
+          <div className="placeholder-card dashed-panel">
+            <span className="spinner-ring"></span>
+            <h3 className="placeholder-title text-color">Searching for prospects…</h3>
+            <p className="placeholder-desc text-muted-color">
+              Searching live for firms near <strong className="accent-text">{normalizeZipCode(searchZip) || searchZip}</strong> — this can take a minute or two.
             </p>
+            <div className="pulsing-dots">
+              <span className="pulsing-dot"></span>
+              <span className="pulsing-dot"></span>
+              <span className="pulsing-dot"></span>
+            </div>
           </div>
         ) : searchedZip === null ? (
-          <div className="placeholder-card">
-            <span className="placeholder-icon">🔍</span>
-            <h3 className="placeholder-title">Ready for Search</h3>
-            <p className="placeholder-desc">
-              Enter a 5-digit ZIP code above (e.g., <strong>19103</strong>) to find small and boutique law firms in that area.
+          <div className="placeholder-card dashed-panel">
+            <div className="badge-circle">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="search-icon-svg"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+            </div>
+            <h3 className="placeholder-title text-color">Ready to prospect</h3>
+            <p className="placeholder-desc text-muted-color">
+              Enter a 5-digit ZIP code above (e.g., <strong className="accent-text">19103</strong>) to find small and boutique law firms in that area.
             </p>
           </div>
         ) : matchingProspects.length > 0 ? (
@@ -147,62 +174,14 @@ export default function Home() {
             <div className="results-header">
               <div className="results-header-main">
                 <h2 className="results-title">Law firms near {getResolvedLocationString()}</h2>
+                <span className="results-count">{matchingProspects.length} {matchingProspects.length === 1 ? "firm" : "firms"} found</span>
               </div>
               <p className="results-subtitle">
-                Law firms found for this ZIP, with contact details researched automatically. Coverage can vary by firm.
+                Contact details researched automatically. Coverage can vary by firm.
               </p>
             </div>
 
-            {searchedZip && (
-              <div className="api-endpoint-container">
-                <span className="api-badge">API</span>
-                <span className="api-method">GET</span>
-                <a
-                  href={`/api/prospects/search?zip=${encodeURIComponent(searchedZip)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="api-link"
-                  title="Open raw JSON search endpoint in a new tab"
-                >
-                  /api/prospects/search?zip={searchedZip}
-                </a>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const apiPath = `/api/prospects/search?zip=${encodeURIComponent(searchedZip)}`;
-                    const absoluteUrl = `${window.location.origin}${apiPath}`;
-                    navigator.clipboard.writeText(absoluteUrl);
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 2000);
-                  }}
-                  className="api-copy-btn"
-                  aria-label="Copy API URL to clipboard"
-                >
-                  {copied ? "Copied! ✓" : "📋 Copy"}
-                </button>
-                
-                <span className="api-divider">|</span>
-                
-                <a
-                  href={`/api/prospects/search?zip=${encodeURIComponent(searchedZip)}&refresh=true`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="api-refresh-link"
-                  title="Triggers live search (takes ~80s)"
-                  onClick={(e) => {
-                    if (
-                      !confirm(
-                        "Are you sure you want to trigger a live re-run? This takes around 80 seconds and runs real-time queries."
-                      )
-                    ) {
-                      e.preventDefault();
-                    }
-                  }}
-                >
-                  ⚡ Force Live Re-run (?refresh=true)
-                </a>
-              </div>
-            )}
+
 
             <ResultsTable prospects={matchingProspects} variant="search" />
           </>

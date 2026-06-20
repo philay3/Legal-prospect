@@ -325,6 +325,20 @@ function PracticeAreasPopover({
   );
 }
 
+function getDisplayDomain(url: string | null | undefined): string {
+  if (!url) return "";
+  try {
+    let clean = url.trim();
+    if (!/^https?:\/\//i.test(clean)) {
+      clean = "http://" + clean;
+    }
+    const parsed = new URL(clean);
+    return parsed.hostname.replace(/^www\./i, "");
+  } catch (e) {
+    return url;
+  }
+}
+
 export function ResultsTable({
   prospects,
   removeOnUnsave = false,
@@ -575,23 +589,16 @@ export function ResultsTable({
       {selectedIds.size > 0 && (
         <div className="selection-action-bar">
           <div className="selection-count">
-            <span>{selectedIds.size} selected</span>
+            {selectedIds.size} firm(s) selected
           </div>
           <div className="selection-actions">
-            <button
-              type="button"
-              onClick={handleDownloadCsvSelected}
-              className="action-bar-btn"
-            >
-              📥 Download CSV
-            </button>
             {variant === "search" ? (
               <button
                 type="button"
                 onClick={handleSaveSelected}
                 className="action-bar-btn save-btn"
               >
-                🔖 Save to Leads
+                Save to leads
               </button>
             ) : (
               <button
@@ -599,9 +606,16 @@ export function ResultsTable({
                 onClick={handleRemoveSelected}
                 className="action-bar-btn delete-btn"
               >
-                🗑️ Remove from Leads
+                Remove from leads
               </button>
             )}
+            <button
+              type="button"
+              onClick={handleDownloadCsvSelected}
+              className="action-bar-btn export-btn"
+            >
+              Export CSV
+            </button>
             <button
               type="button"
               onClick={() => setSelectedIds(new Set())}
@@ -639,11 +653,11 @@ export function ResultsTable({
                 aria-label="Select all prospects"
               />
             </th>
-            {renderHeader("Name", "name")}
-            {renderHeader("Email", "email")}
-            {renderHeader("Phone", "phone")}
-            {renderHeader("Website", "website")}
-            <th style={{ cursor: "default" }} className="attorneys-cell">Attorneys</th>
+            {renderHeader("NAME", "name")}
+            {renderHeader("EMAIL", "email")}
+            {renderHeader("PHONE", "phone")}
+            {renderHeader("WEBSITE", "website")}
+            <th style={{ cursor: "default" }} className="attorneys-cell text-muted-header">ATTORNEYS</th>
           </tr>
         </thead>
         <tbody>
@@ -661,9 +675,10 @@ export function ResultsTable({
             const { visible, remaining } = capAttorneys(activeAttorneys, 2);
             const isExpanded = !!expandedFirms[prospect.id];
             const isSaved = savedFirmIds.has(prospect.id);
+            const isSelected = selectedIds.has(prospect.id);
 
             return (
-              <tr key={prospect.id}>
+              <tr key={prospect.id} className={isSelected ? "selected-row" : ""}>
                 <td className="checkbox-cell">
                   <input
                     type="checkbox"
@@ -716,53 +731,63 @@ export function ResultsTable({
                         }}
                         aria-label={`Show practice areas and address for ${prospect.firmName}`}
                       >
-                        {activePracticeAreas.length} {activePracticeAreas.length === 1 ? "area" : "areas"}
+                        {activePracticeAreas.length === 1 ? "1 area" : `${activePracticeAreas.length} areas`}
                       </button>
                     )}
                   </div>
                 </td>
-                <td className="email-cell">
+                <td className="email-cell mono">
                   {prospect.email ? (
                     <a
                       href={`mailto:${prospect.email}`}
-                      className="action-icon-link"
-                      title={prospect.email}
-                      aria-label={`Email ${prospect.email}`}
+                      className="email-link"
                     >
-                      <EnvelopeIcon />
+                      {prospect.email}
                     </a>
                   ) : (
-                    <span className="muted-dash">—</span>
+                    <span className="text-dim-dash">—</span>
                   )}
                 </td>
-                <td className="phone-cell">
+                <td className="phone-cell mono">
                   {prospect.phone ? (
                     <a
                       href={`tel:${prospect.phone}`}
-                      className="action-icon-link"
-                      title={prospect.phone}
-                      aria-label={`Call ${prospect.phone}`}
+                      className="phone-link"
                     >
-                      <PhoneIcon />
+                      {prospect.phone}
                     </a>
                   ) : (
-                    <span className="muted-dash">—</span>
+                    <span className="text-dim-dash">—</span>
                   )}
                 </td>
-                <td className="website-cell">
+                <td className="website-cell mono">
                   {prospect.website ? (
                     <a
                       href={prospect.website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="action-icon-link"
-                      title={prospect.website}
-                      aria-label={`Visit website ${prospect.website}`}
+                      className="website-link"
                     >
-                      <GlobeIcon />
+                      <span>{getDisplayDomain(prospect.website)}</span>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="external-link-icon"
+                      >
+                        <path d="M15 3h6v6" />
+                        <path d="M10 14 21 3" />
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                      </svg>
                     </a>
                   ) : (
-                    <span className="muted-dash">—</span>
+                    <span className="text-dim-dash">—</span>
                   )}
                 </td>
                 <td className="attorneys-cell">
@@ -783,7 +808,7 @@ export function ResultsTable({
                       )}
                     </div>
                   ) : (
-                    <span className="muted-dash">—</span>
+                    <span className="text-dim-dash">—</span>
                   )}
                 </td>
               </tr>
@@ -810,31 +835,15 @@ export function ResultsTable({
 
       {totalPages > 1 && (
         <div className="pagination-container">
-          <div className="pagination-info">
-            Showing <span className="page-indicator">{startIndex + 1}</span> to{" "}
-            <span className="page-indicator">
-              {Math.min(startIndex + PAGE_SIZE, sortedProspects.length)}
-            </span>{" "}
-            of <span className="page-indicator">{sortedProspects.length}</span> prospects
-          </div>
           <div className="pagination-controls">
             <button
               type="button"
-              className="pagination-btn"
-              onClick={() => setCurrentPage(1)}
-              disabled={activePage === 1}
-              aria-disabled={activePage === 1}
-            >
-              « First
-            </button>
-            <button
-              type="button"
-              className="pagination-btn"
+              className="pagination-arrow-btn"
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
               disabled={activePage === 1}
-              aria-disabled={activePage === 1}
+              aria-label="Previous page"
             >
-              ‹ Prev
+              ‹
             </button>
 
             {getPageWindow(activePage, totalPages).map((page, idx) => {
@@ -861,22 +870,17 @@ export function ResultsTable({
 
             <button
               type="button"
-              className="pagination-btn"
+              className="pagination-arrow-btn"
               onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
               disabled={activePage === totalPages}
-              aria-disabled={activePage === totalPages}
+              aria-label="Next page"
             >
-              Next ›
+              ›
             </button>
-            <button
-              type="button"
-              className="pagination-btn"
-              onClick={() => setCurrentPage(totalPages)}
-              disabled={activePage === totalPages}
-              aria-disabled={activePage === totalPages}
-            >
-              Last »
-            </button>
+          </div>
+
+          <div className="pagination-info">
+            Showing {startIndex + 1}–{Math.min(startIndex + PAGE_SIZE, sortedProspects.length)} of {sortedProspects.length}
           </div>
         </div>
       )}

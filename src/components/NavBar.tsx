@@ -30,7 +30,7 @@ export function NavBar({ user }: NavBarProps) {
         <div className="navbar-links">
           <Link
             href="/"
-            className={`navbar-link ${isActive("/") ? "active" : ""}`}
+            className={`navbar-link search-link ${isActive("/") ? "active" : ""}`}
           >
             Search
           </Link>
@@ -39,7 +39,7 @@ export function NavBar({ user }: NavBarProps) {
           ) : (
             <Link
               href="/login"
-              className={`navbar-link ${isActive("/login") ? "active" : ""}`}
+              className={`navbar-link signin-link ${isActive("/login") ? "active" : ""}`}
             >
               Sign In
             </Link>

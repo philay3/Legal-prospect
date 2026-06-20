@@ -15,7 +15,7 @@ export function Footer() {
         </Link>
       </div>
       <div className="footer-copyright">
-        &copy; {new Date().getFullYear()} Legal Prospector. All rights reserved.
+        &copy; {new Date().getFullYear()}
       </div>
     </footer>
   );
