@@ -11,8 +11,7 @@
 
 Legal Prospector is a legal-sales prospecting tool built for a Thomson Reuters account executive who sells Westlaw to small and boutique law firms. Enter a ZIP code, and it discovers the firms in that area, visits each firm's website, and extracts structured contact and firm details — phone, attorneys, and practice areas — then lets a signed-in user save and export the best leads.
 
-<!-- TODO: add a hero screenshot — the search results table for a real ZIP -->
-<!-- ![Legal Prospector — search results](docs/images/results.png) -->
+![Legal Prospector — search results for a ZIP](docs/images/search-results.png)
 
 🔗 **Live demo:** [legal-prospect.vercel.app](https://legal-prospect.vercel.app)
 
@@ -27,6 +26,22 @@ Finding small law firms is traditionally slow, manual work. Google Maps gives yo
 - **Sortable results** — review firms in a clean, paginated table.
 - **Save & export** — signed-in users bookmark firms to a private Leads list and export to CSV.
 - **Email-code accounts** — passwordless sign-in via a one-time code.
+
+---
+
+## Screenshots
+
+**Saved leads** — bookmark firms to a private, exportable list.
+
+![Saved leads page](docs/images/saved-leads.png)
+
+**In-app feedback** — a dismissible widget that writes to the `Feedback` table.
+
+<img src="docs/images/feedback-widget.png" width="360" alt="Feedback widget">
+
+**Account menu** — the signed-in workspace: Dashboard, Leads, and Account.
+
+<img src="docs/images/user-account.png" width="320" alt="Account menu">
 
 ---
 
@@ -323,11 +338,4 @@ This project was built with a deliberate **three-way development loop** — a hu
 
 ---
 
-<!--
-SCREENSHOT SHOT-LIST (grab these once; also great for the demo):
-1. Search results table for a real ZIP (hero image, top of README)
-2. The avatar menu open (accounts)
-3. The Leads page with a few saved firms + the export button
-4. The feedback widget open
-Drop them in docs/images/ and uncomment the image lines above.
--->
+<!-- Screenshots live in docs/images/. Portrait shots are sized with <img width="..."> — tweak the numbers to taste. -->
