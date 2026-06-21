@@ -1,6 +1,6 @@
 # How We Build
 
-> The development process behind Legal Prospector. For the product overview, see the [README](../README.md); for the system internals, see [ARCHITECTURE.md](ARCHITECTURE.md).
+> The development process behind Legal Prospector. For the product overview, see the [README](../README.md); for the system internals, see [architecture.md](architecture.md).
 
 Legal Prospector is built with a deliberate **three-way loop**. Rather than one person prompting an AI to "just build it," the work is split across three roles with a **review gate at every boundary**. The point is separation of duties: the AI that plans isn't the AI that implements, and a human reviews and runs everything in between.
 

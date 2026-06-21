@@ -1,6 +1,6 @@
 # Architecture
 
-> The engineering deep-dive. For the product overview and the high-level diagrams (architecture, pipeline, ERD), see the [README](../README.md). For how the project is built, see [HOW-WE-BUILD.md](HOW-WE-BUILD.md).
+> The engineering deep-dive. For the product overview and the high-level diagrams (architecture, pipeline, ERD), see the [README](../README.md). For how the project is built, see [how-we-build.md](how-we-build.md).
 
 ## Two journeys, one database
 

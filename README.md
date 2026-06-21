@@ -118,7 +118,7 @@ Persistence is **cache-first**, so each ZIP is only researched once. Known limit
 
 ## Data model
 
-Eight research + auth tables, plus a feedback table — in two layers, joined by a single bridge.
+Nine tables in two layers — a research corpus and an auth/workspace layer — joined by a single bridge.
 
 ```mermaid
 erDiagram
@@ -128,7 +128,7 @@ erDiagram
     Firm ||--o{ SavedLead : "saved as"
     User ||--o{ SavedLead : "saves"
     User ||--o{ Session : "has"
-    User ||--o{ Feedback : "submits"
+    User |o--o{ Feedback : "may submit"
 
     Firm {
         string id PK
@@ -241,12 +241,13 @@ legal-prospector/
 | `/login` | Page | Public | Email-code sign in |
 | `/leads` | Page | Private | Saved leads + CSV export |
 | `/account` | Page | Private | Account info |
+| `GET /api/prospects/search` | API | Public | ZIP search — discovery + enrichment, cache-first (`?refresh=true` forces a re-run) |
 | `POST /api/auth/request-code` | API | Public | Send a one-time login code |
 | `POST /api/auth/verify-code` | API | Public | Verify code, set session cookie |
 | `/api/leads` | API | Private | Save / list / remove saved leads (bulk) |
 | `POST /api/feedback` | API | Public | Capture in-app feedback |
 
-> Search discovery + enrichment runs server-side off the home route. <!-- TODO: confirm whether this is a dedicated /api route or a server action -->
+> The home route calls `GET /api/prospects/search`, which runs the discovery + enrichment pipeline server-side.
 
 ---
 
@@ -304,7 +305,7 @@ The test suite is the safety net that makes it safe to move fast — every chang
 
 ## How this was built
 
-This project was built with a deliberate **three-way development loop** — a human reviewer, a planning AI acting as architect, and a separate CLI coding agent doing implementation — with guardrails at every step (plans before code, additive-only migrations, full-file-contents reports, human-run commands). See **[`docs/HOW-WE-BUILD.md`](docs/HOW-WE-BUILD.md)** for the full process.
+This project was built with a deliberate **three-way development loop** — a human reviewer, a planning AI acting as architect, and a separate CLI coding agent doing implementation — with guardrails at every step (plans before code, additive-only migrations, full-file-contents reports, human-run commands). See **[`docs/how-we-build.md`](docs/how-we-build.md)** for the full process.
 
 ---
 
@@ -312,6 +313,7 @@ This project was built with a deliberate **three-way development loop** — a hu
 
 **Near term**
 - **Email yield** — a dedicated contact-page fetch and a harder `mailto:` scrape, triggered when a user *saves* a lead, to spend extraction effort where it matters.
+- **Tighter ZIP targeting + multi-ZIP search** — from client feedback; an opt-in exact-ZIP filter (leaning on `searchZip`) plus searching several ZIPs at once.
 - Persistent saved-leads dashboard and per-user search history.
 
 **The bigger arc — from a search tool to a data product**
