@@ -1,4 +1,4 @@
-Task: add a new pure helper, test-first. Additive only — do not change any existing function. Do NOT run any commands.
+Task: add a new pure helper, test-first. Additive only — do not change any existing function. Do NOT run any commands. 
 
 In src/lib/research/sanitize.ts, add:
 
@@ -15,4 +15,4 @@ it("strips a trailing 'Esq.' so the same attorney isn't stored twice", () => {
   expect(normalizeAttorneyName("Michael H. Joseph, Esq.")).toBe("Michael H. Joseph");
 });
 
-Do not touch any other function. Do NOT run any commands — just list the test command for me to run. Report the changed files, then stop.
+Do not touch any other function. Do NOT run any commands — just list the test command for me to run. Report the changed files, then stop. 

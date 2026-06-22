@@ -1,4 +1,4 @@
-# 08 — Coding Agent Rules
+# Coding Agent Rules
 
 This file is for any AI coding agent helping with the project.
 

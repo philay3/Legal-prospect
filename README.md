@@ -7,11 +7,11 @@
 ![Vitest](https://img.shields.io/badge/tests-223_passing-success?style=flat&logo=vitest&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000000?style=flat&logo=vercel&logoColor=white)
 
-> **Turn a ZIP code into an accurate, exportable list of small and boutique law firms — with the contact and firm data that Google misses.**
+> **Turn a ZIP code into an accurate, exportable list of small and boutique law firms, with the contact and firm data that Google misses.**
 
-Legal Prospector is a legal-sales prospecting tool built for a Thomson Reuters account executive who sells Westlaw to small and boutique law firms. Enter a ZIP code, and it discovers the firms in that area, visits each firm's website, and extracts structured contact and firm details — phone, attorneys, and practice areas — then lets a signed-in user save and export the best leads.
+Legal Prospector is a prospecting tool for sales teams that sell to small and boutique law firms. Enter a ZIP code and it discovers the firms in that area, visits each firm's website, and pulls structured contact and firm details like phone, attorneys, and practice areas, then lets a signed-in user save and export the best leads.
 
-![Legal Prospector — search results for a ZIP](docs/images/search-results.png)
+![Legal Prospector, search results for a ZIP](docs/images/search-results.png)
 
 🔗 **Live demo:** [legal-prospect.vercel.app](https://legal-prospect.vercel.app)
 
@@ -19,27 +19,27 @@ Legal Prospector is a legal-sales prospecting tool built for a Thomson Reuters a
 
 ## What it does
 
-Finding small law firms is traditionally slow, manual work. Google Maps gives you a pin and maybe a phone number, but it misses attorneys, practice areas, and reliable contact details — and the data goes stale. Legal Prospector automates that research:
+Finding small law firms is traditionally slow, manual work. Google Maps gives you a pin and maybe a phone number, but it misses attorneys, practice areas, and reliable contact details, and the data goes stale. Legal Prospector automates that research:
 
-- **Search by ZIP** — discovers the firms in an area in one query.
-- **Automatic enrichment** — visits each firm's site and pulls phone, attorneys, and practice areas with an LLM, grounded in the firm's real website.
-- **Sortable results** — review firms in a clean, paginated table.
-- **Save & export** — signed-in users bookmark firms to a private Leads list and export to CSV.
-- **Email-code accounts** — passwordless sign-in via a one-time code.
+- **Search by ZIP**: discovers the firms in an area in one query.
+- **Automatic enrichment**: visits each firm's site and pulls phone, attorneys, and practice areas with an LLM, grounded in the firm's real website.
+- **Sortable results**: review firms in a clean, paginated table.
+- **Save & export**: signed-in users bookmark firms to a private Leads list and export to CSV.
+- **Email-code accounts**: passwordless sign-in via a one-time code.
 
 ---
 
 ## Screenshots
 
-**Saved leads** — bookmark firms to a private, exportable list.
+**Saved leads**: bookmark firms to a private, exportable list.
 
 ![Saved leads page](docs/images/saved-leads.png)
 
-**In-app feedback** — a dismissible widget that writes to the `Feedback` table.
+**In-app feedback**: a dismissible widget that writes to the `Feedback` table.
 
 <img src="docs/images/feedback-widget.png" width="360" alt="Feedback widget">
 
-**Account menu** — the signed-in workspace: Dashboard, Leads, and Account.
+**Account menu**: the signed-in workspace, with Dashboard, Leads, and Account.
 
 <img src="docs/images/user-account.png" width="320" alt="Account menu">
 
@@ -98,7 +98,7 @@ The dividing line is the whole reason auth exists in this app: **global research
 
 ## How it works: the enrichment pipeline
 
-A ZIP becomes real firm data in **two passes**. The key idea: the LLM does one narrow, supervised job — extracting fields from a real page — it never invents the list of firms.
+A ZIP becomes real firm data in **two passes**. The key idea: the LLM does one narrow, supervised job, extracting fields from a real page. It never invents the list of firms.
 
 ```mermaid
 flowchart LR
@@ -125,15 +125,15 @@ flowchart LR
     end
 ```
 
-**The `searchZip` design decision.** Discovery and dedupe key off `searchZip` — a column kept deliberately *separate* from the firm's real physical `zip`. Early on, one `zip` column did both jobs, and Google Places kept overwriting the search key with each firm's actual address, silently corrupting cache reads. Splitting the key from the real address fixed it. The lesson baked into the schema: **never overload one column as both a lookup key and mutable data.**
+**The `searchZip` design decision.** Discovery and dedupe key off `searchZip`, a column kept deliberately *separate* from the firm's real physical `zip`. Early on, one `zip` column did both jobs, and Google Places kept overwriting the search key with each firm's actual address, silently corrupting cache reads. Splitting the key from the real address fixed it. The lesson baked into the schema: **never overload one column as both a lookup key and mutable data.**
 
-Persistence is **cache-first**, so each ZIP is only researched once. Known limitation: **email yield is low**, because law firm homepages rarely expose an email address — a dedicated contact-page pass is on the roadmap. Phone, the more useful number for outreach, comes back reliably from Places.
+Persistence is **cache-first**, so each ZIP is only researched once. Known limitation: **email yield is low**, because law firm homepages rarely expose an email address. A dedicated contact-page pass is on the roadmap. Phone, the more useful number for outreach, comes back reliably from Places.
 
 ---
 
 ## Data model
 
-Nine tables in two layers — a research corpus and an auth/workspace layer — joined by a single bridge.
+Nine tables in two layers, a research corpus and an auth/workspace layer, joined by a single bridge.
 
 ```mermaid
 erDiagram
@@ -184,7 +184,7 @@ erDiagram
     }
     LoginCode {
         string id PK
-        string email "no FK — transient"
+        string email "no FK, transient"
         string codeHash
         datetime expiresAt
         datetime usedAt
@@ -201,11 +201,11 @@ erDiagram
     }
 ```
 
-**Research corpus (global, shared):** `Firm` is the center — `Attorney` hangs off it one-to-many, and `PracticeArea` is many-to-many with firms through the `FirmPracticeArea` join table.
+**Research corpus (global, shared):** `Firm` is the center, with `Attorney` one-to-many off it and `PracticeArea` many-to-many with firms through the `FirmPracticeArea` join table.
 
 **Auth layer (private):** `User` owns `Session` rows; `LoginCode` is standalone with no foreign key because it's a transient credential keyed by email.
 
-**The bridge:** `SavedLead` is the only table connecting the two layers — a many-to-many between `User` and `Firm`, the same join-table pattern as `FirmPracticeArea`. `Feedback` is an optional, nullable link to `User`, so feedback can be anonymous or attributed.
+**The bridge:** `SavedLead` is the only table connecting the two layers, a many-to-many between `User` and `Firm`, the same join-table pattern as `FirmPracticeArea`. `Feedback` is an optional, nullable link to `User`, so feedback can be anonymous or attributed.
 
 ---
 
@@ -218,7 +218,7 @@ legal-prospector/
 │   └── migrations/             # additive-only migration history
 ├── src/
 │   ├── app/
-│   │   ├── page.tsx            # home — ZIP search + results
+│   │   ├── page.tsx            # home, ZIP search + results
 │   │   ├── about/page.tsx
 │   │   ├── contact/page.tsx
 │   │   ├── login/page.tsx      # email-code sign in
@@ -256,7 +256,7 @@ legal-prospector/
 | `/login` | Page | Public | Email-code sign in |
 | `/leads` | Page | Private | Saved leads + CSV export |
 | `/account` | Page | Private | Account info |
-| `GET /api/prospects/search` | API | Public | ZIP search — discovery + enrichment, cache-first (`?refresh=true` forces a re-run) |
+| `GET /api/prospects/search` | API | Public | ZIP search, discovery + enrichment, cache-first (`?refresh=true` forces a re-run) |
 | `POST /api/auth/request-code` | API | Public | Send a one-time login code |
 | `POST /api/auth/verify-code` | API | Public | Verify code, set session cookie |
 | `/api/leads` | API | Private | Save / list / remove saved leads (bulk) |
@@ -284,7 +284,7 @@ npx prisma migrate dev      # applies migrations + generates the client
 npm run dev                 # http://localhost:3000
 ```
 
-> **Migrations are strictly additive.** Local and production share one Neon database, so this project never resets or drops — every schema change is a new additive migration, and the SQL is reviewed before it's applied.
+> **Migrations are strictly additive.** Local and production share one Neon database, so this project never resets or drops. Every schema change is a new additive migration, and the SQL is reviewed before it's applied.
 
 ### Environment variables
 
@@ -312,7 +312,7 @@ npx vitest run        # full suite (223 passing)
 npx tsc --noEmit      # type check
 ```
 
-The test suite is the safety net that makes it safe to move fast — every change, including ones implemented by the coding agent, runs against it. Development is **test-driven**: new behavior starts as a failing test, then the smallest change to make it pass. Route logic, auth flows, lead saving, dedupe edge cases, and pure helpers like `pickContactLink` are all covered.
+The test suite is the safety net that makes it safe to move fast. Every change, including ones implemented by the coding agent, runs against it. Development is **test-driven**: new behavior starts as a failing test, then the smallest change to make it pass. Route logic, auth flows, lead saving, dedupe edge cases, and pure helpers like `pickContactLink` are all covered.
 
 > Vitest gotchas in this repo: route files and tests use **relative imports** (the `@/` alias isn't resolved by the runner), and any module importing `server-only` is mocked at the top of the test with `vi.mock("server-only", () => ({}))`.
 
@@ -320,22 +320,22 @@ The test suite is the safety net that makes it safe to move fast — every chang
 
 ## How this was built
 
-This project was built with a deliberate **three-way development loop** — a human reviewer, a planning AI acting as architect, and a separate CLI coding agent doing implementation — with guardrails at every step (plans before code, additive-only migrations, full-file-contents reports, human-run commands). See **[`docs/how-we-build.md`](docs/how-we-build.md)** for the full process.
+This project was built with a deliberate **three-way development loop**: a human reviewer, a planning AI acting as architect, and a separate CLI coding agent doing implementation, with guardrails at every step (plans before code, additive-only migrations, full-file-contents reports, human-run commands). See **[`docs/how-we-build.md`](docs/how-we-build.md)** for the full process.
 
 ---
 
 ## Roadmap
 
 **Near term**
-- **Email yield** — a dedicated contact-page fetch and a harder `mailto:` scrape, triggered when a user *saves* a lead, to spend extraction effort where it matters.
-- **Tighter ZIP targeting + multi-ZIP search** — from client feedback; an opt-in exact-ZIP filter (leaning on `searchZip`) plus searching several ZIPs at once.
+- **Email yield**: a dedicated contact-page fetch and a harder `mailto:` scrape, triggered when a user *saves* a lead, to spend extraction effort where it matters.
+- **Tighter ZIP targeting + multi-ZIP search**: from client feedback; an opt-in exact-ZIP filter (leaning on `searchZip`) plus searching several ZIPs at once.
 - Persistent saved-leads dashboard and per-user search history.
 
-**The bigger arc — from a search tool to a data product**
+**The bigger arc, from a search tool to a data product**
 - Store *evidence*, not just answers: `ResearchRun`, `WebsiteCheck`, and `DataPoint` provenance tables.
 - Continuous background enrichment with scheduled freshness re-checks.
-- `Prediction` — propensity-to-buy lead scoring derived from the evidence.
+- `Prediction`, propensity-to-buy lead scoring derived from the evidence.
 
 ---
 
-<!-- Screenshots live in docs/images/. Portrait shots are sized with <img width="..."> — tweak the numbers to taste. -->
+<!-- Screenshots live in docs/images/. Portrait shots are sized with <img width="...">, tweak the numbers to taste. -->
