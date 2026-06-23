@@ -397,4 +397,18 @@ export function getFirmsToEnrich<T>(candidates: T[], ceiling: number): T[] {
   return candidates.slice(0, ceiling);
 }
 
+export function normalizeAttorneyName(name: string): string {
+  if (!name) return "";
+  let sanitized = sanitizeText(name).replace(/\s+/g, " ").trim();
+  const credentialRegex = /,?\s*(?:Esq\.?|Esquire|J\.D\.?|LL\.M\.?)$/i;
+  
+  let previous = "";
+  while (sanitized !== previous) {
+    previous = sanitized;
+    sanitized = sanitized.replace(credentialRegex, "").trim();
+  }
+  return sanitized;
+}
+
+
 

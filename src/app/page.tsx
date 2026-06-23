@@ -1,34 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { normalizeZipCode } from "@/utils/prospectMatcher";
+import { normalizeZipCode, matchProspectsByZip } from "@/utils/prospectMatcher";
+import { parseZipInput } from "@/utils/parseZipInput";
 import { ResultsTable } from "@/components/ResultsTable";
 import type { Prospect } from "@/types/prospect";
 
 export default function Home() {
   const [searchZip, setSearchZip] = useState("");
-  const [searchedZip, setSearchedZip] = useState<string | null>(null);
+  const [searchedZips, setSearchedZips] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [matchingProspects, setMatchingProspects] = useState<Prospect[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoading) return; // Prevent duplicate searches while loading
+    if (isLoading) return;
 
-    const trimmed = searchZip.trim();
-
-    if (!trimmed) {
-      setError("Please enter a ZIP code.");
-      setSearchedZip(null);
-      setMatchingProspects([]);
-      return;
-    }
-
-    const normalized = normalizeZipCode(trimmed);
-    if (!normalized) {
-      setError("Please enter a valid ZIP code.");
-      setSearchedZip(null);
+    const zips = parseZipInput(searchZip);
+    if (zips.length === 0) {
+      setError("Please enter at least one valid 5-digit ZIP code.");
+      setSearchedZips([]);
       setMatchingProspects([]);
       return;
     }
@@ -37,52 +29,60 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`/api/prospects/search?zip=${encodeURIComponent(trimmed)}`);
-      
-      if (!response.ok) {
-        let errMsg = "We could not complete the search right now. Please try again.";
-        try {
-          const errData = await response.json();
-          if (errData && errData.error) {
-            errMsg = errData.error;
+      const perZip = await Promise.all(
+        zips.map(async (zip) => {
+          try {
+            const response = await fetch(`/api/prospects/search?zip=${encodeURIComponent(zip)}`);
+            if (!response.ok) return { ok: false, prospects: [] as Prospect[] };
+            const data = await response.json();
+            return { ok: true, prospects: matchProspectsByZip(data.results || [], zip) };
+          } catch {
+            return { ok: false, prospects: [] as Prospect[] };
           }
-        } catch (e) {
-          // ignore parsing error
-        }
-        setError(errMsg);
-        setSearchedZip(null);
+        })
+      );
+
+      if (!perZip.some((r) => r.ok)) {
+        setError("We could not complete the search right now. Please try again.");
+        setSearchedZips([]);
         setMatchingProspects([]);
-      } else {
-        const data = await response.json();
-        setSearchedZip(normalized);
-        setMatchingProspects(data.results || []);
+        return;
       }
-    } catch (err) {
+
+      const byId = new Map<string, Prospect>();
+      for (const r of perZip) {
+        for (const p of r.prospects) {
+          if (!byId.has(p.id)) byId.set(p.id, p);
+        }
+      }
+
+      setSearchedZips(zips);
+      setMatchingProspects(Array.from(byId.values()));
+    } catch {
       setError("We could not complete the search right now. Please try again.");
-      setSearchedZip(null);
+      setSearchedZips([]);
       setMatchingProspects([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-
-
   const getResolvedLocationString = () => {
-    if (matchingProspects.length === 0) return `ZIP ${searchedZip}`;
-    const first = matchingProspects[0];
-    const titleCase = (str: string) => {
-      if (!str) return "";
-      return str
-        .toLowerCase()
-        .replace(/\b\w/g, (c) => c.toUpperCase());
-    };
-    const city = first.city ? titleCase(first.city.trim()) : "";
-    const state = first.state ? first.state.trim().toUpperCase() : "";
-    if (city && state) {
-      return `${city}, ${state} ${searchedZip}`;
+    const zipLabel = searchedZips.join(", ");
+    if (matchingProspects.length === 0) return `ZIP ${zipLabel}`;
+    if (searchedZips.length === 1) {
+      const first = matchingProspects[0];
+      const titleCase = (str: string) => {
+        if (!str) return "";
+        return str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+      };
+      const city = first.city ? titleCase(first.city.trim()) : "";
+      const state = first.state ? first.state.trim().toUpperCase() : "";
+      if (city && state) {
+        return `${city}, ${state} ${searchedZips[0]}`;
+      }
     }
-    return `ZIP ${searchedZip}`;
+    return `ZIP ${zipLabel}`;
   };
 
   return (
@@ -127,6 +127,7 @@ export default function Home() {
               )}
             </button>
           </div>
+          <p className="search-hint">Search up to 5 ZIP codes at once — separate them with commas.</p>
           {error && <div className="search-error">{error}</div>}
         </form>
       </main>
@@ -145,7 +146,7 @@ export default function Home() {
               <span className="pulsing-dot"></span>
             </div>
           </div>
-        ) : searchedZip === null ? (
+        ) : searchedZips.length === 0 ? (
           <div className="placeholder-card dashed-panel">
             <div className="badge-circle">
               <svg

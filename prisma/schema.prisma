@@ -44,6 +44,7 @@ model Firm {
   website            String?
   phone              String?
   email              String?
+  emailCheckedAt     DateTime?
   practiceAreas      String[]
   attorneyCountRange String
   attorneys          String[]

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sanitizeText, sanitizeFirm, normalizePracticeAreas, pickContactLink, detectState, isInSearchedState } from "./sanitize";
+import { sanitizeText, sanitizeFirm, normalizePracticeAreas, pickContactLink, detectState, isInSearchedState, normalizeAttorneyName } from "./sanitize";
 
 describe("sanitizeText", () => {
   it("should strip NUL bytes", () => {
@@ -218,5 +218,10 @@ describe("isInSearchedState", () => {
     expect(isInSearchedState({ address: "no state here" }, "NY")).toBe(true);
   });
 });
+
+it("strips a trailing 'Esq.' so the same attorney isn't stored twice", () => {
+  expect(normalizeAttorneyName("Michael H. Joseph, Esq.")).toBe("Michael H. Joseph");
+});
+
 
 

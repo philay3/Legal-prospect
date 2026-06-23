@@ -8,6 +8,8 @@ import type { Prospect } from "@/types/prospect";
 import { getPageCount, getPageItems, getPageWindow } from "@/utils/pagination";
 import { capAttorneys } from "@/utils/attorneys";
 import { toCsv } from "@/utils/toCsv";
+import { applyEnrichedEmail } from "@/utils/applyEnrichedEmail";
+import { normalizeAttorneyName } from "@/lib/research/sanitize";
 
 const PAGE_SIZE = 10;
 
@@ -364,13 +366,23 @@ export function ResultsTable({
   const [activeSignInPopover, setActiveSignInPopover] = useState<{
     triggerRect: DOMRect;
   } | null>(null);
-  const [localProspects, setLocalProspects] = useState<Prospect[]>(prospects);
+  const [localProspects, setLocalProspects] = useState<Prospect[]>(() =>
+    prospects.map((p) => ({
+      ...p,
+      attorneys: p.attorneys ? p.attorneys.map(normalizeAttorneyName) : [],
+    }))
+  );
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   // Sync prospects prop with local state
   useEffect(() => {
-    setLocalProspects(prospects);
+    setLocalProspects(
+      prospects.map((p) => ({
+        ...p,
+        attorneys: p.attorneys ? p.attorneys.map(normalizeAttorneyName) : [],
+      }))
+    );
   }, [prospects]);
 
   useEffect(() => {
@@ -433,6 +445,34 @@ export function ResultsTable({
       if (!response.ok) {
         throw new Error("Failed to save leads");
       }
+
+      // Best-effort enrichment pass
+      idsToSave.forEach((id) => {
+        const row = localProspects.find((p) => p.id === id);
+        if (!row || row.email) return;
+
+        fetch("/api/leads/enrich", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ firmId: id }),
+        })
+          .then(async (res) => {
+            if (!res.ok) {
+              throw new Error(`Enrichment failed with status ${res.status}`);
+            }
+            const data = await res.json();
+            if (data.ok && data.email) {
+              setLocalProspects((prev) => applyEnrichedEmail(prev, id, data.email));
+            }
+          })
+          .catch((error) => {
+            console.error(`Failed to enrich lead ${id}:`, error);
+          });
+      });
+
+      setSelectedIds(new Set());
     } catch (err) {
       console.error("Error saving leads:", err);
       // Revert savedFirmIds by fetching current database state
@@ -491,8 +531,11 @@ export function ResultsTable({
     if (removeOnUnsave) {
       return localProspects.filter((p) => savedFirmIds.has(p.id));
     }
+    if (variant === "search") {
+      return localProspects.filter((p) => !savedFirmIds.has(p.id));
+    }
     return localProspects;
-  }, [localProspects, savedFirmIds, removeOnUnsave]);
+  }, [localProspects, savedFirmIds, removeOnUnsave, variant]);
 
   // Reset sorting, page, expanded, selection, and popover states whenever the search results change
   useEffect(() => {

@@ -1,18 +1,56 @@
-Task: add a new pure helper, test-first. Additive only — do not change any existing function. Do NOT run any commands. 
+Task: wire the cooldown into the enrich route, backed by a new additive column.
+Edit two files: the Prisma schema and the enrich route. Do NOT edit anything else.
+Do NOT run any commands (the human runs the migration). Return your plan first;
+after I approve, make the edits, report both changed sections, then stop.
 
-In src/lib/research/sanitize.ts, add:
+Part 1 — schema. In prisma/schema.prisma, in the Firm model, add this field
+(place it right after the `email String?` line):
+  emailCheckedAt     DateTime?
 
-export function normalizeAttorneyName(name: string): string {
-  if (!name) return "";
-  return sanitizeText(name).replace(/\s+/g, " ").trim();
-}
+Part 2 — the route (src/app/api/leads/enrich/route.ts).
 
-(sanitizeText already exists in this file — reuse it.)
+a) Swap the imports: remove
+     import { isUseful } from "../../../../lib/research/sanitize";
+   and add
+     import { enrichDecision } from "../../../../lib/research/enrichDecision";
 
-In src/lib/research/sanitize.test.ts (relative import: import { normalizeAttorneyName } from "./sanitize"), add exactly:
+b) Replace this block (everything from the isUseful check through the final
+   return):
 
-it("strips a trailing 'Esq.' so the same attorney isn't stored twice", () => {
-  expect(normalizeAttorneyName("Michael H. Joseph, Esq.")).toBe("Michael H. Joseph");
-});
+    if (isUseful(firm.email)) {
+      return NextResponse.json({ ok: true, email: firm.email, cached: true });
+    }
 
-Do not touch any other function. Do NOT run any commands — just list the test command for me to run. Report the changed files, then stop. 
+    if (!firm.website) {
+      return NextResponse.json({ ok: true, email: null });
+    }
+
+    const email = await findContactEmail(firm.website);
+    if (email) {
+      await prisma.firm.update({ where: { id }, data: { email } });
+      return NextResponse.json({ ok: true, email });
+    }
+
+    return NextResponse.json({ ok: true, email: null });
+
+   with:
+
+    const decision = enrichDecision(firm.email, firm.emailCheckedAt);
+    if (decision === "use-email") {
+      return NextResponse.json({ ok: true, email: firm.email, cached: true });
+    }
+    if (decision === "skip") {
+      return NextResponse.json({ ok: true, email: null, cached: true });
+    }
+
+    // decision === "fetch": attempt enrichment and record the attempt
+    const email = firm.website ? await findContactEmail(firm.website) : null;
+    await prisma.firm.update({
+      where: { id },
+      data: { email: email ?? undefined, emailCheckedAt: new Date() },
+    });
+    return NextResponse.json({ ok: true, email: email ?? null });
+
+Leave the auth check, the body parse, the saved-lead guard, the firm lookup, and
+the try/catch exactly as they are. Report the schema diff and the changed route
+sections, then stop.
