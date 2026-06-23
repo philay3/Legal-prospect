@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "../../../../lib/prisma";
-import { normalizeZipCode } from "../../../../utils/prospectMatcher";
+import { normalizeZipCode, filterByZip } from "../../../../utils/prospectMatcher";
 import type { Prospect } from "../../../../types/prospect";
 import { runLeadResearch } from "../../../../lib/research/runLeadResearch";
 import { saveResearchFirms } from "../../../../lib/db/saveResearchFirms";
@@ -72,8 +72,11 @@ export async function GET(request: NextRequest) {
       console.log(`[api/search] Cache hit: DB returned ${firms.length} rows for ZIP ${normalizedZip}.`);
     }
 
+    // Filter database rows to return only matching ZIP codes
+    const matched = filterByZip(firms, normalizedZip);
+
     // Map database rows to the frontend Prospect shape
-    const results: Prospect[] = firms.map((firm) => ({
+    const results: Prospect[] = matched.map((firm) => ({
       id: firm.id,
       firmName: firm.firmName,
       zip: firm.zip,

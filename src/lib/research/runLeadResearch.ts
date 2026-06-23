@@ -9,6 +9,7 @@ import { isUseful, extractEmails, normalizeWebsite, pickContactLink, normalizePr
 import { getSearchProvider } from "./searchProviders";
 import { extractPageContent } from "./extract";
 import zipcodes from "zipcodes";
+import { filterByZip } from "../../utils/prospectMatcher";
 
 import { SearchResult } from "./searchProviders/types";
 export type { SearchResult };
@@ -132,7 +133,10 @@ export async function runLeadResearch(
         dedupedFirmsMap.set(key, firm);
       }
     }
-    finalCandidates = Array.from(dedupedFirmsMap.values());
+    const beforeCount = Array.from(dedupedFirmsMap.values()).length;
+    finalCandidates = filterByZip(Array.from(dedupedFirmsMap.values()), zipCode);
+    const droppedCount = beforeCount - finalCandidates.length;
+    console.log(`[research] ${beforeCount} discovered, ${finalCandidates.length} in ZIP ${zipCode}, ${droppedCount} out-of-ZIP dropped before enrichment.`);
   } else {
     // 1. Gather web search context and track whether it succeeded
     const providerName = provider.constructor.name === "TavilySearchProvider" ? "Tavily Search" : "DuckDuckGo HTML";
