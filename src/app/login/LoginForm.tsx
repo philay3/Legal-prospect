@@ -1,7 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useReducer, useRef, useEffect } from "react";
 import Link from "next/link";
+import {
+  createInitialOtpState,
+  otpReducer,
+  otpValue,
+} from "@/utils/otpInput";
 
 export interface LoginFormProps {
   mode?: "login" | "signup";
@@ -9,21 +14,34 @@ export interface LoginFormProps {
 
 export function LoginForm({ mode = "login" }: LoginFormProps) {
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
   const [step, setStep] = useState<1 | 2>(1);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleRequestCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmedEmail = email.trim();
+  const [otp, dispatch] = useReducer(otpReducer, undefined, createInitialOtpState);
+  const code = otpValue(otp);
+
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    if (step === 2) {
+      const activeInput = inputRefs.current[otp.focus];
+      if (activeInput) {
+        activeInput.focus();
+        activeInput.select();
+      }
+    }
+  }, [otp.focus, step]);
+
+  const sendCode = async (emailVal: string) => {
+    const trimmedEmail = emailVal.trim();
     if (!trimmedEmail) {
       setError("Please enter your email address.");
-      return;
+      return false;
     }
     if (!trimmedEmail.includes("@")) {
       setError("Please enter a valid email address.");
-      return;
+      return false;
     }
 
     setError(null);
@@ -38,13 +56,23 @@ export function LoginForm({ mode = "login" }: LoginFormProps) {
 
       if (!response.ok) {
         setError("We could not complete the request. Please try again.");
+        return false;
       } else {
-        setStep(2);
+        return true;
       }
     } catch (err) {
       setError("We could not complete the request. Please try again.");
+      return false;
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRequestCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const success = await sendCode(email);
+    if (success) {
+      setStep(2);
     }
   };
 
@@ -83,90 +111,128 @@ export function LoginForm({ mode = "login" }: LoginFormProps) {
     }
   };
 
+  const handleResend = async () => {
+    if (isLoading) return;
+    dispatch({ type: "reset" });
+    await sendCode(email);
+  };
+
+  const handleDifferentEmail = () => {
+    setStep(1);
+    dispatch({ type: "reset" });
+    setError(null);
+  };
+
   return (
-    <div className="search-card" style={{ maxWidth: "400px", width: "100%", margin: "0 auto" }}>
+    <div className="auth-card">
+      <div className="auth-badge">
+        <span className="auth-badge-dot" />
+        <span className="auth-badge-text">PASSWORDLESS</span>
+      </div>
+
       {step === 1 ? (
         <form onSubmit={handleRequestCode}>
-          <h2 className="results-title" style={{ marginBottom: "1rem", fontSize: "1.5rem" }}>
-            {mode === "signup" ? "Create your account" : "Sign In"}
+          <h2 className="auth-title">
+            {mode === "signup" ? "Create your account" : "Sign in"}
           </h2>
-          <p className="placeholder-desc" style={{ marginBottom: "1.5rem", textAlign: "left" }}>
+          <p className="auth-subtext">
             {mode === "signup"
               ? "Enter your email to get started."
-              : "Enter your email address below to receive a secure one-time login code."}
+              : "Enter your work email and we'll send you a one-time code. No password needed."}
           </p>
 
-          <label className="search-label" htmlFor="email-input" style={{ display: "block", marginBottom: "0.5rem" }}>
-            Email Address
+          <label className="auth-label" htmlFor="email-input">
+            Work email
           </label>
-          <div className="search-group" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-            <input
-              id="email-input"
-              type="email"
-              className="search-input"
-              placeholder="name@example.com"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (error) setError(null);
-              }}
-              disabled={isLoading}
-            />
-            <button type="submit" className="search-button" disabled={isLoading} style={{ width: "100%" }}>
-              {isLoading ? "Sending..." : (mode === "signup" ? "Send Signup Code" : "Send Login Code")}
-            </button>
-          </div>
+          <input
+            id="email-input"
+            type="email"
+            className="auth-input"
+            placeholder="you@firm.com"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (error) setError(null);
+            }}
+            disabled={isLoading}
+          />
+          <button type="submit" className="auth-btn" disabled={isLoading}>
+            {isLoading ? "Sending..." : (mode === "signup" ? "Send Signup Code" : "Send code")}
+          </button>
           {error && <div className="search-error">{error}</div>}
         </form>
       ) : (
         <form onSubmit={handleVerifyCode}>
-          <h2 className="results-title" style={{ marginBottom: "1rem", fontSize: "1.5rem" }}>Verify Code</h2>
-          <p className="placeholder-desc" style={{ marginBottom: "1.5rem", textAlign: "left", color: "#10b981" }}>
-            {mode === "signup"
-              ? "We've sent a verification code to your email."
-              : "If that email is approved, we've sent a code."}
+          <h2 className="auth-title">Enter your code</h2>
+          <p className="auth-subtext">
+            We sent a 6-digit code to <span>{email}</span>
           </p>
 
-          <label className="search-label" htmlFor="code-input" style={{ display: "block", marginBottom: "0.5rem" }}>
+          <label className="auth-label">
             6-Digit Code
           </label>
-          <div className="search-group" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-            <input
-              id="code-input"
-              type="text"
-              className="search-input"
-              placeholder="000000"
-              maxLength={6}
-              value={code}
-              onChange={(e) => {
-                setCode(e.target.value);
-                if (error) setError(null);
-              }}
+          <div className="auth-code-row">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <input
+                key={i}
+                ref={(el) => {
+                  inputRefs.current[i] = el;
+                }}
+                type="text"
+                inputMode="numeric"
+                maxLength={1}
+                value={otp.digits[i]}
+                aria-label={`Digit ${i + 1} of 6`}
+                disabled={isLoading}
+                autoComplete={i === 0 ? "one-time-code" : undefined}
+                className={`auth-code-box ${otp.digits[i] ? "filled" : ""}`}
+                onChange={(e) => {
+                  dispatch({ type: "type", index: i, value: e.target.value });
+                  if (error) setError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Backspace") {
+                    dispatch({ type: "backspace", index: i });
+                    if (error) setError(null);
+                  }
+                }}
+                onPaste={(e) => {
+                  const text = e.clipboardData.getData("text");
+                  e.preventDefault();
+                  dispatch({ type: "paste", index: i, text });
+                  if (error) setError(null);
+                }}
+              />
+            ))}
+          </div>
+
+          <button type="submit" className="auth-btn" disabled={isLoading}>
+            {isLoading ? "Verifying..." : (mode === "signup" ? "Verify & Create Account" : "Sign in")}
+          </button>
+
+          <div className="auth-code-actions">
+            <button
+              type="button"
+              className="auth-link-btn resend"
+              onClick={handleResend}
               disabled={isLoading}
-              style={{ letterSpacing: "0.25em", textAlign: "center", fontSize: "1.2rem" }}
-            />
-            <button type="submit" className="search-button" disabled={isLoading} style={{ width: "100%" }}>
-              {isLoading ? "Verifying..." : (mode === "signup" ? "Verify & Create Account" : "Verify & Sign In")}
+            >
+              Resend code
             </button>
             <button
               type="button"
-              onClick={() => {
-                setStep(1);
-                setCode("");
-                setError(null);
-              }}
-              className="prospect-toggle-btn"
-              style={{ alignSelf: "center", marginTop: "0.5rem" }}
+              className="auth-link-btn different-email"
+              onClick={handleDifferentEmail}
               disabled={isLoading}
             >
-              ← Back to Email
+              Use a different email
             </button>
           </div>
           {error && <div className="search-error">{error}</div>}
         </form>
       )}
 
-      <div style={{ marginTop: "1rem", textAlign: "center", borderTop: "1px solid var(--card-border)", paddingTop: "1rem", fontSize: "0.85rem" }}>
+      <div style={{ marginTop: "1.5rem", textAlign: "center", borderTop: "1px solid var(--border)", paddingTop: "1.5rem", fontSize: "0.85rem" }}>
         {mode === "login" ? (
           <p style={{ color: "var(--text-muted, #9ca3af)" }}>
             Need an account?{" "}

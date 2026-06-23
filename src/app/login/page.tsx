@@ -15,12 +15,9 @@ export default async function LoginPage() {
   }
 
   return (
-    <div className="app-wrapper" style={{ justifyContent: "center", minHeight: "60vh", maxWidth: "480px" }}>
-      <header className="header" style={{ marginBottom: "2rem" }}>
-        <h1 className="title">Legal Prospector</h1>
-        <p className="subtitle">Sign in to manage your prospecting database.</p>
-      </header>
+    <div className="app-wrapper" style={{ display: "flex", flexDirection: "column", justifyContent: "center", minHeight: "60vh", maxWidth: "400px", margin: "auto" }}>
       <LoginForm />
     </div>
   );
 }
+
