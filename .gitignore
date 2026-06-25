@@ -46,3 +46,6 @@ next-env.d.ts
 
 /src/generated/prisma
 
+
+# generated source dumps (re-uploaded to project knowledge, not committed)
+*-dump.txt
