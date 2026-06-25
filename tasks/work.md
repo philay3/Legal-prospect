@@ -2917,5 +2917,68 @@ Check that:
 
 Update `task/current-task.md` for the next planned phase.
 
+---
+
+## 2026-06-24 — Phase 1 Evidence Model & Research Audit Logging
+
+### Task Summary
+
+Implemented Phase 1 of the evidence model and research audit logging. Added ResearchRun and WebsiteCheck tables to schema, implemented attempt classification and sequential attempts-tracking in page extraction dispatcher, updated discovery research loop to collect and return attempts per firm, created persistResearchAudit helper to record runs and website checks in the database, and wired the call to prospects search API.
+
+### Files Created
+
+- `src/lib/db/persistResearchAudit.ts` — persists ResearchRun and associated WebsiteCheck rows to database in a best-effort, safe manner.
+
+### Files Changed
+
+- `prisma/schema.prisma` — added enums ResearchTrigger, FetchProvider, CheckOutcome, added ResearchRun and WebsiteCheck models, added relation to Firm.
+- `src/lib/research/extract.ts` — implemented classifyAttempt and attempts-tracking sibling dispatcher extractPageContentWithAttempts.
+- `src/lib/research/runLeadResearch.ts` — updated return signature, collected and returned timestamps and attempts per firm.
+- `src/app/api/prospects/search/route.ts` — wired best-effort persistResearchAudit execution after save/read-back.
+- `tasks/work.md` — logged this session's progress.
+
+### What Changed
+
+- Created database models for auditing research runs and individual provider checks.
+- Captured outcomes and httpStatus for each attempt in Jina-first/direct/Tavily extraction pipelines.
+- Resolved firm IDs by exact trimmed name during audit log database write.
+- Enabled best-effort execution of logging database queries that catches all internal errors to guarantee that auditing failures never break lead search.
+
+### Why It Changed
+
+To establish a durable audit trail of where research passes went and what each page fetch attempt returned.
+
+### Commands Suggested
+
+```bash
+npx tsc --noEmit
+npx vitest run
+```
+
+### Commands Run by Human
+
+```bash
+npx prisma migrate dev --create-only --name add_research_runs
+npx prisma migrate dev
+```
+
+### Results Pasted by Human
+
+The migrations were successfully created and applied to Neon DB.
+
+### Verification
+
+1. Run verification commands to ensure no TypeScript or test regressions.
+2. Run a lead search on home page for a fresh ZIP and check that ResearchRun and WebsiteCheck rows are successfully created in PostgreSQL.
+
+### Known Risks
+
+No known risks. Database queries are fully wrapped to prevent errors from crashing search operations.
+
+### Next Recommended Step
+
+Update `task/current-task.md` to define Phase 2: Evidence model predictions, data points, and email clobbering updates.
+
+
 
 

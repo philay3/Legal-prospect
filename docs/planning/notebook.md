@@ -101,3 +101,16 @@ Chops wants to hide **every firm email** behind login, so the email — the high
 
 ### New loose thread
 - **Dev-only "log the code" hack must not ship.** The agent suggested `console.log`-ing the login code in development to skip the email round-trip. Fine locally, but it can never reach production — a logged code is a logged credential. Watch for it when reviewing the login routes.
+
+## June 24, 2026 — practice-area read migration + dupe finding
+- Shipped: practice-area reads moved onto the normalized tables behind a shared
+  include + projection (src/lib/practiceAreas.ts). Idempotent backfill closed the
+  142-firm gap (2622 = 2622). 314 tests pass. Reversible; String[] kept.
+- Found: case-variant dupes on screen ("Elder law"/"Elder Law"). Cause = historical
+  non-canonical PracticeArea rows the additive backfill could not fix, plus the
+  backfill's locally copied canonicalizer. Current save path canonicalizes fine.
+- Two-layer split: (a) case variants, fixable now, see practice-area-dedup-cleanup.md;
+  (b) "and" vs "&", slash, compound-phrase long tail, needs a stronger canonicalizer
+  and is the prerequisite for a practice-area filter. Not Phase 2.
+- Lessons now in guardrails: single source of truth for helpers; never tsc a single
+  file (use tsx); an additive backfill closes gaps but does not fix bad rows.

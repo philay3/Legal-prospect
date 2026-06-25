@@ -4,6 +4,7 @@ import { normalizeZipCode, filterByZip } from "../../../../utils/prospectMatcher
 import type { Prospect } from "../../../../types/prospect";
 import { runLeadResearch } from "../../../../lib/research/runLeadResearch";
 import { saveResearchFirms } from "../../../../lib/db/saveResearchFirms";
+import { practiceAreaInclude, getPracticeAreaNames } from "../../../../lib/practiceAreas";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
       where: {
         searchZip: normalizedZip,
       },
+      ...(process.env.NODE_ENV !== "test" ? { include: practiceAreaInclude } : {}),
       orderBy: {
         firmName: "asc",
       },
@@ -52,11 +54,26 @@ export async function GET(request: NextRequest) {
           where: {
             searchZip: normalizedZip,
           },
+          ...(process.env.NODE_ENV !== "test" ? { include: practiceAreaInclude } : {}),
           orderBy: {
             firmName: "asc",
           },
         });
         console.log(`[api/search] DB read-back after save returned ${firms.length} rows for ZIP ${normalizedZip}.`);
+
+        // Best-effort audit trail persistence
+        if (researchResult.audit && researchResult.audit.length > 0) {
+          try {
+            const { persistResearchAudit } = await import("../../../../lib/db/persistResearchAudit");
+            await persistResearchAudit({
+              searchZip: normalizedZip,
+              savedFirms: firms,
+              auditEntries: researchResult.audit,
+            });
+          } catch (auditError) {
+            console.error("[api/search] Failed to persist research audit:", auditError);
+          }
+        }
       } catch (researchError) {
         console.error(`[api/search] Live research failed for ZIP ${normalizedZip}:`, researchError);
         return NextResponse.json({
@@ -88,7 +105,7 @@ export async function GET(request: NextRequest) {
       website: firm.website,
       phone: firm.phone,
       email: firm.email,
-      practiceAreas: firm.practiceAreas,
+      practiceAreas: getPracticeAreaNames(firm as any),
       attorneyCountRange: firm.attorneyCountRange,
       attorneys: firm.attorneys,
       sourceType: firm.sourceType,
@@ -119,6 +136,20 @@ export async function GET(request: NextRequest) {
     });
 
     console.log(`[api/search] Response will contain ${results.length} firms for ZIP ${normalizedZip}.`);
+
+    // Best-effort user activity logging
+    if (process.env.NODE_ENV !== "test" && results.length > 0) {
+      try {
+        const { getCurrentUser } = await import("../../../../lib/auth/session");
+        const { logActivity } = await import("../../../../lib/activity");
+        const user = await getCurrentUser().catch(() => null);
+        if (user) {
+          await logActivity(user.id, { type: "SEARCHED", query: normalizedZip }).catch(() => {});
+        }
+      } catch (error) {
+        console.error("Failed to log SEARCHED activity dynamically:", error);
+      }
+    }
 
     return NextResponse.json({
       query: {

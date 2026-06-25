@@ -60,6 +60,8 @@ model Firm {
   updatedAt          DateTime           @updatedAt
   searchZip          String?
   savedLeads         SavedLead[]
+  activities         Activity[]
+  researchRuns       ResearchRun[]
 
   @@index([zip])
   @@index([city, state])
@@ -109,6 +111,7 @@ model User {
   sessions    Session[]
   savedLeads  SavedLead[]
   feedback    Feedback[]
+  activities  Activity[]
 }
 
 model LoginCode {
@@ -135,12 +138,19 @@ model Session {
   @@index([userId])
 }
 
+enum LeadStatus {
+  ACTIVE
+  WON
+  LOST
+}
+
 model SavedLead {
-  id        String   @id @default(uuid())
+  id        String     @id @default(uuid())
   userId    String
   firmId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status    LeadStatus @default(ACTIVE)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   firm Firm @relation(fields: [firmId], references: [id], onDelete: Cascade)
@@ -157,4 +167,75 @@ model Feedback {
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
+
+enum ActivityType {
+  SEARCHED
+  SAVED
+  WON
+  LOST
+}
+
+model Activity {
+  id        String       @id @default(uuid())
+  userId    String
+  type      ActivityType
+  firmId    String?      // set for SAVED / WON / LOST; null for SEARCHED
+  query     String?      // the ZIP for SEARCHED; null for firm events
+  count     Int?
+  createdAt DateTime     @default(now())
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firm Firm? @relation(fields: [firmId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+}
+
+enum ResearchTrigger {
+  DISCOVERY
+  SAVE
+  SCHEDULED
+}
+
+enum FetchProvider {
+  JINA
+  DIRECT
+  TAVILY
+}
+
+enum CheckOutcome {
+  SUCCESS
+  EMPTY
+  ERROR
+}
+
+model ResearchRun {
+  id            String          @id @default(uuid())
+  firm          Firm?           @relation(fields: [firmId], references: [id], onDelete: SetNull)
+  firmId        String?
+  firmName      String?         // denormalized, kept even if firmId could not resolve
+  searchZip     String?
+  trigger       ResearchTrigger
+  startedAt     DateTime
+  finishedAt    DateTime?
+  createdAt     DateTime        @default(now())
+  websiteChecks WebsiteCheck[]
+
+  @@index([firmId])
+  @@index([searchZip])
+}
+
+model WebsiteCheck {
+  id            String        @id @default(uuid())
+  researchRun   ResearchRun   @relation(fields: [researchRunId], references: [id], onDelete: Cascade)
+  researchRunId String
+  url           String
+  provider      FetchProvider
+  httpStatus    Int?          // null when the failure carried no status (e.g. an abort)
+  outcome       CheckOutcome
+  errorMessage  String?
+  createdAt     DateTime      @default(now())
+
+  @@index([researchRunId])
+}
+
 

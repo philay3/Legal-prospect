@@ -7,7 +7,14 @@ import { buildResearchPrompt, buildEnrichmentPrompt } from "./buildResearchPromp
 import { parseResearchResponse, parseEnrichmentResponse, ValidatedResearchResponse } from "./parseResearchResponse";
 import { isUseful, extractEmails, normalizeWebsite, pickContactLink, normalizePracticeAreas, isInSearchedState, getFirmsToEnrich } from "./sanitize";
 import { getSearchProvider } from "./searchProviders";
-import { extractPageContent } from "./extract";
+import { extractPageContent, extractPageContentWithAttempts, WebsiteCheckAttempt } from "./extract";
+
+export interface ResearchAuditEntry {
+  firmName: string;
+  startedAt: Date;
+  finishedAt: Date;
+  attempts: WebsiteCheckAttempt[];
+}
 import zipcodes from "zipcodes";
 import { filterByZip } from "../../utils/prospectMatcher";
 
@@ -99,7 +106,7 @@ function getTemperature(model: string, defaultVal: number) {
 export async function runLeadResearch(
   zipCode: string,
   mode: "quick" | "thorough" = "quick"
-): Promise<ValidatedResearchResponse> {
+): Promise<ValidatedResearchResponse & { audit?: ResearchAuditEntry[] }> {
   const startedAt = Date.now();
   console.log(`[research] Starting ${mode} research for ZIP ${zipCode}`);
 
@@ -246,16 +253,19 @@ ${searchContextResult.context}
 
   const enrichedMap = new Map<string, any>();
   const openai = new OpenAI({ apiKey });
+  const auditEntries: ResearchAuditEntry[] = [];
 
   // Implement individual enrichment with 10s timeout, safety catch, and concurrency limit of 3
   const enrichFirm = async (firm: any) => {
     const key = firm.firm_name.replace(/\s+/g, " ").trim().toLowerCase();
+    const firmStartedAt = new Date();
+    const attempts: WebsiteCheckAttempt[] = [];
+    let urlToFetch = normalizeWebsite(firm.website);
     try {
       return await withTimeout(
         (async () => {
           console.log(`[enrichment] Enriching firm: ${firm.firm_name}`);
           
-          let urlToFetch = normalizeWebsite(firm.website);
           let searchResults: SearchResult[] = [];
 
           if (!urlToFetch) {
@@ -268,19 +278,28 @@ ${searchContextResult.context}
           let combinedText = "";
 
           if (urlToFetch) {
+            let targetUrl = urlToFetch;
             try {
-              // Choose target URL for page extraction
-              let targetUrl = urlToFetch;
               if (searchResults.length > 0) {
                 const candidateUrls = searchResults.map(r => r.url);
                 targetUrl = pickContactLink(urlToFetch, candidateUrls) || urlToFetch;
               }
               
               console.log(`[enrichment] Best contact/about URL chosen for ${firm.firm_name}: ${targetUrl}`);
-              const pageText = await extractPageContent(targetUrl);
+              const { text: pageText, attempts: pageAttempts } = await extractPageContentWithAttempts(targetUrl);
+              attempts.push(...pageAttempts);
               combinedText = `[Page Content (${targetUrl})]:\n${pageText}`;
             } catch (e: any) {
               console.log(`[enrichment] Page extraction failed for ${firm.firm_name}: ${e.message || e}`);
+              if (attempts.length === 0) {
+                attempts.push({
+                  provider: "TAVILY",
+                  url: targetUrl,
+                  httpStatus: null,
+                  outcome: "ERROR",
+                  errorMessage: e.message || String(e),
+                });
+              }
             }
           }
 
@@ -394,6 +413,22 @@ ${searchContextResult.context}
     } catch (err: any) {
       Z++;
       console.log(`[enrichment] Firm enrichment failed: ${firm.firm_name} - ${err.message || err}`);
+      if (urlToFetch && attempts.length === 0) {
+        attempts.push({
+          provider: "TAVILY",
+          url: urlToFetch,
+          httpStatus: null,
+          outcome: "ERROR",
+          errorMessage: err.message || String(err),
+        });
+      }
+    } finally {
+      auditEntries.push({
+        firmName: firm.firm_name,
+        startedAt: firmStartedAt,
+        finishedAt: new Date(),
+        attempts,
+      });
     }
   };
 
@@ -505,6 +540,7 @@ ${searchContextResult.context}
   return {
     zip_code: zipCode,
     firms: finalFirms,
+    audit: auditEntries,
   };
 }
 

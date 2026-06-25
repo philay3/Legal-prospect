@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth/session";
-import { listSavedLeads } from "@/lib/leads";
-import { ResultsTable } from "@/components/ResultsTable";
+import { listSavedLeads, getPipelineCounts } from "@/lib/leads";
+import { getPracticeAreaNames } from "@/lib/practiceAreas";
+import { SavedLeadsClientPage } from "@/components/SavedLeadsClientPage";
 import type { Prospect } from "@/types/prospect";
 import type { Metadata } from "next";
-import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Saved Leads - Legal Prospector",
@@ -17,7 +18,11 @@ export default async function LeadsPage() {
     redirect("/login");
   }
 
-  const saved = await listSavedLeads(user.id);
+  // Load all saved leads and status pipeline counts from DB
+  const [saved, counts] = await Promise.all([
+    listSavedLeads(user.id),
+    getPipelineCounts(user.id),
+  ]);
 
   const prospects: Prospect[] = saved.map((item) => ({
     id: item.firm.id, // Explicit database ID mapping
@@ -31,7 +36,7 @@ export default async function LeadsPage() {
     website: item.firm.website,
     phone: item.firm.phone,
     email: item.firm.email,
-    practiceAreas: item.firm.practiceAreas,
+    practiceAreas: getPracticeAreaNames(item.firm),
     attorneyCountRange: item.firm.attorneyCountRange,
     attorneys: item.firm.attorneys,
     sourceType: item.firm.sourceType,
@@ -40,6 +45,7 @@ export default async function LeadsPage() {
     verificationStatus: item.firm.verificationStatus,
     lastCheckedDate: item.firm.lastCheckedDate ? item.firm.lastCheckedDate.toISOString() : null,
     globalNotes: item.firm.globalNotes,
+    status: item.status,
   }));
 
   const savedFirmIds = prospects.map((p) => p.id);
@@ -57,31 +63,29 @@ export default async function LeadsPage() {
         </p>
       </header>
 
-      {prospects.length > 0 ? (
-        <section className="results-section">
-          <ResultsTable
-            prospects={prospects}
-            removeOnUnsave={true}
-            initialSignedIn={true}
-            initialSavedFirmIds={savedFirmIds}
-            variant="leads"
-          />
-        </section>
-      ) : (
-        <main className="search-card" style={{ padding: "2.5rem 2rem", textAlign: "center" }}>
-          <span className="placeholder-icon" style={{ fontSize: "2rem", marginBottom: "1rem", display: "block" }}>🔖</span>
-          <h3 className="placeholder-title" style={{ fontSize: "1.2rem", marginBottom: "0.5rem" }}>No Saved Leads Yet</h3>
-          <p className="placeholder-desc" style={{ marginBottom: "1.5rem", maxWidth: "450px", margin: "0 auto 1.5rem" }}>
-            Firms you bookmark during your searches will be listed here.
-          </p>
-          
-          <div style={{ display: "flex", justifyContent: "center", marginTop: "1rem" }}>
-            <Link href="/" className="search-button" style={{ textDecoration: "none" }}>
-              Start Searching
-            </Link>
+      {/* 
+        Wrap searchParams client component in Suspense boundary 
+        to ensure safety during static generation.
+      */}
+      <Suspense
+        fallback={
+          <div
+            style={{
+              textAlign: "center",
+              color: "var(--text-muted)",
+              marginTop: "2rem",
+            }}
+          >
+            Loading saved leads...
           </div>
-        </main>
-      )}
+        }
+      >
+        <SavedLeadsClientPage
+          initialLeads={prospects}
+          counts={counts}
+          savedFirmIds={savedFirmIds}
+        />
+      </Suspense>
     </div>
   );
 }

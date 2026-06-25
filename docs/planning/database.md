@@ -143,3 +143,11 @@ There is no `@@unique` on `Firm`; dedupe is application-level. `saveResearchFirm
 - `Session.tokenHash` and `LoginCode.codeHash` store hashed values, never the raw token or code. `Session.tokenHash` is `@unique`.
 - `LoginCode` is keyed by `email` (indexed) with no foreign key to `User`, because codes are requested before a user is confirmed. It tracks `expiresAt`, `usedAt`, and `attemptCount`.
 - `Feedback.userId` is nullable with `onDelete: SetNull`, so deleting a user detaches their feedback rather than removing it. `choice` holds the selected widget option; there is no email field.
+
+###
+
+Practice-area reads come from the normalized PracticeArea and FirmPracticeArea
+tables via src/lib/practiceAreas.ts (practiceAreaInclude + getPracticeAreaNames),
+sorted and de-duplicated. Firm.practiceAreas String[] is retained as the backfill
+source and a fallback, not read in the app. Attorneys still read Firm.attorneys
+String[]. Reverting is switching the two read sites back to the array.

@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Prospect } from "@/types/prospect";
+import { type LeadStatus } from "@/utils/leadStatus";
 import { getPageCount, getPageItems, getPageWindow } from "@/utils/pagination";
 import { capAttorneys } from "@/utils/attorneys";
 import { toCsv } from "@/utils/toCsv";
@@ -527,6 +528,34 @@ export function ResultsTable({
     }
   };
 
+  const handleSetStatus = async (firmId: string, status: LeadStatus) => {
+    // Save previous state for reverting on error
+    const prevProspects = [...localProspects];
+
+    // Optimistic update
+    setLocalProspects((prev) =>
+      prev.map((p) => (p.id === firmId ? { ...p, status } : p))
+    );
+
+    try {
+      const response = await fetch("/api/leads", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ firmId, status }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update status");
+      }
+    } catch (err) {
+      console.error("Error setting lead status:", err);
+      // Revert optimistic change
+      setLocalProspects(prevProspects);
+    }
+  };
+
   const filteredProspects = useMemo(() => {
     if (removeOnUnsave) {
       return localProspects.filter((p) => savedFirmIds.has(p.id));
@@ -778,6 +807,44 @@ export function ResultsTable({
                       </button>
                     )}
                   </div>
+                  {variant === "leads" && (
+                    <div style={{ marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      <span className={`lead-status ${prospect.status?.toLowerCase() || "active"}`}>
+                        {prospect.status || "ACTIVE"}
+                      </span>
+                      <div className="status-actions-container">
+                        {prospect.status === "ACTIVE" || !prospect.status ? (
+                          <>
+                            <button
+                              type="button"
+                              className="status-action-btn won-btn"
+                              onClick={() => handleSetStatus(prospect.id, "WON")}
+                              title="Mark Won"
+                            >
+                              Won
+                            </button>
+                            <button
+                              type="button"
+                              className="status-action-btn lost-btn"
+                              onClick={() => handleSetStatus(prospect.id, "LOST")}
+                              title="Mark Lost"
+                            >
+                              Lost
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            className="status-action-btn active-btn"
+                            onClick={() => handleSetStatus(prospect.id, "ACTIVE")}
+                            title="Reopen"
+                          >
+                            Reopen
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </td>
                 <td className="email-cell mono">
                   {prospect.email ? (

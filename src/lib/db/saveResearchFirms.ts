@@ -1,5 +1,5 @@
 import prisma from "../prisma";
-import { isUseful, sanitizeFirm, sanitizeText, normalizePracticeAreas } from "../research/sanitize";
+import { isUseful, sanitizeFirm, sanitizeText, normalizePracticeAreas, toCanonicalPracticeArea } from "../research/sanitize";
 import zipcodes from "zipcodes";
 
 export interface ResearchFirmInput {
@@ -19,22 +19,6 @@ export interface ResearchFirmInput {
   lng?: number | null;
   sourceType?: string | null;
   isUS?: boolean;
-}
-
-/**
- * Normalizes a single practice area name to a canonical casing (Title Case, preserving acronyms).
- */
-export function toCanonicalPracticeArea(name: string): string {
-  const clean = name.replace(/\s+/g, " ").trim();
-  return clean
-    .split(" ")
-    .map((word) => {
-      if (word.toUpperCase() === word && word.length <= 3) {
-        return word;
-      }
-      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-    })
-    .join(" ");
 }
 
 /**

@@ -296,6 +296,23 @@ export function normalizePracticeAreas(
   return out;
 }
 
+/**
+ * Normalizes a single practice area name to a canonical casing (Title Case, preserving acronyms).
+ */
+export function toCanonicalPracticeArea(name: string): string {
+  const clean = name.replace(/\s+/g, " ").trim();
+  return clean
+    .split(" ")
+    .map((word) => {
+      if (word.toUpperCase() === word && word.length <= 3) {
+        return word;
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(" ");
+}
+
+
 const STATE_NAME_TO_CODE: Record<string, string> = {
   alabama: "AL", alaska: "AK", arizona: "AZ", arkansas: "AR", california: "CA",
   colorado: "CO", connecticut: "CT", delaware: "DE", florida: "FL", georgia: "GA",

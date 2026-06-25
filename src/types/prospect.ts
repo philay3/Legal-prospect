@@ -1,3 +1,5 @@
+import type { LeadStatus } from "../utils/leadStatus";
+
 export type ConfidenceLevel = "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
 
 export type VerificationStatus =
@@ -35,5 +37,6 @@ export interface Prospect {
   verificationStatus: VerificationStatus;
   lastCheckedDate?: string | null;
   globalNotes: string | null;
+  status?: LeadStatus;
 }
 

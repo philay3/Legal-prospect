@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { GET, POST, DELETE } from "./route";
+import { GET, POST, DELETE, PATCH } from "./route";
 import { NextRequest } from "next/server";
 import { getCurrentUser } from "../../../lib/auth/session";
-import { saveLead, unsaveLead, getSavedFirmIds } from "../../../lib/leads";
+import { saveLead, unsaveLead, getSavedFirmIds, setLeadStatus } from "../../../lib/leads";
 
 vi.mock("../../../lib/auth/session", () => ({
   getCurrentUser: vi.fn(),
@@ -15,6 +15,7 @@ vi.mock("../../../lib/leads", () => ({
   saveLead: vi.fn(),
   unsaveLead: vi.fn(),
   getSavedFirmIds: vi.fn(),
+  setLeadStatus: vi.fn(),
 }));
 
 describe("API /api/leads route handlers", () => {
@@ -199,6 +200,95 @@ describe("API /api/leads route handlers", () => {
       expect(data).toEqual({ ok: true, removed: 2 });
       expect(unsaveLead).toHaveBeenCalledWith("user-1", "firm-1");
       expect(unsaveLead).toHaveBeenCalledWith("user-1", "firm-3");
+    });
+  });
+
+  describe("PATCH", () => {
+    it("should return 401 if user is signed out", async () => {
+      vi.mocked(getCurrentUser).mockResolvedValue(null);
+
+      const request = new NextRequest("http://localhost/api/leads", {
+        method: "PATCH",
+        body: JSON.stringify({ firmId: "firm-1", status: "WON" }),
+      });
+
+      const response = await PATCH(request);
+      expect(response.status).toBe(401);
+      const data = await response.json();
+      expect(data.error).toBe("Unauthorized");
+      expect(setLeadStatus).not.toHaveBeenCalled();
+    });
+
+    it("should return 400 if JSON body is invalid", async () => {
+      vi.mocked(getCurrentUser).mockResolvedValue({ id: "user-1" } as any);
+
+      const request = new NextRequest("http://localhost/api/leads", {
+        method: "PATCH",
+        body: "{invalid-json",
+      });
+
+      const response = await PATCH(request);
+      expect(response.status).toBe(400);
+      const data = await response.json();
+      expect(data.error).toBe("Invalid JSON body");
+    });
+
+    it("should return 400 if firmId is invalid", async () => {
+      vi.mocked(getCurrentUser).mockResolvedValue({ id: "user-1" } as any);
+
+      const request = new NextRequest("http://localhost/api/leads", {
+        method: "PATCH",
+        body: JSON.stringify({ status: "WON" }),
+      });
+
+      const response = await PATCH(request);
+      expect(response.status).toBe(400);
+      const data = await response.json();
+      expect(data.error).toContain("firmId is required");
+    });
+
+    it("should return 400 if status is invalid", async () => {
+      vi.mocked(getCurrentUser).mockResolvedValue({ id: "user-1" } as any);
+
+      const request = new NextRequest("http://localhost/api/leads", {
+        method: "PATCH",
+        body: JSON.stringify({ firmId: "firm-1", status: "invalid-status" }),
+      });
+
+      const response = await PATCH(request);
+      expect(response.status).toBe(400);
+      const data = await response.json();
+      expect(data.error).toContain("Invalid or missing status");
+    });
+
+    it("should return 400 if status is lowercase 'won'", async () => {
+      vi.mocked(getCurrentUser).mockResolvedValue({ id: "user-1" } as any);
+
+      const request = new NextRequest("http://localhost/api/leads", {
+        method: "PATCH",
+        body: JSON.stringify({ firmId: "firm-1", status: "won" }),
+      });
+
+      const response = await PATCH(request);
+      expect(response.status).toBe(400);
+      const data = await response.json();
+      expect(data.error).toContain("Invalid or missing status");
+    });
+
+    it("should set status and return ok and status on success", async () => {
+      vi.mocked(getCurrentUser).mockResolvedValue({ id: "user-1" } as any);
+      vi.mocked(setLeadStatus).mockResolvedValue({ count: 1 } as any);
+
+      const request = new NextRequest("http://localhost/api/leads", {
+        method: "PATCH",
+        body: JSON.stringify({ firmId: "firm-1", status: "WON" }),
+      });
+
+      const response = await PATCH(request);
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data).toEqual({ ok: true, status: "WON" });
+      expect(setLeadStatus).toHaveBeenCalledWith("user-1", "firm-1", "WON");
     });
   });
 });
