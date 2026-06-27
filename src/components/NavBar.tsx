@@ -30,12 +30,26 @@ export function NavBar({ user }: NavBarProps) {
         <div className="navbar-links">
           <Link
             href="/"
-            className={`navbar-link search-link ${isActive("/") ? "active" : ""}`}
+            className={`navbar-link ${isActive("/") ? "active" : ""}`}
           >
-            Search
+            Results
           </Link>
           {user ? (
-            <AvatarMenu user={user} />
+            <>
+              <Link
+                href="/leads"
+                className={`navbar-link ${isActive("/leads") ? "active" : ""}`}
+              >
+                Saved
+              </Link>
+              <Link
+                href="/dashboard"
+                className={`navbar-link ${isActive("/dashboard") ? "active" : ""}`}
+              >
+                Dashboard
+              </Link>
+              <AvatarMenu user={user} />
+            </>
           ) : (
             <Link
               href="/login"
@@ -49,3 +63,4 @@ export function NavBar({ user }: NavBarProps) {
     </nav>
   );
 }
+

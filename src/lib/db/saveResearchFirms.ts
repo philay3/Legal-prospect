@@ -1,5 +1,7 @@
 import prisma from "../prisma";
+import { generateUniqueSlug } from "../slug";
 import { isUseful, sanitizeFirm, sanitizeText, normalizePracticeAreas, toCanonicalPracticeArea } from "../research/sanitize";
+import { classifyContact, pickCurrentBest } from "../research/evidence";
 import zipcodes from "zipcodes";
 
 export interface ResearchFirmInput {
@@ -144,12 +146,10 @@ export async function saveResearchFirms(
           };
 
           if (isUseful(firm.address)) updateData.streetAddress = streetAddress;
-          if (isUseful(firm.phone)) updateData.phone = phone;
           if (isUseful(firm.website)) {
             updateData.website = website;
             updateData.sourceUrl = sourceUrl;
           }
-          if (isUseful(firm.email)) updateData.email = email;
           if (isUseful(firmCity)) updateData.city = firmCity;
           if (isUseful(firmState)) updateData.state = firmState;
           if (shouldOverrideLocation) {
@@ -166,6 +166,70 @@ export async function saveResearchFirms(
             ...(existing.practiceAreas ?? []),
             ...(firm.practiceAreas ?? firm.practice_areas ?? []),
           ]).map(toCanonicalPracticeArea);
+
+          // Save DataPoints first (best-effort, append-only) so they are included in the read
+          try {
+            if (isUseful(email)) {
+              const classification = classifyContact("EMAIL", email!, {
+                website,
+                sourceType: rawFirm.sourceType ?? null,
+              });
+              await prisma.dataPoint.create({
+                data: {
+                  firmId: existing.id,
+                  field: "EMAIL",
+                  value: email!,
+                  source: classification.source as any,
+                  confidence: classification.confidence,
+                },
+              });
+            }
+          } catch (e: any) {
+            console.error(`[datapoint] Failed to write email DataPoint for firm "${firmName}":`, e.message || e);
+          }
+
+          try {
+            if (isUseful(phone)) {
+              const classification = classifyContact("PHONE", phone!, {
+                website,
+                sourceType: rawFirm.sourceType ?? null,
+              });
+              await prisma.dataPoint.create({
+                data: {
+                  firmId: existing.id,
+                  field: "PHONE",
+                  value: phone!,
+                  source: classification.source as any,
+                  confidence: classification.confidence,
+                },
+              });
+            }
+          } catch (e: any) {
+            console.error(`[datapoint] Failed to write phone DataPoint for firm "${firmName}":`, e.message || e);
+          }
+
+          // Read EMAIL and PHONE DataPoints for this firm
+          const points = await prisma.dataPoint.findMany({
+            where: { firmId: existing.id },
+            select: { value: true, source: true, confidence: true, observedAt: true, field: true },
+          });
+
+          const emailPoints = points.filter((p) => p.field === "EMAIL");
+          const phonePoints = points.filter((p) => p.field === "PHONE");
+
+          const bestEmail = pickCurrentBest(emailPoints);
+          const bestPhone = pickCurrentBest(phonePoints);
+
+          if (bestEmail) {
+            updateData.email = bestEmail.value;
+            updateData.emailSource = bestEmail.source;
+            updateData.emailConfidence = bestEmail.confidence;
+          }
+          if (bestPhone) {
+            updateData.phone = bestPhone.value;
+            updateData.phoneSource = bestPhone.source;
+            updateData.phoneConfidence = bestPhone.confidence;
+          }
 
           await prisma.firm.update({
             where: { id: existing.id },
@@ -211,32 +275,55 @@ export async function saveResearchFirms(
           }
         } else {
           // Create a new firm record
-          const createdFirm = await prisma.firm.create({
-            data: {
-              firmName,
-              searchZip: zip,
-              zip: firmZip,
-              zipExt: firmZipExt,
-              city: firmCity,
-              state: firmState,
-              streetAddress,
+          const createDataPayload: any = {
+            firmName,
+            slug: await generateUniqueSlug(prisma),
+            searchZip: zip,
+            zip: firmZip,
+            zipExt: firmZipExt,
+            city: firmCity,
+            state: firmState,
+            streetAddress,
+            website,
+            phone,
+            email,
+            practiceAreas: normalizePracticeAreas(
+              firm.practiceAreas || firm.practice_areas
+            ).map(toCanonicalPracticeArea),
+            attorneyCountRange,
+            attorneys: mappedAttorneys,
+            sourceType: isPlaces ? "GOOGLE_MAPS" : "WEB_SCRAPE",
+            sourceUrl,
+            confidenceLevel: isPlaces ? "MEDIUM" : "UNKNOWN",
+            verificationStatus: "CANDIDATE",
+            lastCheckedDate: new Date(),
+            globalNotes: isPlaces 
+              ? "Discovered via Google Places API; pending review."
+              : "Discovered via live web research; pending review.",
+          };
+
+          let emailClassification: any = null;
+          if (isUseful(email)) {
+            emailClassification = classifyContact("EMAIL", email!, {
               website,
-              phone,
-              email,
-              practiceAreas: normalizePracticeAreas(
-                firm.practiceAreas || firm.practice_areas
-              ).map(toCanonicalPracticeArea),
-              attorneyCountRange,
-              attorneys: mappedAttorneys,
-              sourceType: isPlaces ? "GOOGLE_MAPS" : "WEB_SCRAPE",
-              sourceUrl,
-              confidenceLevel: isPlaces ? "MEDIUM" : "UNKNOWN",
-              verificationStatus: "CANDIDATE",
-              lastCheckedDate: new Date(),
-              globalNotes: isPlaces 
-                ? "Discovered via Google Places API; pending review."
-                : "Discovered via live web research; pending review.",
-            },
+              sourceType: rawFirm.sourceType ?? null,
+            });
+            createDataPayload.emailSource = emailClassification.source;
+            createDataPayload.emailConfidence = emailClassification.confidence;
+          }
+
+          let phoneClassification: any = null;
+          if (isUseful(phone)) {
+            phoneClassification = classifyContact("PHONE", phone!, {
+              website,
+              sourceType: rawFirm.sourceType ?? null,
+            });
+            createDataPayload.phoneSource = phoneClassification.source;
+            createDataPayload.phoneConfidence = phoneClassification.confidence;
+          }
+
+          const createdFirm = await prisma.firm.create({
+            data: createDataPayload,
           });
 
           // Save attorneys (dual-write)
@@ -272,6 +359,39 @@ export async function saveResearchFirms(
               data: links,
               skipDuplicates: true,
             });
+          }
+
+          // Save DataPoints best-effort
+          try {
+            if (isUseful(email) && emailClassification) {
+              await prisma.dataPoint.create({
+                data: {
+                  firmId: createdFirm.id,
+                  field: "EMAIL",
+                  value: email!,
+                  source: emailClassification.source as any,
+                  confidence: emailClassification.confidence,
+                },
+              });
+            }
+          } catch (e: any) {
+            console.error(`[datapoint] Failed to write email DataPoint for firm "${firmName}":`, e.message || e);
+          }
+
+          try {
+            if (isUseful(phone) && phoneClassification) {
+              await prisma.dataPoint.create({
+                data: {
+                  firmId: createdFirm.id,
+                  field: "PHONE",
+                  value: phone!,
+                  source: phoneClassification.source as any,
+                  confidence: phoneClassification.confidence,
+                },
+              });
+            }
+          } catch (e: any) {
+            console.error(`[datapoint] Failed to write phone DataPoint for firm "${firmName}":`, e.message || e);
           }
         }
       } catch (error) {

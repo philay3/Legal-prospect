@@ -4,11 +4,11 @@ import React from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { LeadStatusFilter } from "@/components/LeadStatusFilter";
-import { ResultsTable } from "@/components/ResultsTable";
-import type { Prospect } from "@/types/prospect";
+import { SavedLeadsLedger } from "@/components/SavedLeadsLedger";
+import type { SavedLeadRow } from "@/types/prospect";
 
 interface SavedLeadsClientPageProps {
-  initialLeads: Prospect[];
+  initialLeads: SavedLeadRow[];
   counts: {
     active: number;
     won: number;
@@ -52,53 +52,34 @@ export function SavedLeadsClientPage({
         return leadStatus.toLowerCase() === selected;
       });
 
+  // Zero leads case - empty pipeline
+  if (initialLeads.length === 0) {
+    return (
+      <div className="rl-empty-pipeline">
+        <h3 className="rl-empty-title">Your pipeline is empty</h3>
+        <p className="rl-empty-text">
+          Firms you bookmark during your searches will be listed here.
+        </p>
+        <Link href="/" className="rl-empty-action">
+          Find leads &rarr;
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="results-section">
-      <LeadStatusFilter
-        activeCount={counts.active}
-        wonCount={counts.won}
-        lostCount={counts.lost}
-        selected={selected}
-        onSelect={handleSelect}
-      />
-
-      {filteredLeads.length > 0 ? (
-        <ResultsTable
-          prospects={filteredLeads}
-          removeOnUnsave={true}
-          initialSignedIn={true}
-          initialSavedFirmIds={savedFirmIds}
-          variant="leads"
+      <div style={{ marginBottom: "20px" }}>
+        <LeadStatusFilter
+          activeCount={counts.active}
+          wonCount={counts.won}
+          lostCount={counts.lost}
+          selected={selected}
+          onSelect={handleSelect}
         />
-      ) : (
-        <main
-          className="search-card"
-          style={{ padding: "2.5rem 2rem", textAlign: "center" }}
-        >
-          <span
-            className="placeholder-icon"
-            style={{ fontSize: "2rem", marginBottom: "1rem", display: "block" }}
-          >
-            🔖
-          </span>
-          <h3 className="placeholder-title" style={{ fontSize: "1.2rem", marginBottom: "0.5rem" }}>
-            No {selected !== "all" ? selected : ""} Saved Leads Found
-          </h3>
-          <p
-            className="placeholder-desc"
-            style={{ marginBottom: "1.5rem", maxWidth: "450px", margin: "0 auto 1.5rem" }}
-          >
-            {selected === "all"
-              ? "Firms you bookmark during your searches will be listed here."
-              : `There are no saved leads currently marked as ${selected}.`}
-          </p>
-          <div style={{ display: "flex", justifyContent: "center", marginTop: "1rem" }}>
-            <Link href="/" className="search-button" style={{ textDecoration: "none" }}>
-              Start Searching
-            </Link>
-          </div>
-        </main>
-      )}
+      </div>
+
+      <SavedLeadsLedger leads={filteredLeads} selected={selected} />
     </div>
   );
 }

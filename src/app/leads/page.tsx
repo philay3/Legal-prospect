@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/session";
 import { listSavedLeads, getPipelineCounts } from "@/lib/leads";
 import { getPracticeAreaNames } from "@/lib/practiceAreas";
 import { SavedLeadsClientPage } from "@/components/SavedLeadsClientPage";
-import type { Prospect } from "@/types/prospect";
+import type { SavedLeadRow } from "@/types/prospect";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -24,7 +25,7 @@ export default async function LeadsPage() {
     getPipelineCounts(user.id),
   ]);
 
-  const prospects: Prospect[] = saved.map((item) => ({
+  const prospects: SavedLeadRow[] = saved.map((item) => ({
     id: item.firm.id, // Explicit database ID mapping
     firmName: item.firm.firmName,
     zip: item.firm.zip,
@@ -46,22 +47,26 @@ export default async function LeadsPage() {
     lastCheckedDate: item.firm.lastCheckedDate ? item.firm.lastCheckedDate.toISOString() : null,
     globalNotes: item.firm.globalNotes,
     status: item.status,
+    savedAt: item.createdAt.toISOString(),
+    statusChangedAt: item.updatedAt.toISOString(),
   }));
 
   const savedFirmIds = prospects.map((p) => p.id);
+  const total = counts.active + counts.won + counts.lost;
 
   return (
-    <div className="app-wrapper">
-      <header className="header">
-        <div className="badge">
-          <span className="pulse-dot"></span>
-          <span>Saved Leads</span>
+    <div className="app-wrapper rl-page">
+      <div className="rl-leads-header">
+        <div className="rl-leads-title-group">
+          <h1 className="rl-leads-title">Saved leads</h1>
+          <p className="rl-leads-subtitle">
+            <span className="rl-count-highlight">{total}</span> leads in your pipeline
+          </p>
         </div>
-        <h1 className="title">Your Saved Leads</h1>
-        <p className="subtitle">
-          Keep track of promising boutique law firms you've bookmarked.
-        </p>
-      </header>
+        <Link href="/" className="rl-leads-find-more">
+          Find more &rarr;
+        </Link>
+      </div>
 
       {/* 
         Wrap searchParams client component in Suspense boundary 

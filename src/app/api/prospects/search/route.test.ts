@@ -103,6 +103,7 @@ describe("GET /api/prospects/search", () => {
       sourceType: "MANUAL_SEED",
       sourceUrl: null,
       confidenceLevel: "HIGH",
+      confidenceTier: "LOW",
       verificationStatus: "VERIFIED",
       lastCheckedDate: "2026-06-17T12:00:00.000Z",
       globalNotes: "Some note",
@@ -142,14 +143,16 @@ describe("GET /api/prospects/search", () => {
     expect(data.error).toContain("unexpected error occurred");
   });
 
-  it("should sort results by confidenceLevel descending, then alphabetically by firmName", async () => {
+  it("should sort email-first, then by confidence tier descending, then alphabetically by firmName", async () => {
     const mockFirms = [
       {
         id: "firm-1",
-        firmName: "Zeta Law",
+        firmName: "Foxtrot Law",
         zip: "19103",
         sourceType: "MANUAL_SEED",
-        confidenceLevel: "LOW",
+        email: null,
+        emailSource: null,
+        phoneSource: null,
         verificationStatus: "VERIFIED",
         lastCheckedDate: new Date("2026-06-17T12:00:00.000Z"),
       },
@@ -158,25 +161,31 @@ describe("GET /api/prospects/search", () => {
         firmName: "Alpha Law",
         zip: "19103",
         sourceType: "MANUAL_SEED",
-        confidenceLevel: "HIGH",
+        email: "info@alpha.com",
+        emailSource: "FIRM_DOMAIN",
+        phoneSource: null,
         verificationStatus: "VERIFIED",
         lastCheckedDate: new Date("2026-06-17T12:00:00.000Z"),
       },
       {
         id: "firm-3",
-        firmName: "Beta Law",
+        firmName: "Bravo Law",
         zip: "19103",
         sourceType: "MANUAL_SEED",
-        confidenceLevel: "MEDIUM",
+        email: "contact@bravo.com",
+        emailSource: "OFF_DOMAIN",
+        phoneSource: null,
         verificationStatus: "VERIFIED",
         lastCheckedDate: new Date("2026-06-17T12:00:00.000Z"),
       },
       {
         id: "firm-4",
-        firmName: "Gamma Law",
+        firmName: "Charlie Law",
         zip: "19103",
         sourceType: "MANUAL_SEED",
-        confidenceLevel: "HIGH",
+        email: "hello@charlie.com",
+        emailSource: "FIRM_DOMAIN",
+        phoneSource: null,
         verificationStatus: "VERIFIED",
         lastCheckedDate: new Date("2026-06-17T12:00:00.000Z"),
       },
@@ -185,7 +194,20 @@ describe("GET /api/prospects/search", () => {
         firmName: "Delta Law",
         zip: "19103",
         sourceType: "MANUAL_SEED",
-        confidenceLevel: "UNKNOWN",
+        email: "info@delta.com",
+        emailSource: null,
+        phoneSource: null,
+        verificationStatus: "VERIFIED",
+        lastCheckedDate: new Date("2026-06-17T12:00:00.000Z"),
+      },
+      {
+        id: "firm-6",
+        firmName: "Echo Law",
+        zip: "19103",
+        sourceType: "MANUAL_SEED",
+        email: null,
+        emailSource: null,
+        phoneSource: "PLACES",
         verificationStatus: "VERIFIED",
         lastCheckedDate: new Date("2026-06-17T12:00:00.000Z"),
       },
@@ -198,19 +220,24 @@ describe("GET /api/prospects/search", () => {
     expect(response.status).toBe(200);
 
     const data = await response.json();
-    expect(data.results).toHaveLength(5);
+    expect(data.results).toHaveLength(6);
 
-    // Expected order:
-    // 1. Alpha Law (HIGH)
-    // 2. Gamma Law (HIGH) -> alphabetical tiebreaker: Alpha before Gamma
-    // 3. Beta Law (MEDIUM)
-    // 4. Zeta Law (LOW)
-    // 5. Delta Law (UNKNOWN)
+    // Sort is email-first, then tier (HIGH > MEDIUM > LOW), then firmName asc.
+    // Firms WITH an email string rank ahead of firms without, regardless of tier.
+    //
+    // Has email:  Alpha (HIGH), Charlie (HIGH), Bravo (MEDIUM), Delta (LOW)
+    //   HIGH alphabetical: Alpha, Charlie; then Bravo; then Delta
+    // No email:   Echo (MEDIUM via PLACES phone), Foxtrot (LOW)
+    //   Echo before Foxtrot
+    //
+    // Delta (LOW, has email) still outranks Echo (MEDIUM, no email):
+    // email-first dominates the tier comparison.
     expect(data.results[0].firmName).toBe("Alpha Law");
-    expect(data.results[1].firmName).toBe("Gamma Law");
-    expect(data.results[2].firmName).toBe("Beta Law");
-    expect(data.results[3].firmName).toBe("Zeta Law");
-    expect(data.results[4].firmName).toBe("Delta Law");
+    expect(data.results[1].firmName).toBe("Charlie Law");
+    expect(data.results[2].firmName).toBe("Bravo Law");
+    expect(data.results[3].firmName).toBe("Delta Law");
+    expect(data.results[4].firmName).toBe("Echo Law");
+    expect(data.results[5].firmName).toBe("Foxtrot Law");
   });
 
   // NEW Phase 7.2 Cache-first / fallback path tests

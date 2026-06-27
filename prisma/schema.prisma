@@ -35,6 +35,7 @@ enum SourceType {
 
 model Firm {
   id                 String             @id @default(uuid())
+  slug               String?            @unique
   firmName           String
   zip                String
   zipExt             String?
@@ -45,6 +46,10 @@ model Firm {
   phone              String?
   email              String?
   emailCheckedAt     DateTime?
+  emailSource        DataPointSource?
+  emailConfidence    Float?
+  phoneSource        DataPointSource?
+  phoneConfidence    Float?
   practiceAreas      String[]
   attorneyCountRange String
   attorneys          String[]
@@ -62,6 +67,7 @@ model Firm {
   savedLeads         SavedLead[]
   activities         Activity[]
   researchRuns       ResearchRun[]
+  dataPoints         DataPoint[]
 
   @@index([zip])
   @@index([city, state])
@@ -237,5 +243,34 @@ model WebsiteCheck {
 
   @@index([researchRunId])
 }
+
+enum DataField {
+  EMAIL
+  PHONE
+}
+
+enum DataPointSource {
+  FIRM_DOMAIN       // email domain matches the firm's own website host
+  OFF_DOMAIN        // email on a domain that isn't the firm's site
+  GENERIC_PROVIDER  // email on a consumer provider (gmail, yahoo, ...)
+  UNVERIFIED        // no website to corroborate against
+  PLACES            // phone from Google Places
+  WEBSITE           // phone observed from a website
+}
+
+model DataPoint {
+  id         String          @id @default(uuid())
+  firm       Firm            @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  firmId     String
+  field      DataField
+  value      String
+  source     DataPointSource
+  confidence Float
+  observedAt DateTime        @default(now())
+  createdAt  DateTime        @default(now())
+
+  @@index([firmId, field])
+}
+
 
 

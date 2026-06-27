@@ -102,3 +102,26 @@ export async function countWonThisWeek(userId: string): Promise<number> {
   });
 }
 
+export async function getRecentSearchesWithTime(
+  userId: string,
+  limit = 6
+): Promise<{ zip: string; searchedAt: string }[]> {
+  const records = await prisma.activity.findMany({
+    where: { userId, type: "SEARCHED" },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+    select: { query: true, createdAt: true },
+  });
+  // Mirror dedupeRecentSearches: keep the first (newest) occurrence per ZIP.
+  const seen = new Set<string>();
+  const result: { zip: string; searchedAt: string }[] = [];
+  for (const r of records) {
+    if (!r.query || seen.has(r.query)) continue;
+    seen.add(r.query);
+    result.push({ zip: r.query, searchedAt: r.createdAt.toISOString() });
+    if (result.length === limit) break;
+  }
+  return result;
+}
+
+

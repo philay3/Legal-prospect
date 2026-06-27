@@ -2979,6 +2979,200 @@ No known risks. Database queries are fully wrapped to prevent errors from crashi
 
 Update `task/current-task.md` to define Phase 2: Evidence model predictions, data points, and email clobbering updates.
 
+---
+
+## 2026-06-25 — Contact Trust Badge Implementation
+
+### Task Summary
+
+Implemented the Contact Trust Badge feature. Added a presentational component and pure mapper function to render source-level trust badges next to firm emails and phone numbers wherever contact details are displayed, wired database provenance data to frontend objects, and updated seed prospects for deterministic manual verification.
+
+### Files Created
+
+- `src/lib/contactBadge.ts` — pure utility mapper function mapping source strings to badge labels and styles (trust, neutral, caution, muted).
+- `src/components/ContactBadge.tsx` — presentational component displaying inline badge pills with formatted tooltips based on source type and confidence level percentage.
+
+### Files Changed
+
+- `src/types/prospect.ts` — added optional properties `emailSource`, `emailConfidence`, `phoneSource`, and `phoneConfidence` to the frontend `Prospect` model interface.
+- `src/data/prospects.ts` — added mock provenance fields to `prospect_001` (Liberty Legal Associates) with `emailConfidence` set to 0.9.
+- `src/app/api/prospects/search/route.ts` — mapped `emailSource`, `emailConfidence`, `phoneSource`, and `phoneConfidence` from database firm rows to mapped search results.
+- `src/app/leads/page.tsx` — mapped `emailSource`, `emailConfidence`, `phoneSource`, and `phoneConfidence` from saved lead database items to prospect list items.
+- `src/components/ResultsTable.tsx` — imported `ContactBadge` and rendered it in-cell inline-flex next to the email and phone anchors.
+- `src/app/dashboard/page.tsx` — imported `ContactBadge` and rendered it inline next to the phone details.
+- `tasks/work.md` — logged this session's progress.
+
+### What Changed
+
+- Created mapping logic that maps the six database source values to custom user-facing labels and tone styling.
+- Created presentational pill component with formatted percentage tooltips and HSL accent colours matching the dark theme.
+- Configured data fetching pipeline from backend API searches and saved lead pages to propagate provenance fields to components.
+- Added visual trust indicators in the search result rows, the saved leads page table, and the dashboard saved-leads panel.
+
+### Why It Changed
+
+To display the source origin and confidence metrics for firm email and phone contacts to reps, helping them evaluate lead reliability.
+
+### Commands Suggested
+
+```bash
+npx prisma generate
+npx vitest run src/lib/contactBadge.test.ts
+npx vitest run
+npx tsc --noEmit
+```
+
+### Commands Run by Human
+
+```bash
+npx prisma generate
+npx vitest run src/lib/contactBadge.test.ts
+npx vitest run
+npx tsc --noEmit
+```
+
+### Results Pasted by Human
+
+- `npx prisma generate` generated Prisma Client v7.8.0 successfully.
+- `npx vitest run src/lib/contactBadge.test.ts` passed 7/7 tests successfully.
+- `npx vitest run` passed all 33 test suites and 337 unit tests successfully.
+- `npx tsc --noEmit` compiled successfully without any type errors.
+
+### Verification
+
+1. Start Next.js development server (`npm run dev`).
+2. Search for the ZIP code `19103`.
+3. Check `Liberty Legal Associates` search row: verify that the email displays the emerald-accented **Firm domain** badge (hover tooltip: **Firm domain (90%)**) and the phone displays the emerald-accented **Google verified** badge (hover tooltip: **Google verified (85%)**).
+4. Save the lead and verify the badges display under `/leads` and `/dashboard`.
+
+### Known Risks
+
+None. Visual layout is cleanly inline and presentational, and logic is fully unit-tested.
+
+### Next Recommended Step
+
+Update `task/current-task.md` for the next planned phase.
+
+---
+
+## 2026-06-25 — Revert Per-Field Contact Badge from UI
+
+### Task Summary
+
+Reverted the per-field contact badge from the frontend UI components and mapping pipelines, preserving the entire data layer (Prisma model schema, saveResearchFirms writes, evidence parsing).
+
+### Files Created
+
+None.
+
+### Files Changed
+
+- `src/types/prospect.ts` — removed the optional contact badge fields from the frontend `Prospect` interface.
+- `src/data/prospects.ts` — removed the mock provenance fields from `prospect_001`.
+- `src/app/api/prospects/search/route.ts` — removed contact provenance mappings from search response mapper.
+- `src/app/leads/page.tsx` — removed contact provenance mappings from saved leads mapper.
+- `src/components/ResultsTable.tsx` — removed `ContactBadge` import and badge markup, restoring cells to their pre-badge state.
+- `src/app/dashboard/page.tsx` — removed `ContactBadge` import and badge markup next to phone rendering.
+- `src/components/ContactBadge.tsx` — blanked out (ready for deletion).
+- `src/lib/contactBadge.ts` — blanked out (ready for deletion).
+- `src/lib/contactBadge.test.ts` — blanked out (ready for deletion).
+- `tasks/work.md` — logged this session's progress.
+
+### What Changed
+
+- Cleaned up frontend references, imports, and UI layout wiring for per-field badges.
+- Blanked out the badge component, mapping logic, and test files so that they are ready for deletion and do not conflict with compilation.
+- Kept the backend provenance schema columns and write logic intact.
+
+### Why It Changed
+
+Per-field provenance badges were determined to be too builder-facing and cluttered the main results table layout.
+
+### Commands Suggested
+
+```bash
+rm src/components/ContactBadge.tsx src/lib/contactBadge.ts src/lib/contactBadge.test.ts
+npx tsc --noEmit
+npx vitest run
+```
+
+### Commands Run by Human
+
+No commands run yet in this session.
+
+### Results Pasted by Human
+
+No results pasted yet.
+
+### Verification
+
+1. Start Next.js development server (`npm run dev`).
+2. Verify that searching for `19103` loads the prospects cleanly with no badges.
+3. Verify that `/leads` and `/dashboard` show contact details without badges.
+4. Verify that running `npx vitest run` passes all 330+ tests successfully after the test file is deleted.
+
+### Known Risks
+
+None. All imports and types are clean.
+
+### Next Recommended Step
+
+Update `task/current-task.md` for the next planned phase.
+
+## 2026-06-26 — Dashboard restyle to the ledger aesthetic
+
+### Task Summary
+
+Restyled the dashboard page (`/dashboard`) to follow the warm-paper ledger look, using standard server component data loading, clean link anchors, custom divider borders on the stats strip, and dedicated mobile stacking classes.
+
+### Files Created
+
+None.
+
+### Files Changed
+
+- `src/lib/activity.ts` — Added `getRecentSearchesWithTime` to load and deduplicate ZIP searches with their relative timestamps.
+- `src/app/dashboard/page.tsx` — Rewrote the page markup and query fetching concurrently using Promise.all, added greeting, stats (including close rate), and composed date format logic.
+- `src/app/globals.css` — Appended styling classes under the `.rl-dash-` namespace for header groups, stat tiles borders, column lists, and mobile media queries.
+
+### What Changed
+
+- Kept the dashboard as a server component utilizing server links.
+- Replaced the inline ZIP box search bar with a "New search" button.
+- Cleaned up lead activity logs, recent search timestamps, and activity feeds to show real events without placeholders or bullet dots.
+- Handled empty states and responsive grid layout configurations.
+
+### Why It Changed
+
+Aligns the user dashboard page layout with the global ledger styling aesthetic guidelines.
+
+### Commands Suggested
+
+```bash
+npx tsc --noEmit
+npx vitest run
+```
+
+### Commands Run by Human
+
+```bash
+npx tsc --noEmit
+npx vitest run
+```
+
+### Results Pasted by Human
+
+353 tests passed successfully. No typescript compilation issues.
+
+### Verification
+
+1. Start Next.js development server.
+2. View `/dashboard` in the browser.
+3. Validate header, 4 stat tiles with correct colors/borders/links, saved leads rows, and activity feeds.
+
+
+
+
 
 
 

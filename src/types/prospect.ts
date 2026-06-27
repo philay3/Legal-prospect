@@ -2,6 +2,8 @@ import type { LeadStatus } from "../utils/leadStatus";
 
 export type ConfidenceLevel = "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
 
+export type ConfidenceTier = "HIGH" | "MEDIUM" | "LOW";
+
 export type VerificationStatus =
   | "CANDIDATE"
   | "PENDING_REVIEW"
@@ -18,6 +20,7 @@ export type SourceType =
 
 export interface Prospect {
   id: string;
+  slug?: string | null;
   firmName: string;
   zip: string;
   zipExt?: string | null;
@@ -34,9 +37,16 @@ export interface Prospect {
   sourceType: SourceType;
   sourceUrl?: string | null;
   confidenceLevel: ConfidenceLevel;
+  confidenceTier?: ConfidenceTier;
   verificationStatus: VerificationStatus;
   lastCheckedDate?: string | null;
   globalNotes: string | null;
   status?: LeadStatus;
 }
+
+export interface SavedLeadRow extends Prospect {
+  savedAt: string;          // SavedLead.createdAt, ISO
+  statusChangedAt: string;  // SavedLead.updatedAt, ISO
+}
+
 

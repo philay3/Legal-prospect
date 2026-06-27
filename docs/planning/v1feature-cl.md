@@ -1,6 +1,6 @@
 # Legal Prospector — Feature Checklist
 
-Last updated: June 24, 2026
+Last updated: June 25, 2026
 
 Living checklist. Trust the boxes here over roadmap.md, and re-confirm against the
 actual code before starting anything. When something ships, check it and move it
@@ -26,7 +26,11 @@ Status: `[x]` done · `[~]` in progress · `[ ]` not started · `FUTURE` · `CON
 - [x] Force-refresh toggle on the search page
 - [x] Recent searches on the search page: GET /api/searches/recent plus clickable ZIP chips, chip clicks read cache even when refresh is on
 - [x] Evidence model Phase 1, research audit logging (ResearchRun + WebsiteCheck, log only, no read change). Verified live: runs and checks land, failures recorded with status
-- [x] Practice-area reads moved onto the normalized PracticeArea / FirmPracticeArea tables, with a shared include + projection helper and an idempotent backfill that closed the 142-firm gap (count now 2622 = 2622). Reversible: the String[] arrays and their writes are untouched. Attorneys still read the array. Known follow-up below: historical non-canonical rows produce visible case-variant dupes
+- [x] Practice-area reads moved onto the normalized PracticeArea / FirmPracticeArea tables, with a shared include + projection helper and an idempotent backfill that closed the 142-firm gap (count now 2622 = 2622). Reversible: the String[] arrays and their writes are untouched. Attorneys still read the array
+
+- [x] Practice-area case-variant dedupe. One-time merge re-pointed links to the canonical keeper and collapsed the case dupes (146 non-canonical rows to 0, 21,607 to 17,426 links, 4,181 duplicate joins removed). toCanonicalPracticeArea moved into the pure sanitize module as the single source of truth, getPracticeAreaNames dedups case-insensitively at read time, 146 orphaned rows kept for reversibility
+- [x] Evidence model Phase 2, per-field provenance for email and phone. A DataPoint per observation (source, confidence, observedAt) written in both saveResearchFirms branches via a pure classifyContact tiering; Firm.email and Firm.phone are now the confidence-ranked current-best via pickCurrentBest. This is the clobbering fix: a low-confidence wrong-site value can no longer overwrite a high-confidence one, verified live (a 0.9 firm-domain email survived a later 0.4 gmail). Idempotent backfill seeded existing firms. Email yield quantified at about 23 percent of firms versus about 94 percent with a phone. Source corroboration (did the page match the firm by name, city, phone) feeding confidence is still deferred, see Phase 2 note below
+- [x] Firm contact-provenance columns (emailSource, emailConfidence, phoneSource, phoneConfidence). The winning value's source and confidence cached on the Firm row at write time, from classifyContact on create and pickCurrentBest on update, with an idempotent backfill. Firm stays the fast read layer; these are the foundation for the firm-level confidence badge, a confidence sort, and confidence filtering
 
 ---
 
@@ -42,9 +46,8 @@ This track is complete.
 
 ## Near-term backlog
 
-- [ ] Practice-area case-variant dedupe (do before Phase 2). The screens show the same area twice when it differs only by case ("Elder law" / "Elder Law", "estate planning" / "Estate Planning") because non-canonical rows, from before the canonicalizer and from the backfill's locally copied function, sit in PracticeArea and firms link to both. Fix: one source of truth for toCanonicalPracticeArea (move it into the pure sanitize module), a one-time merge that re-points links to the canonical row, and a read-time dedup safety net. Collapses case variants only. Spec written: practice-area-dedup-cleanup.md
 - [ ] User-private lead overrides (the edit feature). Let a user add or fix email, phone, site, attorneys, notes on their own saved lead. Workspace layer only, nullable columns on SavedLead or a small LeadEdit table, read-time precedence over the Firm value. Never global
-- [ ] Evidence model Phase 2, provenance for email and phone. Write a DataPoint per enrich with source and confidence, keep Firm.email as the derived current-best. This is where the refresh-clobbering fix lives: a low-confidence wrong-site value can no longer overwrite a high-confidence one. Includes source corroboration (did this page actually match this firm by name, city, phone) feeding confidence
+- [ ] Firm-level confidence badge plus sort by overall confidence, one bundled task. A single overall-confidence signal per firm derived from the provenance columns (v1: the best channel folded into a high / medium / low tier), shown as one badge on the firm and used to sort, then to filter, the results. The per-field contact badge was built and then pulled from the UI as too clunky and too builder-facing; the Firm confidence columns it read from are kept as the foundation for this
 - [ ] Attorney-level phone/email enrichment via per-bio-page scraping. Highest-value data expansion, and the real answer to low email yield since bio pages expose email more often than firm pages
 - [ ] Email gating behind login, stripped server-side. UI hiding is not gating. Intended as the sign-up incentive
 - [ ] Attorney reads onto the normalized Attorney table (practice-area reads already moved, see Shipped), and only after the canonicalization cleanup consider dropping the transitional Firm String[] columns. The String[] stays for now as the backfill source and fallback
@@ -64,7 +67,7 @@ strictly separate from observed). Firm becomes a fast projection over the latest
 highest-confidence DataPoints.
 
 - [x] Phase 1, audit logging (ResearchRun + WebsiteCheck). Done and verified live
-- [ ] Phase 2, provenance for the fields that matter, starting with email and phone
+- [x] Phase 2, provenance for the fields that matter, email and phone. DataPoint per observation, confidence-ranked current-best, and the clobbering fix, all shipped and verified live. The one piece still open is source corroboration (page matched the firm by name, city, phone) feeding confidence
 - FUTURE: Phase 3, predictions (email-pattern inference, prospect scoring), clearly labeled, never overwriting observed values
 - FUTURE: Phase 4, scheduled or triggered re-checks to keep data fresh and surface change
 - [ ] Prerequisite for Phase 4 and for deep save-triggered fetches: background engine (waitUntil after the response, Vercel Cron, a small queue, or a separate always-on worker on the same Neon DB). emailCheckedAt is the hinge a scheduler reads
@@ -113,10 +116,11 @@ parts are the data prerequisites noted.
 
 - No global edits. User edits are user-private workspace-layer overrides only.
 - Firm stays the fast read layer. The evidence lives underneath it.
-- Migrations are additive and reversible only. Local and prod share one Neon DB. Preview SQL with --create-only first; the operator applies, never the agent, never autonomously. After a migration, regenerate the Prisma client and restart the dev server, or the running server keeps the stale client (the Phase 1 audit-write failure was exactly this).
+- Migrations are additive and reversible only. Local and prod share one Neon DB. Preview SQL with --create-only first; the operator applies, never the agent, never autonomously. After a migration, regenerate the Prisma client and restart the dev server, or the running server keeps the stale client (the Phase 1 audit-write failure was exactly this, and the provenance-columns search hit it again, generate without a restart).
 - The clobbering fix is Phase 2 (confidence-ranked projection plus source corroboration), not a one-off patch.
 - Build the future layer when a feature needs it, not speculatively.
 - One source of truth for shared helpers. Do not re-implement a function locally inside a script to dodge an import; that is how the practice-area vocabulary drifted. If a pure helper is trapped in a server-only module, move the helper to a pure module and import it everywhere.
+- No test-only code in production. Do not add a shim or fallback to production to satisfy an incomplete mock; an incomplete mock or a harness-level failure is a test fix, not a production change. The agent stays off test files, the architect or operator owns them. Seen this session: a fallback prisma.dataPoint shim was added to saveResearchFirms to dodge a missing mock; the right fix was the mock.
 - Never run tsc on a single file in this repo. It ignores tsconfig, targets old JS, and emits .js files next to the .ts sources that then break Vitest. Run scripts with tsx.
 - An additive backfill closes coverage gaps but does not fix pre-existing bad rows. Data-quality fixes need an explicit merge or cleanup pass, the same way the real fix for wrong field values is Phase 2 provenance, not more additive logging.
 

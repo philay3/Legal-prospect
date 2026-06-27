@@ -87,22 +87,6 @@ export function AvatarMenu({ user }: AvatarMenuProps) {
           </div>
 
           <Link
-            href="/dashboard"
-            className={`avatar-dropdown-item ${isActive("/dashboard") ? "active" : ""}`}
-            role="menuitem"
-          >
-            Dashboard
-          </Link>
-
-          <Link
-            href="/leads"
-            className={`avatar-dropdown-item ${isActive("/leads") ? "active" : ""}`}
-            role="menuitem"
-          >
-            Leads
-          </Link>
-
-          <Link
             href="/account"
             className={`avatar-dropdown-item ${isActive("/account") ? "active" : ""}`}
             role="menuitem"

@@ -5,6 +5,7 @@ import type { Prospect } from "../../../../types/prospect";
 import { runLeadResearch } from "../../../../lib/research/runLeadResearch";
 import { saveResearchFirms } from "../../../../lib/db/saveResearchFirms";
 import { practiceAreaInclude, getPracticeAreaNames } from "../../../../lib/practiceAreas";
+import { firmConfidenceTier } from "../../../../lib/confidence";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -95,6 +96,7 @@ export async function GET(request: NextRequest) {
     // Map database rows to the frontend Prospect shape
     const results: Prospect[] = matched.map((firm) => ({
       id: firm.id,
+      slug: firm.slug,
       firmName: firm.firmName,
       zip: firm.zip,
       zipExt: firm.zipExt,
@@ -111,25 +113,34 @@ export async function GET(request: NextRequest) {
       sourceType: firm.sourceType,
       sourceUrl: firm.sourceUrl,
       confidenceLevel: firm.confidenceLevel,
+      confidenceTier: firmConfidenceTier({ emailSource: firm.emailSource, phoneSource: firm.phoneSource }),
       verificationStatus: firm.verificationStatus,
       lastCheckedDate: firm.lastCheckedDate ? firm.lastCheckedDate.toISOString() : null,
       globalNotes: firm.globalNotes,
     }));
 
-    // Sort results by confidence level: HIGH (3) > MEDIUM (2) > LOW (1) > UNKNOWN/others (0).
-    // Within the same confidence level, sort alphabetically by firm name.
-    const confidenceRank: Record<string, number> = {
+    // Sort results:
+    // 1. Email first: non-empty string vs. null/empty/undefined
+    // 2. Then tier: HIGH > MEDIUM > LOW
+    // 3. Then name: alphabetical ascending
+    const tierRank: Record<string, number> = {
       HIGH: 3,
       MEDIUM: 2,
       LOW: 1,
     };
 
     results.sort((a, b) => {
-      const bRank = confidenceRank[b.confidenceLevel] ?? 0;
-      const aRank = confidenceRank[a.confidenceLevel] ?? 0;
+      const aHasEmail = typeof a.email === "string" && a.email.length > 0;
+      const bHasEmail = typeof b.email === "string" && b.email.length > 0;
 
-      if (bRank !== aRank) {
-        return bRank - aRank;
+      if (aHasEmail !== bHasEmail) {
+        return aHasEmail ? -1 : 1;
+      }
+
+      const aTierRank = tierRank[a.confidenceTier ?? "LOW"] ?? 0;
+      const bTierRank = tierRank[b.confidenceTier ?? "LOW"] ?? 0;
+      if (aTierRank !== bTierRank) {
+        return bTierRank - aTierRank;
       }
 
       return a.firmName.localeCompare(b.firmName);

@@ -3,10 +3,13 @@ import { saveResearchFirms, buildAttorneyInputs } from "./saveResearchFirms";
 import prisma from "../prisma";
 import zipcodes from "zipcodes";
 
+const mockDataPoints: any[] = [];
+
 vi.mock("../prisma", () => ({
   default: {
     firm: {
       findFirst: vi.fn(),
+      findUnique: vi.fn().mockResolvedValue(null),
       update: vi.fn(),
       create: vi.fn(),
     },
@@ -22,6 +25,25 @@ vi.mock("../prisma", () => ({
       upsert: vi.fn(),
       createMany: vi.fn(),
     },
+    dataPoint: {
+      create: vi.fn().mockImplementation((args: any) => {
+        const dp = {
+          id: `dp-${Math.random()}`,
+          firmId: args.data.firmId,
+          field: args.data.field,
+          value: args.data.value,
+          source: args.data.source,
+          confidence: args.data.confidence,
+          observedAt: args.data.observedAt || new Date(),
+        };
+        mockDataPoints.push(dp);
+        return Promise.resolve(dp);
+      }),
+      findMany: vi.fn().mockImplementation((args: any) => {
+        const firmId = args.where.firmId;
+        return Promise.resolve(mockDataPoints.filter((dp) => dp.firmId === firmId));
+      }),
+    },
   },
 }));
 
@@ -34,6 +56,7 @@ vi.mock("zipcodes", () => ({
 describe("saveResearchFirms", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockDataPoints.length = 0;
     vi.mocked(prisma.firm.create).mockResolvedValue({ id: "mock-firm-id", practiceAreas: [] } as any);
     vi.mocked(prisma.firm.update).mockResolvedValue({ id: "mock-firm-id" } as any);
     vi.mocked(prisma.attorney.upsert).mockResolvedValue({} as any);
@@ -805,5 +828,175 @@ describe("saveResearchFirms", () => {
       expect(prisma.firm.create).toHaveBeenCalledTimes(2);
     });
   });
-});
 
+  describe("contact provenance columns", () => {
+    it("writes email and phone source/confidence from the winning DataPoint on update", async () => {
+      vi.mocked(zipcodes.lookup).mockReturnValue({
+        zip: "19103",
+        city: "Philadelphia",
+        state: "PA",
+        latitude: 0,
+        longitude: 0,
+        country: "US",
+      });
+
+      const existingFirm = {
+        id: "existing-id",
+        firmName: "Acme Law",
+        zip: "19103",
+        city: "Philadelphia",
+        state: "PA",
+        streetAddress: "1 Market St",
+        website: "https://acme-law.com",
+        phone: null,
+        email: null,
+        practiceAreas: [],
+        attorneyCountRange: "Unknown",
+        attorneys: [],
+        sourceType: "GOOGLE_MAPS",
+        confidenceLevel: "MEDIUM",
+        verificationStatus: "CANDIDATE",
+      };
+
+      vi.mocked(prisma.firm.findFirst).mockResolvedValue(existingFirm as any);
+
+      await saveResearchFirms("19103", [
+        {
+          firm_name: "Acme Law",
+          address: null,
+          phone: "(310) 555-0199",
+          website: "https://acme-law.com",
+          email: "info@acme-law.com",
+          sourceType: "GOOGLE_MAPS",
+        },
+      ]);
+
+      expect(prisma.firm.update).toHaveBeenCalledWith({
+        where: { id: "existing-id" },
+        data: expect.objectContaining({
+          email: "info@acme-law.com",
+          emailSource: "FIRM_DOMAIN",
+          emailConfidence: 0.9,
+          phone: "(310) 555-0199",
+          phoneSource: "PLACES",
+          phoneConfidence: 0.85,
+        }),
+      });
+    });
+
+    it("leaves all four provenance columns out of the update when the firm has no DataPoints", async () => {
+      vi.mocked(zipcodes.lookup).mockReturnValue({
+        zip: "19103",
+        city: "Philadelphia",
+        state: "PA",
+        latitude: 0,
+        longitude: 0,
+        country: "US",
+      });
+
+      const existingFirm = {
+        id: "existing-id",
+        firmName: "Acme Law",
+        zip: "19103",
+        city: "Philadelphia",
+        state: "PA",
+        streetAddress: "1 Market St",
+        website: "https://acme-law.com",
+        phone: "(310) 555-0199",
+        email: "info@acme-law.com",
+        practiceAreas: [],
+        attorneyCountRange: "Unknown",
+        attorneys: [],
+        sourceType: "GOOGLE_MAPS",
+        confidenceLevel: "MEDIUM",
+        verificationStatus: "CANDIDATE",
+      };
+
+      vi.mocked(prisma.firm.findFirst).mockResolvedValue(existingFirm as any);
+
+      // Incoming row carries no useful email or phone, so no DataPoints get written
+      // and pickCurrentBest returns null for both fields.
+      await saveResearchFirms("19103", [
+        {
+          firm_name: "Acme Law",
+          address: null,
+          phone: "na",
+          website: null,
+          email: "unknown",
+          sourceType: "GOOGLE_MAPS",
+        },
+      ]);
+
+      const updateArg = vi.mocked(prisma.firm.update).mock.calls[0][0].data;
+      expect(updateArg.emailSource).toBeUndefined();
+      expect(updateArg.emailConfidence).toBeUndefined();
+      expect(updateArg.phoneSource).toBeUndefined();
+      expect(updateArg.phoneConfidence).toBeUndefined();
+    });
+
+    it("writes email and phone source/confidence from classifyContact on create", async () => {
+      vi.mocked(zipcodes.lookup).mockReturnValue({
+        zip: "19103",
+        city: "Philadelphia",
+        state: "PA",
+        latitude: 0,
+        longitude: 0,
+        country: "US",
+      });
+
+      vi.mocked(prisma.firm.findFirst).mockResolvedValue(null);
+
+      await saveResearchFirms("19103", [
+        {
+          firm_name: "New Firm LLC",
+          address: "2 Market St",
+          phone: "(310) 555-0123",
+          website: "https://newfirm.com",
+          email: "contact@newfirm.com",
+          sourceType: "GOOGLE_MAPS",
+        },
+      ]);
+
+      expect(prisma.firm.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          email: "contact@newfirm.com",
+          emailSource: "FIRM_DOMAIN",
+          emailConfidence: 0.9,
+          phone: "(310) 555-0123",
+          phoneSource: "PLACES",
+          phoneConfidence: 0.85,
+        }),
+      });
+    });
+
+    it("leaves provenance columns null on create when there is no useful email or phone", async () => {
+      vi.mocked(zipcodes.lookup).mockReturnValue({
+        zip: "19103",
+        city: "Philadelphia",
+        state: "PA",
+        latitude: 0,
+        longitude: 0,
+        country: "US",
+      });
+
+      vi.mocked(prisma.firm.findFirst).mockResolvedValue(null);
+
+      await saveResearchFirms("19103", [
+        {
+          firm_name: "No Contact Firm",
+          address: "3 Market St",
+          phone: "na",
+          website: null,
+          email: "unknown",
+          sourceType: "GOOGLE_MAPS",
+        },
+      ]);
+
+      const createArg = vi.mocked(prisma.firm.create).mock.calls[0][0].data;
+      expect(createArg.emailSource ?? null).toBeNull();
+      expect(createArg.emailConfidence ?? null).toBeNull();
+      expect(createArg.phoneSource ?? null).toBeNull();
+      expect(createArg.phoneConfidence ?? null).toBeNull();
+    });
+  });
+});
