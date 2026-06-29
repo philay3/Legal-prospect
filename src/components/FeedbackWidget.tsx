@@ -167,6 +167,7 @@ export function FeedbackWidget() {
                 <textarea
                   id="feedback-msg"
                   className="feedback-textarea"
+                  style={{ color: "#ffffff" }}
                   placeholder="Tell us more..."
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
